@@ -353,13 +353,289 @@ systemctl is-active hermes-gateway.service
 
 ---
 
+## 9. Enable reasoning mode
+
+Gemma 4 supports chain-of-thought reasoning via `<|channel>thought` tags. The start script ships with `--reasoning off` — flip it to `on`:
+
+```bash
+sudo sed -i 's/--reasoning off/--reasoning on/' /usr/local/bin/llama-server-start.sh
+sudo systemctl restart llama-server
+sleep 6 && systemctl is-active llama-server
+```
+
+Verify reasoning is working — the response should have a `reasoning_content` field separate from `content`:
+
+```bash
+curl -s -X POST http://localhost:8081/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"What is 17 * 23? Think step by step."}],"max_tokens":300,"stream":false}' \
+  | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+m=d['choices'][0]['message']
+print('reasoning_content:', m.get('reasoning_content','')[:200])
+print('content:', m.get('content','')[:200])
+"
+```
+
+Available flags for reference:
+
+| flag | values | effect |
+|------|--------|--------|
+| `--reasoning` | `on / off / auto` | force enable/disable or detect from template |
+| `--reasoning-format` | `none / deepseek / deepseek-legacy` | where thought tags land in the response |
+| `--reasoning-budget` | `-1 / 0 / N` | token budget for thinking (`-1` = unlimited) |
+
+---
+
+## 10. Strip mmproj to recover VRAM
+
+If you loaded the model with `--mmproj` but don't need vision on that instance (e.g. you have a dedicated vision model elsewhere), removing it frees the projector weight from VRAM.
+
+**Do NOT use `sed -i` to remove a single line from a multi-line `exec` block** — the backslash continuations will break the entire command and the service will silently fail.
+
+Instead, rewrite the script in full without the `--mmproj` lines:
+
+```bash
+sudo tee /usr/local/bin/llama-server-start.sh > /dev/null << 'EOF'
+#!/bin/bash
+# HauhauCS Gemma4-12B QAT Uncensored Balanced Q4_K_M + MTP (no mmproj)
+export GGML_AVX512=1
+export OMP_NUM_THREADS=32
+export OMP_PROC_BIND=close
+export OMP_PLACES=threads
+
+exec /root/llama.cpp/build/bin/llama-server \
+  --device Vulkan1 \
+  -m /root/models/hauhau-gemma4-12b-qat/Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf \
+  --spec-type draft-mtp \
+  --spec-draft-model /root/models/hauhau-gemma4-12b-qat/mtp-gemma-4-12B-it.gguf \
+  --spec-draft-device Vulkan1 \
+  --spec-draft-n-max 3 \
+  -ngl 99 -fa on -c 262144 --parallel 1 \
+  --cache-type-k q4_0 --cache-type-v q8_0 \
+  --batch-size 2048 --ubatch-size 512 \
+  --threads 16 --threads-batch 32 \
+  --no-mmap --cont-batching --jinja \
+  --reasoning on \
+  --temp 0.4 --top-k 64 --top-p 0.95 --min-p 0.01 \
+  --repeat-penalty 1.05 --repeat-last-n -1 \
+  --dry-multiplier 0.8 --dry-base 1.75 --dry-allowed-length 2 --dry-penalty-last-n -1 \
+  --poll 50 --prio 3 --metrics --host 0.0.0.0 --port 8081
+EOF
+sudo chmod +x /usr/local/bin/llama-server-start.sh
+sudo systemctl restart llama-server
+```
+
+VRAM impact on RX 7800 XT (16 GB):
+
+| state | VRAM used |
+|-------|-----------|
+| Gemma4 + mmproj | 10.18 GB |
+| Gemma4 without mmproj | ~9.84 GB |
+
+---
+
+## 11. Running a second llama-server alongside the main one
+
+You can load a second model on a different port as long as VRAM headroom allows.
+
+### Check available VRAM
+
+```bash
+rocm-smi --showmeminfo vram
+```
+
+Calculate: `total_free = vram_total - vram_used`. New model needs: `model_size + mmproj_size + ~500 MB KV cache headroom`.
+
+### Download the second model
+
+```bash
+sudo mkdir -p /root/models/<model-dir>
+sudo hf download <repo/model> --local-dir /root/models/<model-dir> --include '*.gguf'
+```
+
+### Write a second start script
+
+```bash
+sudo tee /usr/local/bin/llama-<name>-start.sh > /dev/null << 'EOF'
+#!/bin/bash
+exec /root/llama.cpp/build/bin/llama-server \
+  --device Vulkan1 \
+  -m /root/models/<model-dir>/<model>.gguf \
+  --mmproj /root/models/<model-dir>/<mmproj>.gguf \
+  -ngl 99 -fa on -c 8192 --parallel 1 \
+  --cache-type-k q8_0 --cache-type-v q8_0 \
+  --batch-size 512 --ubatch-size 512 \
+  --threads 8 --threads-batch 16 \
+  --no-mmap --cont-batching --jinja \
+  --metrics --host 0.0.0.0 --port 8082
+EOF
+sudo chmod +x /usr/local/bin/llama-<name>-start.sh
+```
+
+### Create a second systemd service
+
+```bash
+sudo tee /etc/systemd/system/llama-<name>.service > /dev/null << 'EOF'
+[Unit]
+Description=<ModelName>
+After=network.target llama-server.service
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/llama-<name>-start.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now llama-<name>.service
+```
+
+### Open the firewall port
+
+```bash
+sudo firewall-cmd --add-port=8082/tcp --permanent
+sudo firewall-cmd --reload
+```
+
+> **This step is easy to forget.** Even if the service is running, containers and remote hosts cannot reach the port until it is opened in `firewalld`.
+
+---
+
+## 12. Add a second model to OpenWebUI
+
+OpenWebUI stores its OpenAI-compatible connections as JSON in a SQLite database at `/app/backend/data/webui.db` (mounted from the host volume).
+
+### Enable API key auth in the container
+
+By default API keys are disabled. Add this to the container definition and restart:
+
+```ini
+# /etc/containers/systemd/openwebui-app.container
+Environment=ENABLE_API_KEYS=true
+```
+
+```bash
+systemctl daemon-reload && podman restart openwebui-app
+```
+
+### Create an admin API key
+
+```bash
+ADMIN_ID=$(sqlite3 /var/lib/containers/storage/volumes/systemd-openwebui-data/_data/webui.db \
+  "SELECT id FROM user WHERE role='admin' LIMIT 1")
+API_KEY="sk-owui-$(openssl rand -hex 16)"
+KEY_ID=$(python3 -c "import uuid; print(str(uuid.uuid4()))")
+NOW=$(date +%s)
+sqlite3 /var/lib/containers/storage/volumes/systemd-openwebui-data/_data/webui.db \
+  "INSERT INTO api_key (id, user_id, key, created_at, updated_at) VALUES ('$KEY_ID', '$ADMIN_ID', '$API_KEY', $NOW, $NOW)"
+echo "KEY: $API_KEY"
+```
+
+### Add the connection via the admin API
+
+```bash
+TOKEN="<your-api-key>"
+
+# Get current config
+curl -s http://localhost:8080/openai/config -H "Authorization: Bearer $TOKEN"
+
+# Add new connection (append to existing arrays)
+python3 << 'EOF'
+import json, sqlite3
+
+db_path = '/var/lib/containers/storage/volumes/systemd-openwebui-data/_data/webui.db'
+db = sqlite3.connect(db_path)
+raw = db.execute('SELECT data FROM config WHERE id=1').fetchone()[0]
+d = json.loads(raw)
+conn = d['openai']
+
+conn['api_base_urls'].append('http://192.168.50.20:8082/v1')
+conn['api_keys'].append('sk-no-key')
+idx = str(len(conn['api_configs']))
+conn['api_configs'][idx] = {
+    'enable': True, 'tags': [], 'prefix_id': 'mymodel',
+    'model_ids': [], 'connection_type': 'local', 'auth_type': 'bearer'
+}
+d['openai'] = conn
+db.execute('UPDATE config SET data=? WHERE id=1', (json.dumps(d),))
+db.commit()
+db.close()
+print('Added index', idx, '→', conn['api_base_urls'])
+EOF
+
+podman restart openwebui-app
+```
+
+The `prefix_id` value becomes a prefix on the model name in the picker (e.g. `mymodel.ModelName.gguf`).
+
+### Verify the model appears
+
+```bash
+TOKEN="<your-api-key>"
+curl -s http://localhost:8080/api/models -H "Authorization: Bearer $TOKEN" \
+  | python3 -c "import json,sys; print([m['id'] for m in json.load(sys.stdin).get('data',[])])"
+```
+
+---
+
+## 13. Remove a model / full cleanup
+
+```bash
+# 1. Stop and remove the service
+sudo systemctl disable --now llama-<name>.service
+sudo rm /etc/systemd/system/llama-<name>.service /usr/local/bin/llama-<name>-start.sh
+sudo systemctl daemon-reload
+
+# 2. Delete model files
+sudo rm -rf /root/models/<model-dir>
+
+# 3. Close the firewall port
+sudo firewall-cmd --remove-port=8082/tcp --permanent
+sudo firewall-cmd --reload
+
+# 4. Remove from OpenWebUI DB (adjust index to match which entry to remove)
+python3 << 'EOF'
+import json, sqlite3
+
+db_path = '/var/lib/containers/storage/volumes/systemd-openwebui-data/_data/webui.db'
+db = sqlite3.connect(db_path)
+raw = db.execute('SELECT data FROM config WHERE id=1').fetchone()[0]
+d = json.loads(raw)
+conn = d['openai']
+
+idx_to_remove = 3  # change to the index of the connection you want to remove
+conn['api_base_urls'].pop(idx_to_remove)
+conn['api_keys'].pop(idx_to_remove)
+del conn['api_configs'][str(idx_to_remove)]
+d['openai'] = conn
+
+db.execute('UPDATE config SET data=? WHERE id=1', (json.dumps(d),))
+db.commit()
+db.close()
+print('Remaining URLs:', conn['api_base_urls'])
+EOF
+
+podman restart openwebui-app
+```
+
+---
+
 ## Summary
 
 | step | what changed |
 |------|-------------|
 | Model downloaded | `/root/models/hauhau-gemma4-12b-qat/` (3 files, ~7.3 GB) |
-| Start script | New model + mmproj + MTP drafter paths |
+| Start script | New model + MTP drafter paths |
 | MTP tuning | `--spec-draft-n-max 3` confirmed optimal (93.8 tok/s) |
 | Repetition test | All 7 prompt types clean (max rep score 0.032) |
 | Hermes config | 5 auxiliary model references updated |
 | Service description | Matches filename: `Gemma4-12B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M` |
+| Reasoning mode | `--reasoning on` enabled; `reasoning_content` field populated in responses |
+| mmproj stripped | Removed from Gemma4 service; rewrote script in full (sed pitfall documented) |
+| VRAM after cleanup | ~9.84 GB / 16 GB |
+| OpenWebUI multi-model | Steps for adding/removing second server documented; firewall + API key auth pitfalls noted |
