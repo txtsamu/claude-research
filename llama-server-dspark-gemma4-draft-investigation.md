@@ -203,3 +203,18 @@ Left in place for when Gemma4 DSpark support lands upstream:
 Set up a recurring check on [ggml-org/llama.cpp#25173](https://github.com/ggml-org/llama.cpp/pull/25173) for Gemma4 DSpark support landing (either merged upstream, or a comment/commit adding Gemma4 conversion support). When it lands: re-clone/rebuild `/root/llama.cpp-dspark` from the updated branch (or `master` if merged), reconvert or re-download the Gemma4 draft GGUF if the tensor format changed, and re-run the same standalone-load test from §5 before attempting the swap again.
 
 **Baseline to beat**, from §3 (current MTP draft): ~50 tok/s prose / ~68.5 tok/s code, 44–89% draft acceptance depending on prompt type.
+
+---
+
+## 9. Update (2026-07-12): removed the leftover build and model files
+
+Decided the files noted as "left in place" in §7 weren't worth keeping around — the build directory is quick to reproduce, and the daily [PR watch](#8-follow-up-watching-pr-25173) routine is still active and will flag it if Gemma4 support ever lands, at which point everything below gets re-fetched anyway.
+
+```bash
+ssh moo@fedora "sudo rm -rf /root/llama.cpp-dspark"                      # 1.4G, cloned repo + build
+ssh moo@fedora "sudo rm -rf /root/models/dspark-gemma4-12b"              # 1.9G, the unusable draft GGUF
+```
+
+Both removed. `/root/models/` on fedora now only has the active model directories (`hauhau-gemma4-12b-qat`, `huihui-gemma-4-12b-abliterated`, `mia-gemmable-4-12b-mtp`). Production `llama-server` was untouched by this cleanup — it was already back on its original MTP setup since §7.
+
+**If/when the PR watch fires:** re-clone `wjinxu/llama.cpp` (branch `dspark-upstream`, or `master` if merged) into `/root/llama.cpp-dspark`, rebuild with the same ROCm/HIP flags as §4, and re-download the Gemma4 draft GGUF from `ankk98/dspark-gemma4-12b-block7-Q4_0-GGUF` (or whatever repo the landed support actually targets) before repeating the standalone-load test in §5.
