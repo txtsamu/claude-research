@@ -1,3 +1,11 @@
+---
+type: investigation
+tags: [llama-server, gemma4, mtp, speculative-decoding, dspark]
+created: 2026-07-04
+last_verified: 2026-07-04
+status: blocked
+---
+
 # Investigating a DSpark Draft Model Swap for llama-server (Gemma4)
 
 **Date:** 2026-07-04
