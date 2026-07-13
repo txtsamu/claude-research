@@ -280,7 +280,43 @@ Windows/Android/iOS steps are per the original guide (`certutil -addstore`, inst
 
 ---
 
-## 11. Summary of gotchas (quick reference)
+## 11. Brave (and Chromium-based browsers) on Linux: a separate trust store, again
+
+Got `NET::ERR_CERT_AUTHORITY_INVALID` on Brave even after the system trust store (`update-ca-trust`) was correctly updated and verified (`trust list` showed the cert as a trusted `anchor`/`authority`). Debugging path, including the wrong turns:
+
+1. **First theory: Flatpak sandboxing.** Brave is commonly distributed as a Flatpak on Fedora, and Flatpak sandboxes apps away from `/etc/pki`. Asked the user which install method they used — they initially said Flatpak, then corrected with `which brave-browser` → `/usr/bin/brave-browser`, which is the **native RPM install** (`brave-browser.repo` pointing at Brave's own `dnf` repo). Flatpak's exported binaries live under `~/.local/share/flatpak/exports/bin/` or `/var/lib/flatpak/exports/bin/`, not `/usr/bin/`, so this ruled the theory out. **Lesson: verify the install method with `which <bin>` / `rpm -q <pkg>` before diagnosing sandbox-related cert issues — don't trust a remembered answer over a live command.**
+
+2. **Root cause: Brave/Chromium on Linux doesn't use the OS trust store at all**, regardless of install method (native or Flatpak). It reads a **per-user NSS database** at `~/.pki/nssdb` — same mechanism Firefox uses (per-profile NSS db), but a completely separate database from Firefox's, and separate from the system `p11-kit`/`trust` store that `update-ca-trust` manages. Confirmed via a Brave Community solution thread: [Trust CA Certificates in Brave on Linux using Policy](https://community.brave.app/t/solution-trust-ca-certificates-in-brave-on-linux-using-policy/535346).
+
+3. **Fix — import via `certutil` into Brave's NSS db directly** (the in-app `brave://certificate-manager` → Authorities → Import path was also tried first and didn't reliably stick; the CLI path is the documented-reliable one):
+
+```bash
+sudo dnf install -y nss-tools   # provides certutil
+
+mkdir -p ~/.pki/nssdb
+modutil -dbdir sql:$HOME/.pki/nssdb --empty-password -f   # only if the db doesn't already exist
+
+certutil -d sql:$HOME/.pki/nssdb -A -t "TC,C,C" \
+  -n "Caddy Local Authority" \
+  -i /etc/pki/ca-trust/source/anchors/caddy-local-ca.crt
+```
+
+Verify: `certutil -d sql:$HOME/.pki/nssdb -L | grep -i caddy` → should show trust flags `CT,C,C`.
+
+**Gotcha:** the system anchor file (`/etc/pki/ca-trust/source/anchors/caddy-local-ca.crt`) was `root:root`, mode `600` — unreadable by the normal user, so `certutil -A -i <that path>` failed with `unable to open ... for reading (-5966, 13)`. Worked around by `sudo cat`-ing it to a user-readable temp copy first:
+```bash
+sudo cat /etc/pki/ca-trust/source/anchors/caddy-local-ca.crt > /tmp/caddy-local-ca.crt
+certutil -d sql:$HOME/.pki/nssdb -A -t "TC,C,C" -n "Caddy Local Authority" -i /tmp/caddy-local-ca.crt
+rm -f /tmp/caddy-local-ca.crt
+```
+
+4. **Fully quit Brave, not just close windows**, then relaunch — `pgrep -a brave-browser` before relaunching confirmed no leftover background process holding the old (untrusted) state.
+
+All of this was executed **over SSH to the user's Fedora desktop** (`moo@fedora`, key-based auth already trusted from this homelab host) since the Claude session runs on the homelab server, not the client machine — a reminder that "install a cert on your machine" tasks can sometimes be done directly by the agent if passwordless SSH already exists, rather than only handed to the user as copy-paste instructions.
+
+---
+
+## 12. Summary of gotchas (quick reference)
 
 | Symptom | Root cause | Fix |
 |---|---|---|
@@ -291,9 +327,10 @@ Windows/Android/iOS steps are per the original guide (`certutil -addstore`, inst
 | `caddy reload` says "config is unchanged" after a real edit | Single-file bind mount pinned to old (deleted) inode after an atomic file rewrite | `systemctl restart caddy` instead of relying on reload |
 | `https://nextcloud.lan` → HTTP 400 despite valid cert/proxy | App-level `trusted_domains` Host-header allowlist | `occ config:system:set trusted_domains N --value=<domain>` |
 | Two `hosts = [...]` arrays in `pihole.toml` | `[dns]` and `[dhcp]` sections both have a field named `hosts`, different formats | `grep -n` to confirm which section before editing |
+| Brave shows `NET::ERR_CERT_AUTHORITY_INVALID` despite system trust store being correctly updated | Brave/Chromium on Linux ignores `/etc/pki/ca-trust` entirely, uses its own per-user `~/.pki/nssdb` | `certutil -d sql:$HOME/.pki/nssdb -A -t "TC,C,C" -n "<name>" -i <cert>`, then fully quit + relaunch Brave |
 
 ---
 
-## 12. Notes on secrets
+## 13. Notes on secrets
 
 Credentials referenced during this session (MikroTik SSH password, Cloudflare API token from `~/.hermes/skills/devops/homelab-mcp-setup/references/cloudflare-mcp.md`) are intentionally **not** reproduced here — see the relevant Hermes skill reference files for those, kept out of this repo. Placeholder convention used above: `<MIKROTIK_PASSWORD>`, `<CLOUDFLARE_API_TOKEN>`.
