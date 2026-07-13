@@ -1,3 +1,11 @@
+---
+type: how-to
+tags: [oneterm, frontend, vue, ant-design]
+created: 2026-06-26
+last_verified: 2026-06-26
+status: current
+---
+
 # Adding Full Dark Mode to OneTerm (Vue 2 + Ant Design Vue 1.x)
 
 **Date:** 2026-06-26  

@@ -1,3 +1,11 @@
+---
+type: how-to
+tags: [caddy, pihole, dns, https, podman, mikrotik, brave, virtualmin]
+created: 2026-07-13
+last_verified: 2026-07-13
+status: current
+---
+
 # Clean Local `.lan` Domains with HTTPS via Caddy + Pi-hole
 
 **Date:** 2026-07-13

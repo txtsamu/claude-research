@@ -1,3 +1,11 @@
+---
+type: how-to
+tags: [oneterm, podman, quadlet, systemd, deployment]
+created: 2026-06-26
+last_verified: 2026-06-26
+status: current
+---
+
 # Deploying OneTerm with Podman Quadlets
 
 **Date:** 2026-06-26  

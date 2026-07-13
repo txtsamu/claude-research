@@ -1,3 +1,11 @@
+---
+type: troubleshooting
+tags: [llama-server, rocm, gpu, mtp, performance]
+created: 2026-07-01
+last_verified: 2026-07-01
+status: current
+---
+
 # llama-server on ROCm: Fixing MTP Crash, Migrating from Vulkan, and Performance Tuning
 
 **Hardware:** AMD Ryzen 9 7950X + RX 7800 XT (gfx1101, 16 GB VRAM)  

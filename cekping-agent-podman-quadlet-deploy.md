@@ -1,3 +1,11 @@
+---
+type: how-to
+tags: [podman, quadlet, systemd, deployment]
+created: 2026-07-11
+last_verified: 2026-07-11
+status: current
+---
+
 # Deploying Cekping Agent with a Podman Quadlet
 
 **Date:** 2026-07-11

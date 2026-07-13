@@ -1,3 +1,11 @@
+---
+type: how-to
+tags: [llama-server, gemma4, mtp, qat, hermes]
+created: 2026-06-24
+last_verified: 2026-06-24
+status: current
+---
+
 # Swapping llama-server to Gemma 4 QAT + MTP + Tuning
 
 **Date:** 2026-06-24  
