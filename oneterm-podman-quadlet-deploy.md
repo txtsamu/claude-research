@@ -90,7 +90,7 @@ Volume=/opt/oneterm/mysql-data:/var/lib/mysql:Z
 Volume=/opt/oneterm/mysqld.cnf:/etc/mysql/conf.d/mysqld.cnf:z,ro
 Volume=/opt/oneterm/mysql-init/1-create-users.sql:/docker-entrypoint-initdb.d/1-create-users.sql:z,ro
 Volume=/opt/oneterm/mysql-init/2-acl.sql:/docker-entrypoint-initdb.d/2-acl.sql:z,ro
-Environment=TZ=Asia/Jakarta MYSQL_ROOT_PASSWORD=123456 MYSQL_DATABASE=oneterm
+Environment=TZ=Asia/Jakarta MYSQL_ROOT_PASSWORD=<MYSQL_ROOT_PASSWORD> MYSQL_DATABASE=oneterm
 Exec=--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
 [Service]
