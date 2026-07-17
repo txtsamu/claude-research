@@ -179,7 +179,38 @@ gsettings --schemadir ~/.local/share/gnome-shell/extensions/user-theme@gnome-she
 
 ---
 
-## 8. Gotcha: extensions don't hot-load on Wayland
+## 8. Fix ArcMenu's default layout — it doesn't look like Windows 7 out of the box
+
+Enabling ArcMenu alone gets you the extension's **own** default "Arc Menu" layout: a single flat column (pinned apps, then places, then Software/Settings/Tweaks, then "All Apps" + search at the bottom). That's ArcMenu's native look, not a Windows 7 Start Menu — easy to miss since it still *looks* like a plausible Linux start menu at a glance.
+
+ArcMenu ships several built-in layout presets, one of which is a literal Windows-7-style two-pane layout. List them and check the current value:
+
+```bash
+gsettings --schemadir ~/.local/share/gnome-shell/extensions/arcmenu@arcmenu.com/schemas \
+  range org.gnome.shell.extensions.arcmenu menu-layout
+```
+
+```
+enum
+'11', 'arcmenu', 'az', 'brisk', 'budgie', 'chromebook', 'elementary', 'enterprise',
+'gnome-menu', 'gnome-overview', 'insider', 'mint', 'plasma', 'pop', 'raven', 'redmond',
+'runner', 'sleek', 'tognee', 'unity', 'whisker', 'windows', 'zest'
+```
+
+`'redmond'` mimics Windows 10/11; `'windows'` is the one that mimics Windows 7/XP specifically — pinned/frequent apps on the left, Computer/Documents/Pictures/Control Panel/shut-down on the right, search box along the bottom. Switch to it:
+
+```bash
+gsettings --schemadir ~/.local/share/gnome-shell/extensions/arcmenu@arcmenu.com/schemas \
+  set org.gnome.shell.extensions.arcmenu menu-layout 'windows'
+```
+
+Applies live — no shell reload needed, just close and reopen the Start menu. All per-extension `gsettings` keys like this live under the extension's own schema dir, so `--schemadir` is required; there's no globally-registered `org.gnome.shell.extensions.arcmenu` schema until you point at it explicitly (same pattern as the User Themes key in step 7).
+
+**Left as-is:** the Start button icon is ArcMenu's own logo, not a Windows orb — ArcMenu doesn't bundle a Windows-branded icon asset (avoids the trademark; confirmed by `find ~/.local/share/gnome-shell/extensions/arcmenu@arcmenu.com -iname '*win*'`, which only turned up layout code, no icon assets). To get an actual orb, `menu-button-icon` (a plain string key, same schema) accepts a path to any local image file — point it at a downloaded icon if you want one.
+
+---
+
+## 9. Gotcha: extensions don't hot-load on Wayland
 
 `gnome-extensions install` just unpacks the zip to `~/.local/share/gnome-shell/extensions/<uuid>/` — it's a pure file operation and does **not** register the extension with the already-running shell process. On X11 you can force a reload with `Alt+F2` → `r`. **On Wayland there is no in-place shell restart** — confirmed this by finding `org.gnome.Shell.Extensions` on the session D-Bus (`busctl --user list | grep -i extensions`) had no live PID, only `(activatable)`, and `gnome-extensions list` kept omitting the newly-installed UUIDs even minutes after install.
 
@@ -187,14 +218,15 @@ The fix isn't a command — it's logging out and back in. Setting `enabled-exten
 
 ---
 
-## 9. What's live immediately vs. what needs logout
+## 10. What's live immediately vs. what needs logout
 
 | Change | When it applies |
 |---|---|
 | GTK theme, icon theme, cursor theme, WM theme | Immediately |
 | Dash to Panel (taskbar), ArcMenu (Start menu), shell chrome via User Themes | After next login (Wayland has no live shell restart) |
+| ArcMenu layout preset / icon / any other ArcMenu `gsettings` key | Immediately, once ArcMenu itself is loaded |
 
-## 10. Known limitations
+## 11. Known limitations
 
 - libadwaita apps (Files, Settings, Text Editor, etc.) are not restyled — GNOME blocks this at the toolkit level, no extension or theme works around it.
 - All three theme/icon/cursor source repos are third-party and largely unmaintained (B00merang since ~2018); expect visual glitches in newer apps and no upstream bug fixes.
