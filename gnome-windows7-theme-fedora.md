@@ -2,7 +2,7 @@
 type: how-to
 tags: [gnome, gnome-shell, theming, fedora, wayland]
 created: 2026-07-17
-last_verified: 2026-07-17
+last_verified: 2026-07-20
 status: current
 ---
 
@@ -231,3 +231,37 @@ The fix isn't a command — it's logging out and back in. Setting `enabled-exten
 - libadwaita apps (Files, Settings, Text Editor, etc.) are not restyled — GNOME blocks this at the toolkit level, no extension or theme works around it.
 - All three theme/icon/cursor source repos are third-party and largely unmaintained (B00merang since ~2018); expect visual glitches in newer apps and no upstream bug fixes.
 - `Windows-7`, `Windows-7` (icons), and `Win7OS-cursors` are unsigned community projects pulled directly from GitHub archive zips, not distro packages — no integrity/signature verification beyond GitHub's own TLS.
+
+---
+
+## 12. Reverting back to stock GNOME
+
+Per-user install locations mean this is a clean, low-risk `rm` + `gsettings` operation — no root, no package removal needed (the two `dnf`-installed helper packages, `gnome-tweaks` and `gnome-extensions-app`, are harmless to leave in place).
+
+**Reset the interface/theme keys** (this resets each key to its schema default, e.g. back to `'Adwaita'`, rather than hardcoding the value — more robust if the distro default ever changes):
+
+```bash
+gsettings reset org.gnome.desktop.interface gtk-theme
+gsettings reset org.gnome.desktop.interface icon-theme
+gsettings reset org.gnome.desktop.interface cursor-theme
+gsettings reset org.gnome.desktop.wm.preferences theme
+```
+
+**Disable the three added extensions**, keeping whatever was enabled before (here, just Fedora's own `background-logo@fedorahosted.org`):
+
+```bash
+gsettings set org.gnome.shell enabled-extensions "['background-logo@fedorahosted.org']"
+```
+
+**Remove the installed theme/icon/cursor/extension files:**
+
+```bash
+rm -rf ~/.themes/Windows-7
+rm -rf ~/.icons/Windows-7
+rm -rf ~/.local/share/icons/Win7OS-cursors
+rm -rf ~/.local/share/gnome-shell/extensions/arcmenu@arcmenu.com
+rm -rf ~/.local/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com
+rm -rf ~/.local/share/gnome-shell/extensions/user-theme@gnome-shell-extensions.gcampax.github.com
+```
+
+Same Wayland caveat as step 9, in reverse: the GTK/icon/cursor reset takes effect immediately, but the taskbar/Start-menu chrome from the shell extensions won't fully disappear from the *running* session until you log out and back in — the shell only re-reads `enabled-extensions` at load time.
