@@ -43,6 +43,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | Doc | Tags | Last verified |
 |---|---|---|
 | [llama-server-rocm-mtp-tuning.md](llama-server-rocm-mtp-tuning.md) | llama-server, rocm, gpu, mtp | 2026-07-01 |
+| [arm-cluster-ssh-motd-slow.md](arm-cluster-ssh-motd-slow.md) | ssh, armbian, motd, arm-cluster, dns | 2026-07-22 |
 
 ### Investigations
 
