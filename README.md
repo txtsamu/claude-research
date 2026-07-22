@@ -37,6 +37,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [cekping-agent-podman-quadlet-deploy.md](cekping-agent-podman-quadlet-deploy.md) | podman, quadlet, systemd | 2026-07-11 |
 | [llama-server-gemma4-qat-mtp-swap.md](llama-server-gemma4-qat-mtp-swap.md) | llama-server, gemma4, mtp, qat | 2026-06-24 |
 | [gnome-windows7-theme-fedora.md](gnome-windows7-theme-fedora.md) | gnome, gnome-shell, theming, fedora, wayland | 2026-07-17 |
+| [cosmic-de-install-fedora43.md](cosmic-de-install-fedora43.md) | cosmic, cosmic-de, fedora, gdm, desktop-environment | 2026-07-23 |
 
 ### Troubleshooting
 
