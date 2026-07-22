@@ -50,6 +50,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | Doc | Tags | Status |
 |---|---|---|
 | [llama-server-dspark-gemma4-draft-investigation.md](llama-server-dspark-gemma4-draft-investigation.md) | llama-server, gemma4, dspark | blocked — upstream Qwen3-only, no Gemma4 support yet |
+| [arm-cluster-security-audit.md](arm-cluster-security-audit.md) | security, ssh, arm-cluster, armbian, cloudflared | current — clean, extra SSH keys confirmed legitimate |
 
 ## Secrets policy
 
