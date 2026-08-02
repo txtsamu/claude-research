@@ -50,6 +50,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [arm-cluster-ssh-motd-slow.md](arm-cluster-ssh-motd-slow.md) | ssh, armbian, motd, arm-cluster, dns | 2026-07-22 |
 | [fedora-perf-audit-openrgb-i2c-dup-scan.md](fedora-perf-audit-openrgb-i2c-dup-scan.md) | fedora, performance, use-method, sysstat, openrgb, i2c, cosmic-de | 2026-07-26 |
 | [llama-server-qwen9b-crash-loop-cpu-heat.md](llama-server-qwen9b-crash-loop-cpu-heat.md) | llama-server, systemd, rocm, cpu-temp, crash-loop, fedora | 2026-07-31 |
+| [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | git, secrets, git-filter-repo, github, security, privacy | 2026-08-03 |
 
 ### Investigations
 
