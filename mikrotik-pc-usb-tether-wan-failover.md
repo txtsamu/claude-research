@@ -210,6 +210,68 @@ stays available as a tether:
   --remove-masquerade --permanent`, drop the sysctl file) once the PC is no
   longer meant to be a backup path.
 
+## Landmine #2: the PC's own local WARP client hijacked forwarded traffic
+
+After all of the above, routing looked correct on the MikroTik (backup route
+active, real-wan-default routes correctly inactive) but LAN clients still had
+no internet, and the router itself got an immediate ICMP
+**administratively-prohibited** reject back from the PC (`192.168.50.20`) for
+every ping — not a timeout, an active reject. `firewall-cmd --list-all`
+looked fine (`forward: yes`, `masquerade: yes`), and a plain re-check of the
+nftables rules (`nft list ruleset`) showed nothing wrong either.
+
+Root-caused with `nft`'s built-in packet tracer (firewalld owns its own
+nftables table and refuses direct rule inserts into it — `Operation not
+permitted` — so the trace rule was added to a separate, throwaway table
+instead, hooked at a higher priority so it still observes the full journey):
+
+```bash
+sudo nft add table inet tracer
+sudo nft add chain inet tracer trc '{ type filter hook forward priority -100; }'
+sudo nft add rule inet tracer trc ip saddr 192.168.50.0/24 icmp type echo-request meta nftrace set 1
+sudo nft monitor trace   # in another terminal / backgrounded
+# ... trigger traffic ...
+sudo nft delete table inet tracer   # clean up after
+```
+
+The trace showed the outbound interface for forwarded LAN packets was
+`CloudflareWARP` — this PC runs its own local Cloudflare WARP client for the
+user's normal browsing. WARP installs a system-wide `ip rule` that captures
+**all** unmarked traffic on the host into its own routing table, regardless
+of source — not just traffic the user's own apps generate:
+
+```
+$ ip rule show
+0:      from all lookup local
+32765:  not from all fwmark 0x100cf lookup 65743   # WARP's catch-all
+32766:  from all lookup main
+32767:  from all lookup default
+```
+
+Forwarded/NAT'd LAN packets don't carry WARP's fwmark (that's only applied to
+locally-generated traffic), so they fell into WARP's table and got routed out
+`CloudflareWARP` — an interface firewalld's zone never allowlisted for
+forwarding, hence the reject.
+
+Fix: insert a higher-priority rule that sends LAN-sourced traffic through the
+normal table *before* WARP's catch-all rule is reached, leaving WARP fully
+intact for the user's own traffic:
+
+```bash
+sudo ip rule add from 192.168.50.0/24 lookup main priority 100
+# persist across reboots/reconnects via the LAN-facing NM connection profile:
+sudo nmcli connection modify br0 +ipv4.routing-rules \
+  "priority 100 from 192.168.50.0/24 table main"
+```
+
+**General lesson**: if a Linux box doing NAT/forwarding also runs a VPN
+client (WARP, Tailscale, a corporate VPN, etc.), check `ip rule show` early —
+consumer VPN clients commonly install a host-wide catch-all policy rule that
+silently swallows forwarded traffic from other devices, and it won't show up
+in `iptables`/`nft` rule listings or `firewall-cmd --list-all` at all since
+it's a routing decision made *before* netfilter's FORWARD hook ever sees the
+packet.
+
 ## Notes on secrets
 
 The MikroTik admin SSH password used during this session is intentionally
