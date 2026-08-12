@@ -46,6 +46,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | Doc | Tags | Last verified |
 |---|---|---|
 | [vpd-ssh-cloudflared-slow-connect.md](vpd-ssh-cloudflared-slow-connect.md) | ssh, cloudflared, cloudflare-access, pam, ssh-multiplexing | 2026-08-03 |
+| [mikrotik-pc-usb-tether-wan-failover.md](mikrotik-pc-usb-tether-wan-failover.md) | mikrotik, routeros, failover, wan-backup, usb-tethering, firewalld, nat, warp | 2026-08-12 |
 | [llama-server-rocm-mtp-tuning.md](llama-server-rocm-mtp-tuning.md) | llama-server, rocm, gpu, mtp | 2026-07-01 |
 | [arm-cluster-ssh-motd-slow.md](arm-cluster-ssh-motd-slow.md) | ssh, armbian, motd, arm-cluster, dns | 2026-07-22 |
 | [fedora-perf-audit-openrgb-i2c-dup-scan.md](fedora-perf-audit-openrgb-i2c-dup-scan.md) | fedora, performance, use-method, sysstat, openrgb, i2c, cosmic-de | 2026-07-26 |
