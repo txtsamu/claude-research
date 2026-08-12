@@ -142,28 +142,42 @@ in the router's config (DNS servers, NAT rules, other static routes, etc.) as
 a check-gateway probe target** — the `/32` hop route it creates will hijack
 that address for everything, permanently, not just for the probe.
 
-### 3. Unrelated landmine: pre-existing WARP/VPN policy blackholed everything
+### 3. Suspected landmine that turned out to be a misdiagnosis: WARP mangle rule
 
-Found by accident while the above still wasn't passing traffic: a `mangle`
-rule was diverting **all** LAN traffic (src `192.168.50.0/24`, including the
-router's own forwarded/transit traffic) into a separate `to-vpn` routing
-table via `mark-routing`, pointed at a VPN/WARP gateway box at
-`192.168.50.200`. That table's only default route was disabled — the `.200`
-box apparently also lost its own path out through the same dead modem — so
-literally nothing reached the `main` table's routing logic (the failover
-routes above included) regardless of how correct they were.
+While the above still wasn't passing traffic, found a `mangle` rule that
+appeared to divert **all** LAN traffic (src `192.168.50.0/24`) into a separate
+`to-vpn` routing table via `mark-routing`, pointed at a VPN/WARP gateway box
+at `192.168.50.200` whose only route was disabled. Concluded this was
+blackholing everything and added a `warp-bypass` address-list exemption
+(the rule's existing escape hatch) for `192.168.50.0/24` as a "temporary
+outage bypass."
 
-The mangle rule already had an escape hatch: a `warp-bypass` address-list
-that traffic is exempted from if the source matches. Used that instead of
-touching the rule itself:
+**This diagnosis was wrong**, confirmed later (2026-08-12, same day) when
+asked to remove the bypass — with the real ISP still down. Expected LAN
+internet to break immediately; it didn't, verified with real HTTPS traffic
+from a genuine LAN client (not the router itself):
 
+```bash
+curl -s https://1.1.1.1/cdn-cgi/trace | grep warp=   # warp=off, exit IP was
+                                                       # the phone's carrier IP
 ```
-/ip firewall address-list add list=warp-bypass address=192.168.50.0/24 \
-  comment="TEMP outage bypass - remove when ISP restored - added 2026-08-12"
-```
 
-This is the one piece of this setup that is **not** automatic — see Cleanup
-below.
+Root cause of the original misdiagnosis: **every verification ping up to
+that point was router-originated** (`/ping` run directly on the MikroTik).
+RouterOS's own locally-generated traffic goes through the `output` chain,
+never `prerouting` — so those test pings could never have been affected by
+this rule either way, pass or fail. Checked afterward: this router has
+**zero `/routing rule` entries, zero schedulers, zero scripts** — nothing
+actually consumes the `to-vpn` routing-mark the mangle rule sets. It marks
+the packet and then nothing acts on the mark, so real (LAN-client-sourced)
+traffic was falling through to the `main` table the entire time, bypass or
+not. The bypass was very likely inert from the moment it was added.
+
+**Lesson**: when a box does both routing *and* is the device you're SSH'd
+into, always test from a third, genuinely separate client — never trust
+the router's own `/ping` as a proxy for what LAN devices experience,
+because `prerouting`-chain mangle/NAT rules simply don't apply to
+locally-generated traffic.
 
 ## Verification
 
@@ -193,16 +207,15 @@ through `ether1`, `check-gateway` flips those routes back to active, their
 distance (1) beats the PC backup route's distance (10), and all LAN traffic
 reverts to the real WAN with no intervention.
 
-**Manual** — do this once the ISP is confirmed back:
+**Manual, done**: the `warp-bypass` entry was removed on 2026-08-12, same day,
+*before* the ISP came back — see the misdiagnosis writeup above for why that
+turned out to be safe (the rule appears to have never actually been diverting
+real traffic). Kept here for the record, not because anyone should need to
+run it again:
 
 ```
 /ip firewall address-list remove [find comment~"TEMP outage bypass"]
 ```
-
-The WARP bypass has no auto-revert condition tied to it (deliberately — it
-was added as a blunt "get traffic flowing" fix, not routed through the same
-health-check logic as the WAN failover). Leaving it in place after the ISP
-returns means LAN traffic keeps skipping the WARP/VPN path indefinitely.
 
 Optional, not required — the routes above are harmless to leave in place
 long-term as a standing DR mechanism (poor-man's dual-WAN) if the phone
