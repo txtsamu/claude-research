@@ -179,6 +179,13 @@ showed the two `real-wan-default-*` routes as `I` (inactive) and
 `PC-USB-tether-backup` as the only `A` (active) route — exactly the expected
 state while the ISP is down.
 
+**Caveat that bit us**: this was ICMP-only verification, and it briefly gave
+a false all-clear — ICMP happened to pass through the PC at the moment this
+was run, but real TCP traffic was still silently broken (see Landmine #2
+below). **Ping success is not proof that forwarding actually works** on a box
+that also runs a VPN client; confirm with a real TCP/TLS request (`curl`),
+not just `ping`, before trusting the path.
+
 ## What's automatic vs. what needs manual cleanup
 
 **Automatic**: the moment `9.9.9.9`/`149.112.112.112` become reachable again
@@ -271,6 +278,24 @@ silently swallows forwarded traffic from other devices, and it won't show up
 in `iptables`/`nft` rule listings or `firewall-cmd --list-all` at all since
 it's a routing decision made *before* netfilter's FORWARD hook ever sees the
 packet.
+
+## Final end-to-end verification (TCP/TLS, not just ping)
+
+After the `ip rule` fix, re-verified with real TCP/TLS traffic instead of
+ICMP, from a *different* LAN host than the router itself (a homelab box at
+`192.168.50.80`, three hops downstream of this whole chain):
+
+```bash
+# from the homelab box, forced past DNS to rule that out separately
+curl -m 8 -v https://1.1.1.1              # real TLS handshake + HTTP/2 301
+timeout 6 bash -c 'echo > /dev/tcp/140.82.112.3/443 && echo TCP_OK'  # TCP_OK
+curl -v --resolve github.com:443:140.82.112.3 https://github.com  # full page
+```
+
+All three succeeded with real data, not just connection resets. Final proof
+was this doc's own publish: `git push origin master` from the homelab box,
+previously failing with `Could not resolve host` / `Connection timed out`,
+completed normally once the `ip rule` fix was in place.
 
 ## Notes on secrets
 
