@@ -1,16 +1,16 @@
 ---
 type: how-to
-tags: [llama-server, gemma4, moe, mtp, rocm, vision, hermes]
+tags: [llama-server, gemma4, qwen, moe, dense, mtp, rocm, vision, hermes]
 created: 2026-08-15
-last_verified: 2026-08-15
+last_verified: 2026-08-16
 status: current
 ---
 
 # Gemma 4 26B-A4B (MoE) on fedora: GPU offload, vision, MTP tuning
 
-**Date:** 2026-08-15
+**Date:** 2026-08-15, extended 2026-08-16
 **Host:** fedora (192.168.50.20, AMD RX 7700/7800 XT — Navi 32/RDNA3, ROCm backend)
-**Goal:** Replace the running Gemma 4 12B model with Gemma 4 26B-A4B (MoE: 30 layers × 128 experts, top-8 routed, ~3.8B active/25.2B total params), GPU-offload it properly given it's MoE, add vision, add MTP speculative decoding, and land on the best-performing model+config after trying three variants.
+**Goal:** Replace the running Gemma 4 12B model with Gemma 4 26B-A4B (MoE: 30 layers × 128 experts, top-8 routed, ~3.8B active/25.2B total params), GPU-offload it properly given it's MoE, add vision, add MTP speculative decoding, and land on the best-performing model+config. Round 1 (08-15) compared three Gemma variants. Round 2 (08-16) added a dense-vs-MoE offload comparison against Qwen3.8-27B, then swapped to an abliterated QAT variant with its own MTP+vision that beat the original on every metric.
 
 Supersedes the 12B setup documented in `llama-server-gemma4-qat-mtp-swap.md` (2026-06-24) — same host, same systemd unit, new model family.
 
@@ -128,6 +128,100 @@ Tried three model variants in this session before settling:
    acceptance (93%), highest sustained tok/s (64.9), most VRAM headroom.
    **→ this is what's running now.**
 
+## 5b. Round 2 (08-16): dense-model reality check, then a better MoE variant
+
+### Qwen3.8-27B — why dense models don't offload like MoE
+
+Tried swapping to `unsloth/Qwen3.8-27B-GGUF` (UD-Q4_K_XL, 17.9GB) as a
+performance/accuracy comparison. Confirmed via `config.json`: **dense**,
+64 layers, hybrid linear/full attention, no MoE fields, native
+`vision_config` + shipped `mmproj-BF16.gguf`. No `mtp-*` file in the repo.
+
+GPU offload for a dense model is just `-ngl N` (no `-ncmoe` — there are no
+experts to split out). Since the 17.9GB weight file doesn't fit in 16GB
+VRAM, only partial layer offload is possible. Tuned by binary-search on
+`rocm-smi` output same as the MoE case:
+
+| `-ngl` | VRAM used | headroom |
+|-------:|----------:|---------:|
+| 32 | 13.3 GB | 3.9 GB |
+| 36 | 14.3 GB | **2.8 GB (chosen)** |
+| 40 | 15.4 GB | 1.7 GB |
+
+Result at `-ngl 36` (36/64 layers GPU, 28 layers CPU): **5.5 tok/s** —
+**~8x slower** than the MoE Gemma setup's 43-65 tok/s, on the same box,
+same VRAM budget. This is not a tuning gap, it's architectural: MoE only
+computes the ~4B *active* params per token even for CPU-resident experts;
+dense means every one of the 28 CPU-resident layers pays full-width compute
+for every single token. No `-ngl` value fixes this on a 16GB card short of
+fitting the whole model in VRAM. Accuracy was equal (3/3 on the test
+prompts below, Qwen just spends extra tokens on hidden chain-of-thought by
+default — it's a "hybrid thinking" model, watch for empty responses if
+`max_tokens` is too low to cover the reasoning content).
+
+**Takeaway: on VRAM-constrained hardware, prefer MoE over dense at a given
+total-param size.** A dense model needs to fully fit in VRAM to be fast; a
+MoE model of similar size can partially offload with much less speed loss.
+
+### Huihui abliterated QAT — a straight upgrade
+
+Swapped again to `huihui-ai/Huihui-gemma-4-26B-A4B-it-qat-q4_0-unquantized-abliterated-GGUF`
+(Q4_K, 16.8GB) — same 30-layer MoE architecture as the winning `gemma-4-26B-A4B-it-qat`
+from round 1, but abliterated (refusals stripped), **with its own shipped
+MTP head** (`mtp-ggml-model-bf16.gguf`, 855MB — bigger than the original's
+252MB because it's BF16, not quantized) and its own `mmproj-model-bf16.gguf`.
+
+Same `-ngl 99 -ncmoe 18` split applied cleanly (same layer count). Re-swept
+`--spec-draft-n-max` fresh since a different MTP head can have a different
+optimum:
+
+| n-max | tok/s | acceptance |
+|------:|------:|-----------:|
+| 1 | 39.2 | 86% |
+| 2 | 51.8 | 89% |
+| 3 | 50.2 | 78% |
+| 4 | 58.7 | 90% |
+| **5** | **63.4 → 66.7 (confirm run)** | **95%** |
+| 6 | 61.4 | 81% |
+| 7 | 60.2 | 73% |
+
+**`n-max=5` won** — different optimum from the original QAT model's `n-max=2`,
+confirming (again) that the sweep has to be redone per model, not assumed
+from a previous run even on the "same" architecture.
+
+**Head-to-head vs the original `gemma-4-26B-A4B-it-qat`:**
+
+| | Original QAT | Huihui abliterated QAT |
+|---|---|---|
+| Quant / size | UD-Q4_K_XL, 14.2GB | Q4_K, 16.8GB |
+| VRAM used | 12.7GB | 14.5GB |
+| MTP acceptance | 93% | **95%** |
+| Throughput | 64.9 tok/s | **66.7 tok/s** |
+| Accuracy (3 prompts) | 3/3 | 3/3 |
+| Vision | working | working |
+
+Marginally better on every measured axis despite the larger, unquantized
+MTP head — the bigger draft model apparently drafts better tokens, not just
+more of them. **This is what's running now.** No functional downside found;
+the only real difference is the abliteration itself (content filtering
+removed), which wasn't separately tested since it wasn't the point of this
+comparison.
+
+### Accuracy test prompts (used across all model comparisons)
+
+```
+1. "What is 17 times 24? Answer with just the number."          → 408
+2. "What is the capital of Australia? Answer with just the      → Canberra
+    city name."
+3. "A farmer has 15 sheep. All but 8 die. How many sheep does   → 8
+    the farmer have left? Answer with just the number and a
+    one-sentence explanation."
+```
+All models tested (base, Opus-distill, QAT, Qwen3.8, huihui-abliterated)
+scored 3/3. This is a sanity check, not a rigorous eval — it only catches
+gross regressions, not quality differences between models that all get the
+basics right.
+
 ## 6. Context length
 
 KV cache is statically preallocated at `n_ctx` at model load time — VRAM
@@ -160,14 +254,14 @@ export OMP_PLACES=threads
 
 exec /root/llama.cpp/build/bin/llama-server \
   --device ROCm0 \
-  -m /root/models/gemma-4-26B-A4B-it-qat/gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf \
-  --mmproj /root/models/gemma-4-26B-A4B-it-qat/mmproj-BF16.gguf \
+  -m /root/models/gemma-4-26B-A4B-it-qat-abliterated/Huihui-gemma-4-26B-A4B-it-qat-q4_0-unquantized-abliterated-Q4_K.gguf \
+  --mmproj /root/models/gemma-4-26B-A4B-it-qat-abliterated/mmproj-model-bf16.gguf \
   -ngl 99 \
   -ncmoe 18 \
   --spec-type draft-mtp \
-  --spec-draft-model /root/models/gemma-4-26B-A4B-it-qat/mtp-gemma-4-26B-A4B-it.gguf \
+  --spec-draft-model /root/models/gemma-4-26B-A4B-it-qat-abliterated/mtp-ggml-model-bf16.gguf \
   --spec-draft-device ROCm0 \
-  --spec-draft-n-max 2 \
+  --spec-draft-n-max 5 \
   --spec-draft-p-min 0.6 \
   -fa on \
   -c 131072 \
@@ -192,26 +286,27 @@ exec /root/llama.cpp/build/bin/llama-server \
   --prio 3 \
   --metrics \
   --host 0.0.0.0 \
-  --alias Gemma4-26B-A4B-it-QAT \
+  --alias Gemma4-26B-A4B-it-QAT-Abliterated \
   --port 8081
 ```
 
 `/etc/systemd/system/llama-server.service` — unchanged structure from the
-12B setup, `Description=Gemma4-26B-A4B-it-QAT`, `power_dpm_force_performance_level`
-set to `auto` (was `profile_standard`). Service is `enabled` (starts on boot)
-and `active`.
+12B setup, `Description=Gemma4-26B-A4B-it-QAT-Abliterated`,
+`power_dpm_force_performance_level` set to `auto` (was `profile_standard`).
+Service is `enabled` (starts on boot) and `active`.
 
-**Result:** GPU0 VRAM 12.7/17.2GB used (~4.4GB headroom), 93% MTP draft
-acceptance, ~65 tok/s decode, vision confirmed working, 128K context.
+**Result:** GPU0 VRAM 14.5/17.2GB used (~2.6GB headroom), 95% MTP draft
+acceptance, ~67 tok/s decode, vision confirmed working, 128K context.
 
 ## 8. Files kept on disk (`/root/models/`)
 
-Only the winning QAT variant was kept; the base and Opus-distill downloads
-(~35GB) were deleted after benchmarking to reclaim disk space. If revisiting
-this comparison, the download commands are:
+Only the winning variant (huihui abliterated QAT) is kept; every other
+comparison download from both rounds (~70GB total across base, Opus-distill,
+original QAT, Qwen3.8-27B) was deleted after benchmarking to reclaim disk
+space. If revisiting any of these comparisons, the download commands are:
 
 ```bash
-# Base (for reference — 17GB + 1.2GB mmproj + 462MB mtp)
+# Base (17GB + 1.2GB mmproj + 462MB mtp)
 hf download unsloth/gemma-4-26B-A4B-it-GGUF \
   gemma-4-26B-A4B-it-UD-Q4_K_XL.gguf mmproj-BF16.gguf mtp-gemma-4-26B-A4B-it.gguf \
   --local-dir /root/models/gemma-4-26B-A4B-it
@@ -221,10 +316,21 @@ hf download TeichAI/gemma-4-26B-A4B-it-Claude-Opus-Distill-v2-GGUF \
   gemma-4-26B-A4B-it-Claude-Opus-Distill.q4_k_m.gguf mmproj-BF16.gguf \
   --local-dir /root/models/gemma-4-26B-A4B-it-opus-distill
 
-# QAT (kept — 14.2GB + 1.2GB mmproj + 252MB mtp)
+# Original QAT (14.2GB + 1.2GB mmproj + 252MB mtp)
 hf download unsloth/gemma-4-26B-A4B-it-qat-GGUF \
   gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf mmproj-BF16.gguf mtp-gemma-4-26B-A4B-it.gguf \
   --local-dir /root/models/gemma-4-26B-A4B-it-qat
+
+# Qwen3.8-27B dense, for reference only — 8x slower on this hardware, don't bother
+hf download unsloth/Qwen3.8-27B-GGUF \
+  Qwen3.8-27B-UD-Q4_K_XL.gguf mmproj-BF16.gguf \
+  --local-dir /root/models/qwen3.8-27b
+
+# Huihui abliterated QAT (kept, live — 16.8GB + 1.2GB mmproj + 855MB mtp)
+hf download huihui-ai/Huihui-gemma-4-26B-A4B-it-qat-q4_0-unquantized-abliterated-GGUF \
+  Huihui-gemma-4-26B-A4B-it-qat-q4_0-unquantized-abliterated-Q4_K.gguf \
+  mmproj-model-bf16.gguf mtp-ggml-model-bf16.gguf \
+  --local-dir /root/models/gemma-4-26B-A4B-it-qat-abliterated
 ```
 
 ## 9. Useful commands
