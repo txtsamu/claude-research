@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [ssh, armbian, motd, arm-cluster, dns]
 created: 2026-07-22
-last_verified: 2026-07-22
+last_verified: 2026-08-16
 status: current
 ---
 
@@ -87,3 +87,28 @@ ssh <host> "for f in /etc/update-motd.d/*; do s=\$(date +%s.%N); \"\$f\" >/dev/n
 ```
 
 This isolates which specific motd script is slow in one shot.
+
+## Recurrence (2026-08-16): different script, different hostname
+
+The July fix stopped working after an Armbian BSP update rewrote `10-armbian-header` and split the WAN-IP lookup out into a new script, `/etc/update-motd.d/20-ip-info`. Its `get_wan_address`/`get_wan6_address` curl **`ipv4.whatismyip.akamai.com`** and **`ipv6.whatismyip.akamai.com`** — subdomains, not the bare `whatismyip.akamai.com` the original `/etc/hosts` entry blackholed. Since those subdomains resolved normally, the script was back to paying real network cost on every login.
+
+Profiled on arm1:
+
+```
+/etc/update-motd.d/20-ip-info: 512ms
+  get_wan_address()  (ipv4.whatismyip.akamai.com): 411ms, succeeds (real WAN IP)
+  get_wan6_address() (ipv6.whatismyip.akamai.com): 41ms, fails (no IPv6 route)
+```
+
+Unlike the July case, the IPv4 leg wasn't broken/timing out — it's a real ~400ms RTT to Akamai that succeeds and shows the actual WAN IP in the banner. So this fix is a genuine tradeoff (accuracy/feature vs. speed), not a pure timeout bypass.
+
+**Fix:** extended the same blackhole pattern to both new hostnames on all four nodes:
+
+```sh
+grep -q ipv4.whatismyip.akamai.com /etc/hosts || echo '127.0.0.1 ipv4.whatismyip.akamai.com' >> /etc/hosts
+grep -q ipv6.whatismyip.akamai.com /etc/hosts || echo '127.0.0.1 ipv6.whatismyip.akamai.com' >> /etc/hosts
+```
+
+Tradeoff accepted: login banner no longer shows WAN IP on any of arm1-4.
+
+**Pattern going forward:** Armbian appears to iterate on which akamai hostname(s) this WAN-IP-in-banner feature uses across BSP updates (`whatismyip.akamai.com` → `ipv4./ipv6.whatismyip.akamai.com`, script renamed `10-armbian-header` → `20-ip-info`). A recurrence is likely on the next BSP update. Don't assume the existing `/etc/hosts` entries still cover it — re-profile `/etc/update-motd.d/*` with the one-liner above, `grep -o` the script for whatever hostname it's currently calling, and blackhole that.
