@@ -10,7 +10,7 @@ status: current
 
 **Date:** 2026-08-15, extended 2026-08-16
 **Host:** fedora (192.168.50.20, AMD RX 7700/7800 XT — Navi 32/RDNA3, ROCm backend)
-**Goal:** Replace the running Gemma 4 12B model with Gemma 4 26B-A4B (MoE: 30 layers × 128 experts, top-8 routed, ~3.8B active/25.2B total params), GPU-offload it properly given it's MoE, add vision, add MTP speculative decoding, and land on the best-performing model+config. Round 1 (08-15) compared three Gemma variants. Round 2 (08-16) added a dense-vs-MoE offload comparison against Qwen3.8-27B, then swapped to an abliterated QAT variant with its own MTP+vision that beat the original on every metric. Round 3 (08-16, same day) chased remaining refusals into an agentic-tuned uncensored variant, verified tool-calling actually works, and ran a controlled experiment isolating *why* different finetunes' MTP heads perform differently.
+**Goal:** Replace the running Gemma 4 12B model with Gemma 4 26B-A4B (MoE: 30 layers × 128 experts, top-8 routed, ~3.8B active/25.2B total params), GPU-offload it properly given it's MoE, add vision, add MTP speculative decoding, and land on the best-performing model+config. Round 1 (08-15) compared three Gemma variants. Round 2 (08-16) added a dense-vs-MoE offload comparison against Qwen3.8-27B, then swapped to an abliterated QAT variant with its own MTP+vision that beat the original on every metric. Round 3 (08-16, same day) chased remaining refusals into an agentic-tuned uncensored variant, verified tool-calling actually works, and ran a controlled experiment isolating *why* different finetunes' MTP heads perform differently. Round 4 (08-16, same day) tried a second, better-compressed dense Qwen build, then reverted to the plain (non-uncensored) original QAT model, which posted the best throughput of the entire session.
 
 Supersedes the 12B setup documented in `llama-server-gemma4-qat-mtp-swap.md` (2026-06-24) — same host, same systemd unit, new model family.
 
@@ -335,6 +335,54 @@ Kept HauhauCS Balanced live since eliminating refusals was the actual goal
 this round; huihui's model dir (`gemma-4-26B-A4B-it-qat-abliterated`,
 ~18GB) is still on disk pending cleanup, not deleted, in case of rollback.
 
+## 5d. Round 4 (08-16, same day): a better-compressed dense model, then back to baseline
+
+### Qwen3.8-27B-Ridge — dense doesn't have to mean "doesn't fit"
+
+Round 2 showed dense Qwen3.8-27B (UD-Q4_K_XL, 17.9GB) couldn't fit this
+16GB card and paid a brutal 8x speed penalty for partial CPU offload (5.5
+tok/s). Tried `empero-ai/Qwen3.8-27B-Ridge-GGUF` — a custom 3.7bpw
+mixed-precision quant (12.6GB): keeps the Gated-DeltaNet state path at Q8_0
+("disproportionately sensitive to low-bit quantization" per the repo's
+README) while using Q4_K for the mixers and **dropping some mid-stack FFN
+layers entirely** to hit the target size.
+
+Small enough to fit **fully** on GPU (`-ngl 99`): 15.86GB/17.16GB VRAM, no
+CPU offload needed at all.
+
+| Qwen3.8-27B build | Fits in 16GB VRAM? | Offload | tok/s |
+|---|---|---|---:|
+| UD-Q4_K_XL (17.9GB, round 2) | No | `-ngl 36` (partial, 28 layers CPU) | 5.5 |
+| Ridge 3.7bpw (12.6GB, round 4) | **Yes** | `-ngl 99` (full) | **21.1** |
+
+~3.8x faster just from fitting entirely in VRAM — confirms round 2's
+conclusion that the CPU/GPU split, not the model family, was the dominant
+bottleneck for dense models on this hardware. Still ~2-3x slower than the
+MoE Gemma builds (40-67 tok/s) even fully on GPU, since dense computes
+every param every token regardless of device, and no MTP file is available
+for this model. Vision confirmed working (own `mmproj-Qwen3.8-27B-BF16.gguf`).
+
+**Mid-session correction worth noting:** was initially asked to "disable
+GPU offload," set `-ngl 0` (true CPU-only, 3.6GB VRAM baseline overhead
+only), then immediately corrected to "use full GPU vram" — i.e. the intent
+was `-ngl 99`, not `-ngl 0`. Worth double-checking phrasing like "disable
+X" against what state the user actually wants when it's ambiguous which
+direction the negation points.
+
+### Back to the plain original QAT — round-1 baseline, re-confirmed as the speed champion
+
+Reverted to `unsloth/gemma-4-26B-A4B-it-qat-GGUF` (the round-1 winner,
+deleted during round-2 cleanup, re-downloaded here). Same config as round 1
+(`-ncmoe 18`, `n-max=2`). Fresh benchmark run:
+
+**67.1 tok/s, 98% MTP draft acceptance** — the best throughput and
+acceptance of *any* config tried across all four rounds this session,
+including both uncensored variants. This is the model+config to use when
+raw speed matters more than avoiding refusals — trade-off table is in
+§5c above (round-1/round-3 comparison).
+
+**This is what's running now.**
+
 ## 6. Context length
 
 KV cache is statically preallocated at `n_ctx` at model load time — VRAM
@@ -367,14 +415,14 @@ export OMP_PLACES=threads
 
 exec /root/llama.cpp/build/bin/llama-server \
   --device ROCm0 \
-  -m /root/models/gemma-4-26B-A4B-hauhau-balanced/Gemma4-26B-A4B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf \
-  --mmproj /root/models/gemma-4-26B-A4B-hauhau-balanced/mmproj-Gemma4-26B-A4B-QAT-Uncensored-HauhauCS-Balanced-BF16.gguf \
+  -m /root/models/gemma-4-26B-A4B-it-qat/gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf \
+  --mmproj /root/models/gemma-4-26B-A4B-it-qat/mmproj-BF16.gguf \
   -ngl 99 \
   -ncmoe 18 \
   --spec-type draft-mtp \
-  --spec-draft-model /root/models/gemma-4-26B-A4B-hauhau-balanced/mtp-gemma-4-26B-A4B-it.gguf \
+  --spec-draft-model /root/models/gemma-4-26B-A4B-it-qat/mtp-gemma-4-26B-A4B-it.gguf \
   --spec-draft-device ROCm0 \
-  --spec-draft-n-max 1 \
+  --spec-draft-n-max 2 \
   --spec-draft-p-min 0.6 \
   -fa on \
   -c 131072 \
@@ -389,44 +437,42 @@ exec /root/llama.cpp/build/bin/llama-server \
   --cont-batching \
   --jinja \
   --reasoning off \
-  --temp 0.6 \
+  --temp 0.4 \
   --top-k 64 \
-  --top-p 0.9 \
-  --min-p 0.05 \
-  --repeat-penalty 1.1 \
+  --top-p 0.95 \
+  --min-p 0.01 \
+  --repeat-penalty 1.05 \
   --repeat-last-n -1 \
   --poll 50 \
   --prio 3 \
   --metrics \
   --host 0.0.0.0 \
-  --alias Gemma4-26B-A4B-HauhauCS-Balanced \
+  --alias Gemma4-26B-A4B-it-QAT \
   --port 8081
 ```
 
 `/etc/systemd/system/llama-server.service` — unchanged structure from the
-12B setup, `Description=Gemma4-26B-A4B-HauhauCS-Balanced`,
+12B setup, `Description=Gemma4-26B-A4B-it-QAT`,
 `power_dpm_force_performance_level` set to `auto` (was `profile_standard`).
-Service is `enabled` (starts on boot) and `active`. Sampling params
-(temp/top-p/min-p/repeat-penalty) follow this repo's README recommendation
-rather than the round-1/2 values — different finetune, different
-recommended defaults.
+Service is `enabled` (starts on boot) and `active`. This is the plain
+round-1 config, re-deployed as-is in round 4 after being deleted during
+round-2 cleanup — no changes needed, it just still works.
 
-**Result:** GPU0 VRAM 14.1/17.2GB used (~3.1GB headroom), 73% MTP draft
-acceptance, ~40.6 tok/s decode, vision confirmed working, tool-calling
-verified (single/multi/full-loop), zero refusals on boundary-test prompts,
-128K context.
-
-Prior round-2 config (huihui abliterated, 95% acceptance, 66.7 tok/s) is
-the one to roll back to if refusal-avoidance/agentic behavior isn't worth
-the ~40% throughput cost — see §5c comparison table.
+**Result:** GPU0 VRAM 12.85/17.2GB used (~4.3GB headroom), **98% MTP draft
+acceptance, 67.1 tok/s decode** — best throughput of any config across all
+four rounds. Vision confirmed working, 128K context. No uncensoring —
+standard refusal behavior applies; see §5c/§5d for the HauhauCS/huihui
+tradeoff if refusal-avoidance matters more than raw speed for your use case.
 
 ## 8. Files kept on disk (`/root/models/`)
 
-Live model is HauhauCS Balanced. Huihui's abliterated QAT (~18GB, round 2
-winner) is deliberately still on disk as a rollback/comparison reference —
-not cleaned up yet. Everything else from rounds 1-2 (base, Opus-distill,
-original QAT, Qwen3.8-27B, ~70GB total) was deleted after benchmarking. If
-revisiting any of these comparisons, the download commands are:
+Live model is the plain original QAT (re-downloaded in round 4, ~15.6GB).
+Also still present as of round 4: HauhauCS Balanced (~18GB, round 3),
+huihui abliterated QAT (~18GB, round 2), Qwen3.8-27B-Ridge (~13.5GB, round
+4) — accumulated as rollback/comparison references across the session,
+none cleaned up since round 2's sweep. Deleted from rounds 1-2: base,
+Opus-distill, original UD-Q4_K_XL Qwen3.8-27B (~52GB). If revisiting any of
+these comparisons, the download commands are:
 
 ```bash
 # Base (17GB + 1.2GB mmproj + 462MB mtp)
@@ -439,12 +485,8 @@ hf download TeichAI/gemma-4-26B-A4B-it-Claude-Opus-Distill-v2-GGUF \
   gemma-4-26B-A4B-it-Claude-Opus-Distill.q4_k_m.gguf mmproj-BF16.gguf \
   --local-dir /root/models/gemma-4-26B-A4B-it-opus-distill
 
-# Original QAT (14.2GB + 1.2GB mmproj + 252MB mtp)
-hf download unsloth/gemma-4-26B-A4B-it-qat-GGUF \
-  gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf mmproj-BF16.gguf mtp-gemma-4-26B-A4B-it.gguf \
-  --local-dir /root/models/gemma-4-26B-A4B-it-qat
-
-# Qwen3.8-27B dense, for reference only — 8x slower on this hardware, don't bother
+# Qwen3.8-27B dense UD-Q4_K_XL, for reference only — didn't fit 16GB VRAM,
+# 8x slower than MoE on this hardware. Prefer the Ridge build below instead.
 hf download unsloth/Qwen3.8-27B-GGUF \
   Qwen3.8-27B-UD-Q4_K_XL.gguf mmproj-BF16.gguf \
   --local-dir /root/models/qwen3.8-27b
@@ -455,12 +497,22 @@ hf download huihui-ai/Huihui-gemma-4-26B-A4B-it-qat-q4_0-unquantized-abliterated
   mmproj-model-bf16.gguf mtp-ggml-model-bf16.gguf \
   --local-dir /root/models/gemma-4-26B-A4B-it-qat-abliterated
 
-# HauhauCS Balanced (kept, live — 16.8GB + 1.2GB mmproj + 252MB mtp)
+# HauhauCS Balanced (kept — 16.8GB + 1.2GB mmproj + 252MB mtp)
 hf download HauhauCS/Gemma4-26B-A4B-QAT-Uncensored-HauhauCS-Balanced-MTP \
   Gemma4-26B-A4B-QAT-Uncensored-HauhauCS-Balanced-Q4_K_M.gguf \
   mmproj-Gemma4-26B-A4B-QAT-Uncensored-HauhauCS-Balanced-BF16.gguf \
   mtp-gemma-4-26B-A4B-it.gguf \
   --local-dir /root/models/gemma-4-26B-A4B-hauhau-balanced
+
+# Qwen3.8-27B-Ridge (kept — dense, 3.7bpw mixed-precision, 12.6GB + 931MB mmproj, no mtp)
+hf download empero-ai/Qwen3.8-27B-Ridge-GGUF \
+  Qwen3.8-27B-Ridge-3.7bpw.gguf mmproj-Qwen3.8-27B-BF16.gguf \
+  --local-dir /root/models/qwen3.8-27b-ridge
+
+# Original QAT (kept, live — 14.2GB + 1.2GB mmproj + 252MB mtp)
+hf download unsloth/gemma-4-26B-A4B-it-qat-GGUF \
+  gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf mmproj-BF16.gguf mtp-gemma-4-26B-A4B-it.gguf \
+  --local-dir /root/models/gemma-4-26B-A4B-it-qat
 ```
 
 ## 9. Useful commands
