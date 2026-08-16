@@ -112,3 +112,20 @@ grep -q ipv6.whatismyip.akamai.com /etc/hosts || echo '127.0.0.1 ipv6.whatismyip
 Tradeoff accepted: login banner no longer shows WAN IP on any of arm1-4.
 
 **Pattern going forward:** Armbian appears to iterate on which akamai hostname(s) this WAN-IP-in-banner feature uses across BSP updates (`whatismyip.akamai.com` → `ipv4./ipv6.whatismyip.akamai.com`, script renamed `10-armbian-header` → `20-ip-info`). A recurrence is likely on the next BSP update. Don't assume the existing `/etc/hosts` entries still cover it — re-profile `/etc/update-motd.d/*` with the one-liner above, `grep -o` the script for whatever hostname it's currently calling, and blackhole that.
+
+### arm2-4 check: not affected, no regression
+
+Checked whether the same regression hit arm2-4. It didn't — those three nodes are still on an **older armbian-motd package** than arm1: they never got the `10-armbian-header` → `20-ip-info` split, so they don't call the new `ipv4./ipv6.whatismyip.akamai.com` hostnames at all. Confirmed via `grep -n curl /etc/update-motd.d/10-armbian-header` on arm2 — still the original single script, still only calling bare `whatismyip.akamai.com`, still correctly blackholed by the July fix (`curl` fails in ~34ms, not the 2s timeout).
+
+Cold (non-multiplexed) SSH timings, for reference against the July fix's baseline table:
+
+| host | now (2026-08-16) | July-fix baseline |
+|---|---|---|
+| arm1 | ~1.0s | 1.4s |
+| arm2 | ~2.1s | 2.8s |
+| arm3 | ~1.8s | 2.7s |
+| arm4 | ~1.8s | 2.7s |
+
+Same ballpark as July, no regression. The subdomain blackhole entries added today were still applied to `/etc/hosts` on all four nodes (harmless no-ops for arm2-4 today), so if arm2-4 ever get BSP-updated to the newer `20-ip-info`-splitting package, they'll pick up the fix automatically without needing this doc revisited.
+
+Traced the residual ~1-1.3s inside `10-armbian-header` on arm2 (via a PS4-timestamped `bash -x` copy — plain `bash -x` doesn't honor an inherited `PS4` env var, has to be set as the first line *inside* the traced script). No single line stood out (biggest gap was 167ms); it's death-by-a-thousand-forks — the vendor script shells out to `sed`/`awk`/`grep`/`cut`/`printf` dozens of times, each a few ms on these ARM SBCs. Same conclusion as the original doc: not one villain, not worth chasing further.
