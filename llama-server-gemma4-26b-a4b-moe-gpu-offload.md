@@ -2,7 +2,7 @@
 type: how-to
 tags: [llama-server, gemma4, qwen, moe, dense, mtp, rocm, vision, agentic, hermes]
 created: 2026-08-15
-last_verified: 2026-08-16
+last_verified: 2026-08-17
 status: current
 ---
 
@@ -466,13 +466,11 @@ tradeoff if refusal-avoidance matters more than raw speed for your use case.
 
 ## 8. Files kept on disk (`/root/models/`)
 
-Live model is the plain original QAT (re-downloaded in round 4, ~15.6GB).
-Also still present as of round 4: HauhauCS Balanced (~18GB, round 3),
-huihui abliterated QAT (~18GB, round 2), Qwen3.8-27B-Ridge (~13.5GB, round
-4) — accumulated as rollback/comparison references across the session,
-none cleaned up since round 2's sweep. Deleted from rounds 1-2: base,
-Opus-distill, original UD-Q4_K_XL Qwen3.8-27B (~52GB). If revisiting any of
-these comparisons, the download commands are:
+Final cleanup pass: only the live model, `gemma-4-26B-A4B-it-qat` (~15.6GB),
+remains from this session's comparisons. HauhauCS Balanced, huihui
+abliterated QAT, and Qwen3.8-27B-Ridge (~50GB combined) were deleted once
+their results were captured above — no more rollback copies kept on disk.
+If revisiting any of these comparisons, the download commands are:
 
 ```bash
 # Base (17GB + 1.2GB mmproj + 462MB mtp)
