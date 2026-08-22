@@ -1,16 +1,16 @@
 ---
 type: how-to
-tags: [llama-server, gemma4, qwen, moe, dense, mtp, rocm, vision, agentic, hermes]
+tags: [llama-server, gemma4, qwen, ornith, moe, dense, mtp, rocm, vision, agentic, hermes]
 created: 2026-08-15
-last_verified: 2026-08-17
+last_verified: 2026-08-22
 status: current
 ---
 
 # Gemma 4 26B-A4B (MoE) on fedora: GPU offload, vision, MTP tuning
 
-**Date:** 2026-08-15, extended 2026-08-16
+**Date:** 2026-08-15, extended 2026-08-16, 2026-08-22
 **Host:** fedora (192.168.50.20, AMD RX 7700/7800 XT — Navi 32/RDNA3, ROCm backend)
-**Goal:** Replace the running Gemma 4 12B model with Gemma 4 26B-A4B (MoE: 30 layers × 128 experts, top-8 routed, ~3.8B active/25.2B total params), GPU-offload it properly given it's MoE, add vision, add MTP speculative decoding, and land on the best-performing model+config. Round 1 (08-15) compared three Gemma variants. Round 2 (08-16) added a dense-vs-MoE offload comparison against Qwen3.8-27B, then swapped to an abliterated QAT variant with its own MTP+vision that beat the original on every metric. Round 3 (08-16, same day) chased remaining refusals into an agentic-tuned uncensored variant, verified tool-calling actually works, and ran a controlled experiment isolating *why* different finetunes' MTP heads perform differently. Round 4 (08-16, same day) tried a second, better-compressed dense Qwen build, then reverted to the plain (non-uncensored) original QAT model, which posted the best throughput of the entire session.
+**Goal:** Replace the running Gemma 4 12B model with Gemma 4 26B-A4B (MoE: 30 layers × 128 experts, top-8 routed, ~3.8B active/25.2B total params), GPU-offload it properly given it's MoE, add vision, add MTP speculative decoding, and land on the best-performing model+config. Round 1 (08-15) compared three Gemma variants. Round 2 (08-16) added a dense-vs-MoE offload comparison against Qwen3.8-27B, then swapped to an abliterated QAT variant with its own MTP+vision that beat the original on every metric. Round 3 (08-16, same day) chased remaining refusals into an agentic-tuned uncensored variant, verified tool-calling actually works, and ran a controlled experiment isolating *why* different finetunes' MTP heads perform differently. Round 4 (08-16, same day) tried a second, better-compressed dense Qwen build, then reverted to the plain (non-uncensored) original QAT model, which posted the best throughput of the entire session. Round 5 (08-22) moved to a bigger uncensored MoE family entirely — Qwen3.6-35B-A3B — investigated why no borrowable MTP head exists for it, quantified the speed/uncensoring trade against the official MTP build, and benchmarked a novel Qwen3.5+Gemma4 hybrid (Ornith-1.5) against it.
 
 Supersedes the 12B setup documented in `llama-server-gemma4-qat-mtp-swap.md` (2026-06-24) — same host, same systemd unit, new model family.
 
@@ -383,6 +383,100 @@ raw speed matters more than avoiding refusals — trade-off table is in
 
 **This is what's running now.**
 
+## 5e. Round 5 (08-22): a bigger, different MoE family — Qwen3.6-35B-A3B
+
+Moved off the Gemma-4-26B-A4B family entirely to
+`HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive` — same
+uncensoring vendor as round 3, different (bigger) base: MoE, **40 layers ×
+256 experts** (top-8), 35B total/~3B active (confirmed via the official
+`Qwen/Qwen3.6-35B-A3B` `config.json`: `Qwen3_5MoeForConditionalGeneration`,
+`hidden_size=2048`, `vocab_size=248320`). No mtp file shipped — same
+"finetune ships no draft head" pattern as round 1's Opus-distill case.
+
+### MoE offload scales the same way for a different model family
+
+`-ncmoe` is a generic llama.cpp tensor-override mechanism (matches
+`ffn_*_exps` tensor names), not Gemma-specific — confirmed it tunes the
+same way here. Binary-searched VRAM same as always:
+
+| `-ncmoe` (of 40 layers) | VRAM used | headroom |
+|---:|---:|---:|
+| 20 | 15.8 GB | 1.4 GB (too tight) |
+| **22** | **14.9 GB** | **2.3 GB (chosen)** |
+| 24 | 13.9 GB | 3.2 GB |
+
+**Result at `-ncmoe 22`, no MTP: 46-48 tok/s** (repeated runs), 3/3 accuracy,
+vision working (this repo's README undersold its own vision support — no
+mention of mmproj, but the file is real and works), 0/3 refusals on the
+same boundary-test prompts from round 3 (lock picking, sympathetic-thief
+fiction, decriminalization essay) — matches the "Aggressive" tier's harder
+uncensoring claim vs round 3's "Balanced".
+
+### Is there a borrowable MTP head for this one? No — architecturally different from Gemma's case
+
+Checked whether the round-1 trick (borrow a same-architecture finetune's
+draft head) applies here. It doesn't, for a structural reason: Qwen3.6's
+MTP isn't a small standalone companion file the way Gemma's is (252MB-855MB
+in round 1-3). Checked `unsloth/Qwen3.6-35B-A3B-MTP-GGUF` directly — its
+"MTP" quant is a **full 22.9GB checkpoint**, same scale as the main model.
+Qwen trains extra prediction heads *inside* the same checkpoint's weights,
+so there's no small file to extract and reattach to a different finetune's
+weights. Using the full MTP checkpoint as `--spec-draft-model` would mean
+loading a second ~20GB+ model just to draft (a draft is supposed to be
+*cheap* — this defeats the purpose, and the two wouldn't fit in 16GB VRAM
+together anyway).
+
+**Tested the only real alternative: run the official unsloth MTP-baked
+checkpoint directly** (self-contained — `--spec-type draft-mtp` alone
+activates the built-in heads, no `--spec-draft-model` flag needed for this
+family) instead of HauhauCS's finetune:
+
+| | HauhauCS Aggressive (uncensored, no MTP) | Official unsloth MTP build (censored) |
+|---|---|---:|
+| `-ncmoe` | 22 | 26 (bigger quant + ~1GB MTP overhead needs more CPU offload) |
+| Best `--spec-draft-n-max` | n/a | 2 |
+| MTP acceptance | n/a | 79% avg |
+| Throughput | 48.1 tok/s | 54.1 tok/s (+12.5%) |
+| Uncensored | Yes | No |
+
+A real but modest gain (+12.5%) — nowhere near Gemma QAT's MTP lift in
+round 1 (43.8→67.1 tok/s, +53%). **Verdict: not worth it** — trading away
+uncensoring for a 12.5% speed bump is a much worse deal than the Gemma
+side ever offered. Reverted to HauhauCS Aggressive (no MTP).
+
+### Ornith-1.5-35B — novel hybrid lineage, same ceiling
+
+Benchmarked `ornith-ai/Ornith-1.5-35B-A3B-GGUF` — README claims a
+Qwen3.5+Gemma4 hybrid built via continual pretraining and RL
+self-improvement, heavy agentic/tool-calling benchmark claims (unverified —
+novel/unfamiliar publisher, treat marketing claims skeptically and test
+directly rather than trust the README, same posture as verifying MTP file
+hashes in round 3). Real mmproj file exists despite the README not
+mentioning vision support at all — file presence in the repo tree is more
+reliable than README completeness.
+
+Same-scale quant (21.7GB vs HauhauCS's 21.2GB), same offload tuning
+(`-ncmoe 25` → 14.1GB used, 3.1GB headroom), no MTP file either.
+
+| | HauhauCS Qwen3.6-35B Aggressive | Ornith-1.5-35B |
+|---|---:|---:|
+| Throughput | 46.1 tok/s | 46.7 tok/s |
+| Accuracy (3 prompts) | 3/3 | 3/3 |
+| Vision | working | working |
+
+**Statistical tie** — same MoE-offload ceiling for a model this size on
+this hardware regardless of base lineage. Ornith's claimed agentic-benchmark
+strength (MCP-Atlas, Toolathlon) wasn't independently verified — would need
+the same tool-calling-loop test from round 3 to confirm. Reverted to
+HauhauCS Qwen3.6-35B Aggressive (no functional reason to prefer either on
+throughput/accuracy alone, and Ornith's claims are unverified).
+
+**This (HauhauCS Qwen3.6-35B-A3B Aggressive, no MTP, `-ncmoe 22`) is what's
+running now** — a deliberate choice of "bigger uncensored MoE, no MTP" over
+round 4's "smaller Gemma QAT, MTP-boosted, censored" (67.1 tok/s). If raw
+speed matters more than the larger model / different lineage, round 4's
+Gemma QAT config is still the fastest option found this session.
+
 ## 6. Context length
 
 KV cache is statically preallocated at `n_ctx` at model load time — VRAM
@@ -415,15 +509,10 @@ export OMP_PLACES=threads
 
 exec /root/llama.cpp/build/bin/llama-server \
   --device ROCm0 \
-  -m /root/models/gemma-4-26B-A4B-it-qat/gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf \
-  --mmproj /root/models/gemma-4-26B-A4B-it-qat/mmproj-BF16.gguf \
+  -m /root/models/qwen3.6-35b-hauhau-aggressive/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf \
+  --mmproj /root/models/qwen3.6-35b-hauhau-aggressive/mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf \
   -ngl 99 \
-  -ncmoe 18 \
-  --spec-type draft-mtp \
-  --spec-draft-model /root/models/gemma-4-26B-A4B-it-qat/mtp-gemma-4-26B-A4B-it.gguf \
-  --spec-draft-device ROCm0 \
-  --spec-draft-n-max 2 \
-  --spec-draft-p-min 0.6 \
+  -ncmoe 22 \
   -fa on \
   -c 131072 \
   --parallel 1 \
@@ -437,40 +526,48 @@ exec /root/llama.cpp/build/bin/llama-server \
   --cont-batching \
   --jinja \
   --reasoning off \
-  --temp 0.4 \
-  --top-k 64 \
-  --top-p 0.95 \
-  --min-p 0.01 \
-  --repeat-penalty 1.05 \
-  --repeat-last-n -1 \
+  --temp 0.7 \
+  --top-k 20 \
+  --top-p 0.8 \
+  --min-p 0.0 \
+  --presence-penalty 1.5 \
   --poll 50 \
   --prio 3 \
   --metrics \
   --host 0.0.0.0 \
-  --alias Gemma4-26B-A4B-it-QAT \
+  --alias Qwen3.6-35B-A3B-HauhauCS-Aggressive \
   --port 8081
 ```
 
 `/etc/systemd/system/llama-server.service` — unchanged structure from the
-12B setup, `Description=Gemma4-26B-A4B-it-QAT`,
+12B setup, `Description=Qwen3.6-35B-A3B-HauhauCS-Aggressive`,
 `power_dpm_force_performance_level` set to `auto` (was `profile_standard`).
-Service is `enabled` (starts on boot) and `active`. This is the plain
-round-1 config, re-deployed as-is in round 4 after being deleted during
-round-2 cleanup — no changes needed, it just still works.
+Service is `enabled` (starts on boot) and `active`. No MTP (none available
+for this finetune, and the +12.5% speed available from the official MTP
+build wasn't worth losing uncensoring for — see §5e).
 
-**Result:** GPU0 VRAM 12.85/17.2GB used (~4.3GB headroom), **98% MTP draft
-acceptance, 67.1 tok/s decode** — best throughput of any config across all
-four rounds. Vision confirmed working, 128K context. No uncensoring —
-standard refusal behavior applies; see §5c/§5d for the HauhauCS/huihui
-tradeoff if refusal-avoidance matters more than raw speed for your use case.
+**Result:** GPU0 VRAM 14.9/17.2GB used (~2.3GB headroom), **46-48 tok/s**
+(no speculative decoding boost), vision confirmed working, zero refusals on
+boundary-test prompts, 128K context.
+
+**This is not the fastest config found this session** — round 4's plain
+Gemma QAT (`-m gemma-4-26B-A4B-it-qat`, MTP `n-max=2`) hits 67.1 tok/s with
+98% MTP acceptance but has no uncensoring and is the smaller/older model
+family. Swap back to that config (still documented in git history / §5d)
+if raw speed matters more than model size or refusal-avoidance for a given
+task.
 
 ## 8. Files kept on disk (`/root/models/`)
 
-Final cleanup pass: only the live model, `gemma-4-26B-A4B-it-qat` (~15.6GB),
-remains from this session's comparisons. HauhauCS Balanced, huihui
-abliterated QAT, and Qwen3.8-27B-Ridge (~50GB combined) were deleted once
-their results were captured above — no more rollback copies kept on disk.
-If revisiting any of these comparisons, the download commands are:
+As of round 5, nothing from that round has been cleaned up yet: live model
+`qwen3.6-35b-hauhau-aggressive` (~21GB) plus round-5 comparison leftovers
+`qwen3.6-35b-mtp` (~23GB, official unsloth MTP build) and `ornith-1.5-35b`
+(~22GB) are all still present, alongside round 4's `gemma-4-26B-A4B-it-qat`
+(~15GB, not live but not deleted either — still the fastest config found
+this session, kept as a quick rollback). 261GB free, no pressure to clean
+up yet. HauhauCS Balanced, huihui abliterated QAT, and Qwen3.8-27B/Ridge
+(~50GB, rounds 2-4) were deleted once their results were captured. If
+revisiting any of these comparisons, the download commands are:
 
 ```bash
 # Base (17GB + 1.2GB mmproj + 462MB mtp)
@@ -507,10 +604,27 @@ hf download empero-ai/Qwen3.8-27B-Ridge-GGUF \
   Qwen3.8-27B-Ridge-3.7bpw.gguf mmproj-Qwen3.8-27B-BF16.gguf \
   --local-dir /root/models/qwen3.8-27b-ridge
 
-# Original QAT (kept, live — 14.2GB + 1.2GB mmproj + 252MB mtp)
+# Original QAT (kept, fastest config found this session — 14.2GB + 1.2GB mmproj + 252MB mtp)
 hf download unsloth/gemma-4-26B-A4B-it-qat-GGUF \
   gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf mmproj-BF16.gguf mtp-gemma-4-26B-A4B-it.gguf \
   --local-dir /root/models/gemma-4-26B-A4B-it-qat
+
+# Qwen3.6-35B-A3B HauhauCS Aggressive (kept, live — 21.2GB + 899MB mmproj, no mtp)
+hf download HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive \
+  Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf \
+  mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf \
+  --local-dir /root/models/qwen3.6-35b-hauhau-aggressive
+
+# Qwen3.6-35B-A3B official unsloth build, self-contained MTP (kept — 22.9GB + 903MB mmproj,
+# no separate --spec-draft-model needed, --spec-type draft-mtp alone activates it)
+hf download unsloth/Qwen3.6-35B-A3B-MTP-GGUF \
+  Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf mmproj-BF16.gguf \
+  --local-dir /root/models/qwen3.6-35b-mtp
+
+# Ornith-1.5-35B (kept — Qwen3.5+Gemma4 hybrid, 21.7GB + 903MB mmproj, no mtp)
+hf download ornith-ai/Ornith-1.5-35B-A3B-GGUF \
+  Ornith-1.5-35B-Q4_K_M.gguf mmproj-Ornith-1.5-35B-BF16.gguf \
+  --local-dir /root/models/ornith-1.5-35b
 ```
 
 ## 9. Useful commands
