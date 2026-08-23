@@ -3,7 +3,7 @@ type: investigation
 tags: [kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi]
 created: 2026-08-23
 last_verified: 2026-08-24
-status: current — Wave 1 + Wave 2 deployed, data migrated, verified on the cluster; Caddy/DNS cutover not done for either wave, homelab-vm podman instances still authoritative for traffic
+status: current — Wave 1 + Wave 2 fully deployed, migrated, and cut over (both Caddy and Cloudflare Tunnel); homelab-vm podman containers for these apps stopped
 ---
 
 # Migrating `homelab-vm`'s Podman services to Kubernetes, for learning
@@ -173,6 +173,36 @@ Independent of the DNS bug above (confirmed fixed), a **separate** issue kept re
 ### MetalLB pool expanded (2026-08-24)
 
 Flagged proactively (user asked directly), then fixed same-day: the `192.168.50.220-229` pool (10 IPs) had 4 already used (Rancher `.220`, 2 registry mirrors `.221`/`.222`, Uptime Kuma `.223`) -- only 6 free, but Wave 2 needs 7 more LoadBalancer IPs at cutover time (`bookstack-db` stays `ClusterIP`-only, internal). Expanded the `IPAddressPool` (`homelab-pool` in `metallb-system`) from `192.168.50.220-229` to `192.168.50.220-239` (10 -> 20 IPs) via `kubectl patch`. `.230-.239` verified free first via ping sweep; checked against the MikroTik's DHCP pool (`/ip pool print` shows it technically spans the whole `.3-.254` range) -- same accepted risk profile as the original `.220-.229` pick, empirically safe since DHCP leases have stayed in the low range in practice. 16 IPs now available (was 6); confirmed the 4 existing assignments were untouched by the patch.
+
+## Wave 2 Caddy/Tunnel cutover (2026-08-24)
+
+All 7 Wave 2 apps fully cut over -- both exposure layers (Caddy `.lan` + Cloudflare Tunnel `.<PERSONAL_DOMAIN>`) repointed at the k8s cluster, podman-side containers stopped (not removed), data re-synced one final time immediately before each cutover to catch any drift since the earlier migration pass. Same per-service discipline as `up.<PERSONAL_DOMAIN>` in Wave 1: assign a MetalLB LoadBalancer IP, repoint Caddy, repoint the tunnel, verify both, *then* stop podman.
+
+| App | LoadBalancer IP | `.lan` | `.<PERSONAL_DOMAIN>` |
+|---|---|---|---|
+| Grafana | `.224` | `grafana.lan` | `grafana.<PERSONAL_DOMAIN>` |
+| BookStack (app only; db stays ClusterIP-internal) | `.225` | `bookstack.lan` | `book.<PERSONAL_DOMAIN>` |
+| copyparty | `.226` | `copyparty.lan` | `copy.<PERSONAL_DOMAIN>` |
+| Jellyfin | `.227` | `jellyfin.lan` | `jelly.<PERSONAL_DOMAIN>` |
+| Open WebUI | `.228` | `openwebui.lan` | `ai.<PERSONAL_DOMAIN>` |
+| Suwayomi | `.229` | `mihon.lan` | `mihon.<PERSONAL_DOMAIN>` |
+| CouchDB | `.230` | *(none -- never had a Caddy route)* | `obsidian.<PERSONAL_DOMAIN>` |
+
+MetalLB pool usage after this: 11 of 20 IPs assigned (`.220` Rancher, `.221`/`.222` registry mirrors, `.223` Uptime Kuma, `.224`-`.230` this wave) -- 9 free for future waves.
+
+Also added a genuinely new route while in here: **`rancher.lan`**, proxying to Rancher's existing LoadBalancer IP (`.220`) over HTTPS with `tls_insecure_skip_verify` (Rancher's self-signed cert, same established pattern as the existing `nas.lan` block) -- Rancher had a LoadBalancer IP since the original cluster buildout but was never given a `.lan` hostname until now.
+
+### Real bug found and fixed: copyparty CORS-check false-positive behind the LoadBalancer
+
+**Symptom**: every HTTPS request through either exposure layer (`copyparty.lan` *and* `copy.<PERSONAL_DOMAIN>`) got `403 rejected by cors-check (see fileserver log)` on login/upload, despite `Origin`, `Host`, and `X-Forwarded-Proto` headers all being verifiably correct (confirmed via raw `tcpdump` capture of the actual proxied request).
+
+**Root cause** (found by reading copyparty's actual source, `httpcli.py`, after multiple guessed fixes failed): copyparty only trusts `X-Forwarded-Proto` (and thus only correctly infers `https`) when the *direct TCP peer* IP is within `--xff-src`. That peer IP, confirmed via raw `/proc/net/tcp6` inspection on the pod during a live request, was `100.64.0.6` -- **Kube-OVN's "join" subnet** (`100.64.0.0/16`, its internal inter-node transit network for routing LoadBalancer traffic through the distributed OVN gateway) -- not Caddy's or cloudflared's real LAN IP, and *not affected by the Service's `externalTrafficPolicy` setting* (confirmed by testing both `Local` and `Cluster` -- same peer either way). Since `100.64.0.0/16` wasn't in the configured `--xff-src` (which only had RFC1918 ranges), the peer was untrusted, `X-Forwarded-Proto` got ignored, and copyparty silently defaulted to assuming the request arrived over plain HTTP -- producing exactly the Origin/protocol mismatch its CORS check exists to catch.
+
+**Fix**: added `100.64.0.0/16` to `--xff-src`, alongside the existing RFC1918 ranges. Also added `--xf-proto-fb=https` as defense-in-depth (assume https if the header is ever fully absent -- not what fixed this specific bug, but a sane default given every real path to this pod is already HTTPS-terminated).
+
+**Verification method worth noting**: copyparty's own `--ihead=*` and `--log-conn` debug flags produced *zero* extra log output for the failing requests despite reproducing the 403 repeatedly (both via `curl` and via a real headless-browser session through the actual production path) -- logging wasn't the way in here. What actually worked: (1) `tcpdump -A` capture of Caddy's outbound request to confirm headers were correct, ruling out the proxy layer; (2) reading copyparty's real source to find the exact peer-trust code path; (3) `/proc/net/tcp6` on the pod itself, decoded by hand (kernel's little-endian-per-32-bit-word IPv6 hex format) to get the ground-truth peer IP. Also used the `camofox-browser` service (native, port 9377, REST API) already running on `homelab-vm` for an authentic browser-based reproduction (real Firefox engine, real CORS enforcement) rather than trusting a synthetic `curl -H Origin` approximation -- this is what confirmed the bug was real and not a curl artifact, and gave the exact same "welcome back" / "rejected by cors-check" page states a real user would see.
+
+**Broader implication for this cluster**: *any* app doing IP-based reverse-proxy trust decisions (not just CORS -- rate limiting, access logging, IP allowlists) needs `100.64.0.0/16` in its trusted-proxy config if it's reachable via a MetalLB LoadBalancer Service on this Kube-OVN cluster, regardless of `externalTrafficPolicy`. Worth checking for on any future app that does this kind of check.
 
 ## Next: Wave 3
 
