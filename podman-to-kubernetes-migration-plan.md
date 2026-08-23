@@ -3,7 +3,7 @@ type: investigation
 tags: [kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm]
 created: 2026-08-23
 last_verified: 2026-08-23
-status: blocked — waiting on Talos vs k3s decision before any cluster gets built
+status: current — Talos chosen, cluster built and live (see [[talos-kubernetes-cluster-buildout]]); Wave 1 migration not started yet
 ---
 
 # Migrating `homelab-vm`'s Podman services to Kubernetes, for learning
@@ -37,14 +37,8 @@ Proxmox host capacity (`pve-pc`): 16 cores / 62.7GB RAM, only ~20.5GB RAM in use
    - Pi-hole: leave on Podman/host networking unless/until `hostNetwork` + MetalLB (L2 announce) is specifically wanted — not worth the pain for a DNS server that needs to survive cluster hiccups.
 5. **Keep `homelab-vm` running throughout.** Point Caddy at whichever backend (Podman container or k8s Ingress) is currently authoritative per-service during the transition; don't decommission a Podman service until its k8s replacement has run stable for a while.
 
-## Open decision: Talos vs k3s
+## Decision resolved: Talos
 
-This was paused before the user picked one — needs to be resolved before step 2 above can start.
+Talos was chosen — immutable/API-driven, pairs the K8s learning goal with IaC/GitOps practice, more transferable to real production clusters than k3s's fast-but-opaque bootstrap. Full build (3 control-plane + 3 worker, Terraform + `bpg/proxmox`, `democratic-csi` for iSCSI storage, MetalLB for LoadBalancer IPs, Rancher for the UI) is documented in [[talos-kubernetes-cluster-buildout]] — cluster is live and verified end-to-end as of 2026-08-23.
 
-| | Talos | k3s |
-|---|---|---|
-| Style | Immutable, API-driven, no SSH — closer to how production clusters (Sidero, EKS Anywhere) actually run | Single binary on a normal VM/OS, ships with Traefik ingress + local-path storage out of the box |
-| Setup | Steeper — needs Terraform to provision (a `alexmorbo/terraform-proxmox-talos`-style module was scoped in an earlier session) | Fast — `curl | sh` and you have a working cluster same day |
-| Learning value | Pairs K8s learning with IaC/GitOps practice; more transferable to "real" production clusters | Faster feedback loop; less to learn about cluster bootstrapping/OS management |
-
-No cluster has been provisioned yet. Next step once the user picks: provision the chosen distro on new `pve-pc` VMs, then start Wave 1.
+**Next step**: start Wave 1 (stateless containers — SearXNG, Uptime Kuma, cekping-agent, 9router, FlareSolverr, crawl4ai) — not started yet as of this doc's last verification.
