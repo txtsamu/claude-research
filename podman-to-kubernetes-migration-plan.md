@@ -104,6 +104,10 @@ SearXNG and Crawl4AI had no real data to move (confirmed empty on both the sourc
 
 **Important caveat going forward**: both the `homelab-vm` podman instance and the new k8s instance now hold independent copies of the data as of the copy timestamp. Caddy/DNS still point traffic at the podman instance — nothing has been cut over yet. Any changes made on the podman side from this point on (new monitors, edits) will **not** appear on the k8s side until either a re-sync or the actual cutover happens. Avoid making changes on the old instance if avoidable, and do a final re-sync immediately before whenever the real cutover happens.
 
+### Update 2026-08-24: found and fixed a real ISP-level bug blocking internet-dependent apps
+
+SearXNG (live search results), cekping-agent (`cekping.id:50051`), Crawl4AI (crawling external sites), and FlareSolverr were all deployed and `Running`, but couldn't actually reach the internet — not a bug in these apps or their manifests. Root cause turned out to be an ISP/modem issue (delivering replies with an already near-exhausted TTL, breaking any traffic needing an extra internal hop) that had nothing to do with Kubernetes, Talos, or the CNI — full investigation and fix in [[pod-internet-egress-isp-ttl-bug]]. Along the way, the cluster's CNI was also switched from Flannel to Kube-OVN (a legitimate improvement either way, given KubeVirt is a future goal here, but it did not actually fix this particular bug — the ISP-side TTL fix did). All 4 of these services should now have real internet connectivity — worth re-verifying their actual functionality (not just pod health) now that the fix is in.
+
 ### Still open before Wave 1 is truly "done"
 
 - [ ] Actual traffic cutover: repoint Caddy's `uptime.lan` (and decide an access story for the other 4, none of which were externally exposed to begin with) at the new cluster — not done, both stacks are running in parallel right now
