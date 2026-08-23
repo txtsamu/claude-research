@@ -115,6 +115,28 @@ SearXNG (live search results), cekping-agent (`cekping.id:50051`), Crawl4AI (cra
 - [x] Clean up the dangling `9router.lan` / `vaultwarden.lan` Caddy routes → done 2026-08-24. Both blocks removed from `/root/caddy/Caddyfile` (backed up first as `Caddyfile.bak.20260824`), config validated + reloaded live via `podman exec caddy caddy reload`, zero downtime for the other routes. Verified: both dead hostnames now refuse the TLS connection (no matching site), `uptime.lan`/`jellyfin.lan` unaffected.
 - [ ] Decide when it's safe to stop/remove the `homelab-vm` podman containers for these 5 services (only after the above cutover + a stability-watch period, per the original "don't decommission until proven stable" rule)
 
+## Cloudflare Tunnel: the other exposure layer (2026-08-24)
+
+Discovered mid-cutover that `homelab-vm` has **two independent exposure layers per service**, not one: the internal Caddy `*.lan` reverse proxy (LAN-only) *and* a Cloudflare Tunnel (`px1`, tunnel ID `968b7dea-aade-4f0a-9393-71ff3b283744`, account `5e3e62b41620c6d3525989b70f1031c1`, zone `<PERSONAL_DOMAIN>` = `7937113d9d879e43f9e5ec5b7e9e0193`) publishing 15 public `*.<PERSONAL_DOMAIN>` hostnames, all pointing at `localhost:<port>` on `homelab-vm` (cloudflared runs natively there via a token-based/remote-config connector — no local `config.yml`, ingress rules live entirely at Cloudflare's edge, managed via their API). Full API pattern (auth, token recovery, ingress PUT semantics, hostname add/remove order) is documented in Hermes' own `cloudflare-tunnel-api` skill (`/root/.hermes/skills/devops/cloudflare-tunnel-api/`) — reused directly rather than re-deriving it.
+
+**Real regression caught and fixed**: `up.<PERSONAL_DOMAIN>` (Uptime Kuma's public hostname) was still pointing at `localhost:3001` — the podman container stopped during the Wave 1 Caddy cutover — so the public domain had been silently `502`ing since that cutover, missed because only the internal `uptime.lan` route was checked at the time. Fixed by repointing `up.<PERSONAL_DOMAIN>`'s ingress rule to `http://192.168.50.223:3001` (the same k8s MetalLB LoadBalancer IP `uptime.lan` already uses). Verified `302` afterward, spot-checked other hostnames untouched.
+
+**Also cleaned up**: `vault.<PERSONAL_DOMAIN>` → `localhost:8880`, a dangling route to the already-decommissioned Vaultwarden (same story as the `vaultwarden.lan` Caddy route cleaned up earlier). Removed the DNS CNAME first, then the ingress rule (correct order — DNS before ingress, per the Hermes skill's documented removal procedure, avoids a dangling CNAME pointing at a tunnel that no longer serves that host). Verified `530` (Cloudflare's "no DNS record" response) afterward.
+
+**Lesson for every remaining cutover, Wave 1's leftover 4 apps included and all of Wave 2**: repointing Caddy's `.lan` route is **not sufficient** — the matching `*.<PERSONAL_DOMAIN>` Cloudflare Tunnel ingress rule (if one exists for that service) must be repointed too, or the public domain silently breaks while the internal one looks fine. Current `*.<PERSONAL_DOMAIN>` -> `localhost:port` map relevant to future waves:
+
+| Hostname | Port | Service |
+|---|---|---|
+| `book.<PERSONAL_DOMAIN>` | 8810 | BookStack (Wave 2) |
+| `grafana.<PERSONAL_DOMAIN>` | 3000 | Grafana (Wave 2) |
+| `jelly.<PERSONAL_DOMAIN>` | 8096 | Jellyfin (Wave 2) |
+| `ai.<PERSONAL_DOMAIN>` | 8080 | Open WebUI (Wave 2) |
+| `copy.<PERSONAL_DOMAIN>` | 3923 | copyparty (Wave 2) |
+| `mihon.<PERSONAL_DOMAIN>` | 4567 | Suwayomi (Wave 2) |
+| `obsidian.<PERSONAL_DOMAIN>` | 5984 | CouchDB/Obsidian LiveSync (Wave 2) |
+
+(`agent.<PERSONAL_DOMAIN>`/8642 = headroom-proxy, `git.<PERSONAL_DOMAIN>`/3500 = Forgejo, `bas.<PERSONAL_DOMAIN>`/8666 = OneTerm, `photos.<PERSONAL_DOMAIN>`/2283 = Immich, `cloud.<PERSONAL_DOMAIN>`/8181 = Nextcloud, `warp.<PERSONAL_DOMAIN>` = SSH to warp-vm — all out of current migration scope, listed here only for completeness of the tunnel inventory.)
+
 ## Next: Wave 2
 
 Recoverable stateful tier (Grafana, Jellyfin, BookStack, Suwayomi, copyparty, CouchDB, Open WebUI) — not started. Expect this to need real node capacity planning (unlike Wave 1's trivial footprint) given the CP/worker RAM incidents already hit once during cluster buildout and once during platform-tool installation.
