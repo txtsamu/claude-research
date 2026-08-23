@@ -170,9 +170,9 @@ Independent of the DNS bug above (confirmed fixed), a **separate** issue kept re
 - **Open WebUI**: data (1.1GB: `webui.db`, `vector_db`, `uploads`, `cache`) migrated; confirmed via `HTTP 200` health check once startup completed (delayed by the HuggingFace flakiness noted above, not a migration problem).
 - **Suwayomi**: library data (1.7GB: `database.mv.db`, `downloads`, `extensions`, `backups`) migrated; confirmed via `HTTP 200`. Bonus: the source instance's data already included a downloaded `webUI/` directory, so migrating it sidestepped the GitHub-download-stall issue entirely for this app.
 
-### MetalLB pool needs expanding before any Wave 2 cutover
+### MetalLB pool expanded (2026-08-24)
 
-Flagged proactively (user asked directly): the `192.168.50.220-229` pool (10 IPs) has 4 already used (Rancher `.220`, 2 registry mirrors `.221`/`.222`, Uptime Kuma `.223`) -- only 6 free, but Wave 2 needs 7 more LoadBalancer IPs at cutover time (`bookstack-db` stays `ClusterIP`-only, internal). Not blocking today since nothing's cut over yet, but the pool needs expanding before Wave 2's Caddy/tunnel cutover can proceed cleanly.
+Flagged proactively (user asked directly), then fixed same-day: the `192.168.50.220-229` pool (10 IPs) had 4 already used (Rancher `.220`, 2 registry mirrors `.221`/`.222`, Uptime Kuma `.223`) -- only 6 free, but Wave 2 needs 7 more LoadBalancer IPs at cutover time (`bookstack-db` stays `ClusterIP`-only, internal). Expanded the `IPAddressPool` (`homelab-pool` in `metallb-system`) from `192.168.50.220-229` to `192.168.50.220-239` (10 -> 20 IPs) via `kubectl patch`. `.230-.239` verified free first via ping sweep; checked against the MikroTik's DHCP pool (`/ip pool print` shows it technically spans the whole `.3-.254` range) -- same accepted risk profile as the original `.220-.229` pick, empirically safe since DHCP leases have stayed in the low range in practice. 16 IPs now available (was 6); confirmed the 4 existing assignments were untouched by the patch.
 
 ## Next: Wave 3
 
