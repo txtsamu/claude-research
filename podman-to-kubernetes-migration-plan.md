@@ -111,7 +111,7 @@ SearXNG (live search results), cekping-agent (`cekping.id:50051`), Crawl4AI (cra
 ### Still open before Wave 1 is truly "done"
 
 - [ ] Actual traffic cutover: repoint Caddy's `uptime.lan` (and decide an access story for the other 4, none of which were externally exposed to begin with) at the new cluster — not done, both stacks are running in parallel right now
-- [ ] Clean up the dangling `9router.lan` / `vaultwarden.lan` Caddy routes
+- [x] Clean up the dangling `9router.lan` / `vaultwarden.lan` Caddy routes → done 2026-08-24. Both blocks removed from `/root/caddy/Caddyfile` (backed up first as `Caddyfile.bak.20260824`), config validated + reloaded live via `podman exec caddy caddy reload`, zero downtime for the other routes. Verified: both dead hostnames now refuse the TLS connection (no matching site), `uptime.lan`/`jellyfin.lan` unaffected.
 - [ ] Decide when it's safe to stop/remove the `homelab-vm` podman containers for these 5 services (only after the above cutover + a stability-watch period, per the original "don't decommission until proven stable" rule)
 
 ## Next: Wave 2
