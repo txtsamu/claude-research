@@ -3,7 +3,7 @@ type: investigation
 tags: [kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi]
 created: 2026-08-23
 last_verified: 2026-08-24
-status: current — Wave 1 deployed and verified on the Talos cluster; Caddy/DNS cutover not done yet, homelab-vm podman instances still authoritative for traffic
+status: current — Wave 1 + Wave 2 deployed, data migrated, verified on the cluster; Caddy/DNS cutover not done for either wave, homelab-vm podman instances still authoritative for traffic
 ---
 
 # Migrating `homelab-vm`'s Podman services to Kubernetes, for learning
@@ -137,6 +137,43 @@ Discovered mid-cutover that `homelab-vm` has **two independent exposure layers p
 
 (`agent.<PERSONAL_DOMAIN>`/8642 = headroom-proxy, `git.<PERSONAL_DOMAIN>`/3500 = Forgejo, `bas.<PERSONAL_DOMAIN>`/8666 = OneTerm, `photos.<PERSONAL_DOMAIN>`/2283 = Immich, `cloud.<PERSONAL_DOMAIN>`/8181 = Nextcloud, `warp.<PERSONAL_DOMAIN>` = SSH to warp-vm — all out of current migration scope, listed here only for completeness of the tunnel inventory.)
 
-## Next: Wave 2
+## Wave 2: deployed, data migrated, verified (2026-08-24)
 
-Recoverable stateful tier (Grafana, Jellyfin, BookStack, Suwayomi, copyparty, CouchDB, Open WebUI) — not started. Expect this to need real node capacity planning (unlike Wave 1's trivial footprint) given the CP/worker RAM incidents already hit once during cluster buildout and once during platform-tool installation.
+All 7 recoverable-stateful apps (Grafana, Jellyfin, BookStack [app+db], Suwayomi, copyparty, CouchDB, Open WebUI) are deployed to the `homelab` namespace with real migrated data and confirmed healthy. Same discipline as Wave 1: deploy fresh first, verify pod health, migrate real data (stop podman source -> tar -> load into PVC via a helper pod -> restart podman source -> scale k8s deployment back up), verify the migrated data actually loaded (not just "pod is Running"). No Caddy/tunnel cutover yet -- podman instances stay authoritative for traffic until that happens per-service.
+
+### Storage
+
+7 Secrets (real credentials carried over, same as Wave 1's handling) + 8 `truenas-iscsi` PVCs, sized off actual usage with headroom: grafana-data 2Gi, bookstack-db-data 3Gi, bookstack-app-data 1Gi, copyparty-config 512Mi, jellyfin-config **4Gi (bumped from 1Gi -- see gotcha below)**, openwebui-data 3Gi, suwayomi-data 5Gi, couchdb-data 2Gi. Plus one NFS-backed PV/PVC (`photos-nfs`, RWX) pointed directly at the existing TrueNAS export (`192.168.50.10:/mnt/data/photos`) -- reused as-is for Jellyfin (read-only) and copyparty (read-write), no data copy needed for photos at all, per the plan's own "reuse NFS exports" recommendation.
+
+### Gotchas hit deploying these 7
+
+1. **Secret volumes are always read-only -- breaks anything that needs to write into the same directory.** CouchDB's entrypoint writes its own generated `docker.ini` into `/opt/couchdb/etc/local.d/` alongside the mounted config; mounting the config Secret directly there gave `Read-only file system`. Fixed with an init container that copies the Secret's file into a writable `emptyDir`, which is what actually gets mounted.
+2. **Non-root images need `fsGroup`, not just PVC access.** Grafana (uid 472) and Suwayomi (uid 1000) both crashed with `Permission denied` writing to their PVCs -- freshly-provisioned iSCSI volumes are root-owned by default. Fixed with `securityContext.fsGroup` matching each image's UID.
+3. **Same stuck-rollout deadlock as the `ovn-central` incident, twice.** After patching `fsGroup`, the new pod landed on a different node than the still-crashing old one and couldn't attach its RWO volume until the old pod released it -- but the old ReplicaSet just kept recreating broken replicas every time the pod was deleted directly. Fixed both times by scaling the *old ReplicaSet* to 0, not deleting the pod.
+4. **Real bug in the doc's own domain redaction: don't redact live config.** `<PERSONAL_DOMAIN>` placeholder (correct for this doc) accidentally ended up literally set as `APP_URL`/`GF_SERVER_ROOT_URL` in the actual deployed BookStack and Grafana manifests -- `<` and `>` aren't valid URI host characters, and BookStack hard-failed on it (`Invalid URI: Host is malformed`). Redaction belongs in published docs, never in live config values. Fixed by setting the real domain directly in the cluster manifests (which aren't published/git-tracked).
+5. **Jellyfin hard-requires 2GiB free on its data directory regardless of actual usage.** The 1Gi PVC (sized off the source's ~600KB actual config size) was too small purely because of this fixed minimum-free-space check -- `InvalidOperationException: insufficient free space`. `truenas-iscsi` supports online expansion (`allowVolumeExpansion: true`); patched the PVC to 4Gi, restarted the pod to complete the filesystem resize (`FileSystemResizePending` condition requires a pod restart to finish, not just the PVC patch).
+6. **A cross-host dependency broke silently: `firewalld` on `homelab-vm` doesn't allow-list every port.** Open WebUI reaches `headroom-proxy` (LLM API proxy, port 8642) and the podman SearXNG (web-search backend, port 8888) -- both previously worked via `127.0.0.1` since Open WebUI ran on the same host. Now that it's on a different host (the cluster), both were blocked by `homelab-vm`'s `firewalld public` zone, which only allow-lists a specific port list (matches the pattern of the other already-open service ports). Opened `8642/tcp` and `8888/tcp` to match.
+7. **`/tmp` on `warp-vm` is a small (987M) `tmpfs`, not disk-backed.** A large data-migration tarball (Open WebUI's ~1GB) failed mid-transfer once earlier tarballs filled it. Switched to a disk-backed path (`~/sync-tmp` on `warp-vm`'s actual 9.7G root disk) for anything of meaningful size, and clean up after each service's migration completes rather than letting tarballs accumulate.
+8. **A separate, real, cluster-wide bug found and fixed along the way: stale CoreDNS network state.** Both CoreDNS pods had been running ~6h without restart and had Kube-OVN pod IPs (`10.244.6.x`/`10.244.5.x`) that weren't reachable from worker nodes -- worker-to-worker pod traffic was fine, but worker-to-(these specific long-lived master-hosted pods) was completely broken, breaking **all DNS resolution from every worker-hosted pod**, not just the app that surfaced it (Suwayomi, via `UnknownHostException` downloading its web assets). Root cause looks like stale OVN port-binding state left over from one of the day's several node reboots that a live pod's binding was never reprogrammed against. Fixed by deleting the CoreDNS pods (Deployment recreated them with fresh, correctly-routed IPs); verified both internal (`kubernetes.default`) and external (`github.com`) resolution afterward.
+
+### Still-unresolved, recurring pattern worth flagging on its own
+
+Independent of the DNS bug above (confirmed fixed), a **separate** issue kept recurring across multiple apps and destinations during Wave 2: outbound requests to specific external hosts intermittently hang or get dropped with no clean error -- `github.com` (Suwayomi's WebUI asset zip stalled indefinitely on one attempt), `huggingface.co` (Open WebUI's embedding-model download, several retries before eventually succeeding), and this is the same family of symptom as the still-unresolved SearXNG search-engine timeout issue from the Wave 1 verification pass (`html.duckduckgo.com`, `www.bing.com`, `www.google.com/search`). Working theory remains unconfirmed (possibly PMTUD/fragmentation-related given the ISP's already-flaky TTL history, possibly something narrower) -- not blocking (retries and pre-existing cached data got every app running fine in the end), but real enough to have hit 4 separate destinations now. Worth a dedicated investigation pass rather than continuing to patch around it per-app.
+
+### Data migration: all 7 verified with real content, not just "pod is Running"
+
+- **CouchDB**: real `_dbs.couch`/`_nodes.couch`/`shards/` loaded; confirmed via real auth-enforcement (`not a server admin`, not admin-party) and `All system databases exist` in logs (vs. the fresh-instance `database_does_not_exist` warnings seen before migration).
+- **Grafana**: `grafana.db` (1.5MB) extracted unchanged; confirmed via matching file size post-startup (Grafana didn't recreate it) and no fresh-bootstrap log lines. Login still uses the *source* instance's actual current admin password (not the `GF_SECURITY_ADMIN_PASSWORD` env var, which only seeds a brand-new database) -- expected Grafana behavior, not a bug.
+- **BookStack**: DB (306MB) + app config (104KB) migrated; confirmed via `Nothing to migrate` (Laravel found the schema already current) and `HTTP 302` after the `APP_URL` fix above.
+- **copyparty**: config (security salts, TLS cert, session DB) migrated; confirmed it picked up the existing `up2k.db` index (163KB) on the shared photos NFS mount, proving it's reading the same live data with its index intact -- no photo data copy needed at all.
+- **Jellyfin**: config (28KB) migrated; confirmed via identical `ServerId` before/after and `HTTP 200` health check post-resize-fix.
+- **Open WebUI**: data (1.1GB: `webui.db`, `vector_db`, `uploads`, `cache`) migrated; confirmed via `HTTP 200` health check once startup completed (delayed by the HuggingFace flakiness noted above, not a migration problem).
+- **Suwayomi**: library data (1.7GB: `database.mv.db`, `downloads`, `extensions`, `backups`) migrated; confirmed via `HTTP 200`. Bonus: the source instance's data already included a downloaded `webUI/` directory, so migrating it sidestepped the GitHub-download-stall issue entirely for this app.
+
+### MetalLB pool needs expanding before any Wave 2 cutover
+
+Flagged proactively (user asked directly): the `192.168.50.220-229` pool (10 IPs) has 4 already used (Rancher `.220`, 2 registry mirrors `.221`/`.222`, Uptime Kuma `.223`) -- only 6 free, but Wave 2 needs 7 more LoadBalancer IPs at cutover time (`bookstack-db` stays `ClusterIP`-only, internal). Not blocking today since nothing's cut over yet, but the pool needs expanding before Wave 2's Caddy/tunnel cutover can proceed cleanly.
+
+## Next: Wave 3
+
+Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
