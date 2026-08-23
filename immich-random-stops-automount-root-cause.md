@@ -1,8 +1,8 @@
 ---
 type: troubleshooting
-tags: [immich, systemd, automount, nfs, quadlet, podman, forensics, nextcloud]
+tags: [immich, systemd, automount, nfs, quadlet, podman, forensics, nextcloud, podman-auto-update]
 created: 2026-08-11
-last_verified: 2026-08-11
+last_verified: 2026-08-23
 status: current
 ---
 
@@ -129,10 +129,40 @@ All four automount units now show `TimeoutIdleSec=infinity` — the containers c
 - **The "Unmounting …" journal line was visible in the very first diagnosis window** — the mount teardown was the answer from the start, hidden in plain sight next to the `Stopping` lines.
 - Deployed nets (`immich-watchdog`, `dbus-stopwatch`, `immich-socktrace` audit rule + eBPF service) are kept running as canaries for any *future real* external stop attempts.
 
+## Update 2026-08-23 — the canary caught a second, unrelated cause
+
+The automount fix above stopped the *automount-idle* stops, but the watchdog/eBPF nets were deliberately left running as canaries ("kept running as canaries for any *future real* external stop attempt" — see above). They caught one:
+
+```
+Aug 21 00:13:52 homelab immich-watchdog.sh[8631]: *** IMMICH SERVER STOP DETECTED (ActiveState=failed) ***
+```
+
+The `ps` snapshot from that exact second showed the actual cause, red-handed:
+
+```
+2514960  1  root  00:01  /usr/bin/podman rm -v -f -i immich-postgres
+2514961  1  root  00:01  /usr/bin/podman rm -v -f -i immich-redis
+```
+
+**Root cause #2**: `immich-postgres.container` and `immich-redis.container` both have `AutoUpdate=registry` set, so `podman-auto-update.timer` (fires daily, `OnCalendar=` around midnight + systemd's randomized delay — confirmed via `systemctl list-timers podman-auto-update.timer`, last run `00:02:17`, next `00:00:06`) tears the containers down and recreates them if a newer image is available. Tearing down `immich-postgres`/`immich-redis` cycles the whole pod, briefly dropping `immich-server` with it — same *symptom* as the automount issue (a clean dependency-driven stop, not a crash), completely different mechanism. This is expected Podman auto-update behavior, not a bug and not anything malicious.
+
+Since both root causes behind "Immich randomly stops" are now identified and (for the automount one) fixed, and the second one is just routine `podman-auto-update` behavior rather than something needing a fix, the forensics nets were retired:
+
+```sh
+systemctl disable --now immich-socktrace.service immich-watchdog.service
+rm -f /etc/systemd/system/immich-socktrace.service /etc/systemd/system/immich-watchdog.service \
+      /usr/local/bin/immich-watchdog.sh
+rm -rf /root/immich-forensics
+systemctl daemon-reload
+```
+
+If unexplained stops start again, the `.bt`/`.sh` snippets in this doc (Phase 3 above) can be redeployed in a few minutes — no need to keep an always-on eBPF probe + 2s poll loop running indefinitely once both known causes are accounted for.
+
 ## Files
 
 - `/etc/fstab` — `x-systemd.idle-timeout=0` on the 4 NFS automount lines (backup: `/etc/fstab.bak-immich-automount`)
-- `/etc/systemd/system/immich-socktrace.service` + `/root/immich-forensics/private-sock-trace.bt` — eBPF socket-connect tracer
-- `/etc/audit/rules.d/99-stopwatch.rules` — systemctl/busctl/systemd-run exec watches
-- `/usr/local/bin/immich-watchdog.sh` + `dbus-stopwatch.sh` — stop-detection nets
+- `immich-postgres.container` / `immich-redis.container` — `AutoUpdate=registry`, managed by `podman-auto-update.timer` (daily); expected source of brief pod-cycling, not a bug
+- ~~`/etc/systemd/system/immich-socktrace.service` + `/root/immich-forensics/private-sock-trace.bt`~~ — removed 2026-08-23, both root causes identified
+- ~~`/etc/audit/rules.d/99-stopwatch.rules`~~ — systemctl/busctl/systemd-run exec watches (from Phase 3; not re-verified whether still present)
+- ~~`/usr/local/bin/immich-watchdog.sh` + `dbus-stopwatch.sh`~~ — removed 2026-08-23 (watchdog); dbus-stopwatch not re-checked
 - Skill: `systemd-stop-forensics` (updated with this root cause + fix)
