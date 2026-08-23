@@ -146,23 +146,31 @@ The `ps` snapshot from that exact second showed the actual cause, red-handed:
 
 **Root cause #2**: `immich-postgres.container` and `immich-redis.container` both have `AutoUpdate=registry` set, so `podman-auto-update.timer` (fires daily, `OnCalendar=` around midnight + systemd's randomized delay — confirmed via `systemctl list-timers podman-auto-update.timer`, last run `00:02:17`, next `00:00:06`) tears the containers down and recreates them if a newer image is available. Tearing down `immich-postgres`/`immich-redis` cycles the whole pod, briefly dropping `immich-server` with it — same *symptom* as the automount issue (a clean dependency-driven stop, not a crash), completely different mechanism. This is expected Podman auto-update behavior, not a bug and not anything malicious.
 
-Since both root causes behind "Immich randomly stops" are now identified and (for the automount one) fixed, and the second one is just routine `podman-auto-update` behavior rather than something needing a fix, the forensics nets were retired:
+Since both root causes behind "Immich randomly stops" are now identified and (for the automount one) fixed, and the second one is just routine `podman-auto-update` behavior rather than something needing a fix, all four forensics nets were retired, in two passes the same day:
 
 ```sh
+# pass 1 — socktrace + watchdog
 systemctl disable --now immich-socktrace.service immich-watchdog.service
 rm -f /etc/systemd/system/immich-socktrace.service /etc/systemd/system/immich-watchdog.service \
       /usr/local/bin/immich-watchdog.sh
 rm -rf /root/immich-forensics
 systemctl daemon-reload
+
+# pass 2 — dbus-stopwatch + audit rules (found still running when checked separately)
+systemctl disable --now dbus-stopwatch.service
+rm -f /etc/systemd/system/dbus-stopwatch.service /usr/local/bin/dbus-stopwatch.sh
+rm -f /etc/audit/rules.d/99-stopwatch.rules
+systemctl daemon-reload
+augenrules --load        # confirmed via `auditctl -l` → "No rules"
 ```
 
-If unexplained stops start again, the `.bt`/`.sh` snippets in this doc (Phase 3 above) can be redeployed in a few minutes — no need to keep an always-on eBPF probe + 2s poll loop running indefinitely once both known causes are accounted for.
+If unexplained stops start again, the `.bt`/`.sh` snippets in this doc (Phase 3 above) can be redeployed in a few minutes — no need to keep an always-on eBPF probe, D-Bus eavesdropper, audit watches, and 2s poll loop running indefinitely once both known causes are accounted for.
 
 ## Files
 
 - `/etc/fstab` — `x-systemd.idle-timeout=0` on the 4 NFS automount lines (backup: `/etc/fstab.bak-immich-automount`)
 - `immich-postgres.container` / `immich-redis.container` — `AutoUpdate=registry`, managed by `podman-auto-update.timer` (daily); expected source of brief pod-cycling, not a bug
-- ~~`/etc/systemd/system/immich-socktrace.service` + `/root/immich-forensics/private-sock-trace.bt`~~ — removed 2026-08-23, both root causes identified
-- ~~`/etc/audit/rules.d/99-stopwatch.rules`~~ — systemctl/busctl/systemd-run exec watches (from Phase 3; not re-verified whether still present)
-- ~~`/usr/local/bin/immich-watchdog.sh` + `dbus-stopwatch.sh`~~ — removed 2026-08-23 (watchdog); dbus-stopwatch not re-checked
+- ~~`/etc/systemd/system/immich-socktrace.service` + `/root/immich-forensics/private-sock-trace.bt`~~ — removed 2026-08-23
+- ~~`/etc/audit/rules.d/99-stopwatch.rules`~~ — systemctl/busctl/systemd-run exec watches — removed 2026-08-23
+- ~~`/usr/local/bin/immich-watchdog.sh` + `dbus-stopwatch.sh`~~ — removed 2026-08-23
 - Skill: `systemd-stop-forensics` (updated with this root cause + fix)
