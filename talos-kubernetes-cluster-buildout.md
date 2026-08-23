@@ -1,14 +1,16 @@
 ---
 type: how-to
-tags: [kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm]
+tags: [kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm, kube-ovn]
 created: 2026-08-23
-last_verified: 2026-08-23
+last_verified: 2026-08-24
 status: current
 ---
 
 # Building a 3-master/3-worker Talos Kubernetes cluster on Proxmox
 
 Full build of a learning-focused Talos K8s cluster on `pve-pc`, done to learn Kubernetes + HA architecture mechanics hands-on before migrating services off `homelab-vm`'s Podman setup — see [[podman-to-kubernetes-migration-plan]] for the service inventory and migration-wave plan (that doc covers *what* gets migrated and in what order; this one covers the cluster itself).
+
+**Update 2026-08-24**: the CNI was later switched from Flannel (as originally built below) to **Kube-OVN**, as part of chasing a pod-to-internet connectivity bug — see [[pod-internet-egress-isp-ttl-bug]] for the full investigation and the actual root cause (which turned out to be unrelated to the CNI). The rest of this doc still accurately describes the original build; the CNI section is superseded by that investigation doc.
 
 ## Decisions made
 
