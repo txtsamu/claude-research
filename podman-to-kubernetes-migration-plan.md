@@ -257,6 +257,28 @@ This is the textbook signature of **NAT/conntrack mapping loss mid-connection** 
 
 Not correctness-affecting in practice -- every app that hit this eventually succeeded via its own retry/backoff logic (Open WebUI's HuggingFace download, Suwayomi's extension/source fetches). It mostly shows up as occasional extra latency or a need to retry, not permanent failure. No cluster-side fix applied because there is not believed to be one; if this keeps recurring and becomes disruptive, the next step would be raising it with the ISP directly, with this investigation (plus the original TTL bug) as supporting evidence of edge-level issues on this connection.
 
+## WARP-egress SOCKS5 proxy: real, verified fix for the recurring connectivity issue (2026-08-24)
+
+Followed up on the CGNAT/conntrack-drop investigation above with a concrete, working fix rather than leaving it as ISP-side and unfixable. `warp-vm` already runs the Cloudflare WARP client (`warp-cli status` -> `Connected`, `Network: healthy`) -- confirmed via `https://www.cloudflare.com/cdn-cgi/trace` (`warp=on`) that it genuinely egresses through Cloudflare's network, a completely different path than the flaky ISP double-NAT route. Tested the previously-failing destinations (`github.com`, `aquareader.org`) directly through `warp-vm` -- fast and 100% consistent (0.1-0.3s, vs. silent multi-second-to-timeout hangs over the direct path).
+
+**Note on the earlier broken WARP mangle rule** (removed during the TTL bug investigation, see [[pod-internet-egress-isp-ttl-bug]]): that was a *different, broken* attempt to policy-route the *entire LAN's* traffic through `warp-vm` at the Mikrotik level. `warp-vm`'s own WARP client tunnel was never the problem -- it's been working the whole time. This fix is scoped and app-level instead, avoiding that whole class of router-level risk.
+
+### What was built
+
+- **`microsocks`** (tiny, single-purpose SOCKS5 server, minimal footprint -- appropriate for `warp-vm`'s modest 2 vCPU/2GB) installed on `warp-vm`, systemd-managed (`/etc/systemd/system/microsocks.service`), bound to `192.168.50.200:1080` (LAN-only, not `0.0.0.0`), hardened (`NoNewPrivileges`, `ProtectSystem=strict`, runs as `nobody`). No auth -- LAN-internal only, same trust model as the cluster's other internal-only services.
+- Verified reachable from inside the cluster and routing through WARP end-to-end: `curl --socks5 192.168.50.200:1080 https://github.com/` from a pod -> fast, consistent `200`.
+
+### Apps configured to use it
+
+- **Suwayomi**: has a native SOCKS proxy setting (`server.socksProxyEnabled`/`Host`/`Port`, confirmed via its own `server.conf`, env-var-overridable as `SOCKS_PROXY_ENABLED`/`SOCKS_PROXY_HOST`/`SOCKS_PROXY_PORT` following the same camelCase-to-UPPER_SNAKE convention already confirmed working for `FLARESOLVERR_ENABLED`). Set to `192.168.50.200:1080`; confirmed in its own startup log: `Socks Proxy changed - enabled=true address=192.168.50.200:1080`.
+- **FlareSolverr**: supports `PROXY_URL` env var (`socks5://host:port` -- HTTP/SOCKS4/SOCKS5 all supported, schema-prefixed). Set to `socks5://192.168.50.200:1080`, routing its headless Chromium's own traffic (the actual Cloudflare-challenge-solving fetch) through the same WARP egress.
+
+Both containers are the merged Suwayomi+FlareSolverr pod from the earlier merge -- this proxy config was added alongside that, no architecture change needed beyond the two new env vars per container. Verified afterward: Suwayomi's own health (`200`), `mihon.lan`/`mihon.<PERSONAL_DOMAIN>` both still `200`, and the actual `aquareader.org` request (via the FlareSolverr container, through the proxy) now returns a fast, consistent `403` (Cloudflare's own bot-check -- an application-layer response, not a network hang) instead of a silent multi-second timeout.
+
+### Not yet done: rolling this out to other apps
+
+Only Suwayomi/FlareSolverr have been switched over so far, since that pair had the actively-reported, reproducible symptom. Other apps that could plausibly hit the same recurring issue (Open WebUI's HuggingFace embedding-model download, SearXNG's search engines) have not been reconfigured to use this proxy yet -- worth doing if/when they show the same symptom again, using the same pattern (most apps: an HTTP/SOCKS proxy env var or app-level setting pointed at `192.168.50.200:1080`).
+
 ## Next: Wave 3
 
 Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
