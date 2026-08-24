@@ -226,6 +226,16 @@ Requested directly, with the drain-first rule from earlier in this project expli
 
 **Takeaway for future node reboots on this cluster**: after *any* Talos node reboot (upgrade, resize, RAM bump, etc.), check `kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded` for stray `Init:ContainerStatusUnknown` DaemonSet pods before assuming a lingering `DiskPressure`/similar condition reflects genuine resource exhaustion -- it may just be this orphaned-pod-object accumulation, cheap to confirm and cheap to clean up.
 
+## FlareSolverr merged into Suwayomi's pod (2026-08-24)
+
+At the user's request (twice, explicitly), moved FlareSolverr from a standalone Deployment/Service back to being a second container inside Suwayomi's pod -- this actually restores the *original* podman architecture (`Pod=suwayomi.pod` in the source quadlet, where FlareSolverr was always Suwayomi's exclusive Cloudflare-bypass sidecar; it only became a standalone Deployment during the Wave 1 migration because Suwayomi itself wasn't migrated yet at the time).
+
+**Why this is a legitimate improvement, not just a workaround**: same-pod containers share a network namespace, so `FLARESOLVERR_URL` now points at `http://localhost:8191` -- zero network hop, no Service/DNS/kube-proxy/Kube-OVN routing involved at all. This sidesteps the entire class of stale-Kube-OVN-binding bug hit repeatedly today (CoreDNS, FlareSolverr's old standalone pod, crawl4ai, cekping-agent, cert-manager) for this specific pair, permanently -- not just a one-time fix.
+
+Verified nothing else in the cluster referenced the standalone `flaresolverr` Service before removing it (confirmed via a `jsonpath` sweep across all pods' env vars) -- safe to delete outright rather than leave a redundant duplicate instance running. Deleted the old standalone Deployment and Service. Verified after the merge: localhost communication (`curl http://localhost:8191` from the `suwayomi` container, `200`), Suwayomi's own health (`200`), and both exposure layers (`mihon.lan`, `mihon.<PERSONAL_DOMAIN>`) still `200`.
+
+Hit the same stuck-rollout deadlock as before during the merge (new 2-container pod landed on a different node than the old single-container one, couldn't attach the RWO PVC until the old pod released it) -- same fix, scale the old ReplicaSet to 0.
+
 ## Next: Wave 3
 
 Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
