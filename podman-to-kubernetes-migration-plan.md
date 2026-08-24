@@ -204,6 +204,14 @@ Also added a genuinely new route while in here: **`rancher.lan`**, proxying to R
 
 **Broader implication for this cluster**: *any* app doing IP-based reverse-proxy trust decisions (not just CORS -- rate limiting, access logging, IP allowlists) needs `100.64.0.0/16` in its trusted-proxy config if it's reachable via a MetalLB LoadBalancer Service on this Kube-OVN cluster, regardless of `externalTrafficPolicy`. Worth checking for on any future app that does this kind of check.
 
+## Pi-hole `.lan` records are NOT a wildcard -- real gotcha caught on `rancher.lan` (2026-08-24)
+
+Added `rancher.lan` to Caddy (proxying to Rancher's existing LoadBalancer IP), but it was unreachable from a real browser: `ERR_NAME_NOT_RESOLVED`. Wrongly assumed all session that Pi-hole resolves `*.lan` via a wildcard -- it doesn't. Pi-hole v6 (`/etc/pihole/pihole.toml`, `dns.hosts` array, inside the `pihole` podman container on `homelab-vm`) maintains an **explicit, manually-added list** of individual `IP hostname` records, one per `.lan` site (`jellyfin.lan`, `grafana.lan`, `bookstack.lan`, etc.) -- `rancher.lan` was simply never added when the Caddy route was created.
+
+**Fix**: added `"192.168.50.80 rancher.lan"` to the `hosts` array in `pihole.toml` (backed up first as `pihole.toml.bak.rancher-lan-fix`), `pihole reloaddns` (not `restartdns` -- that subcommand doesn't exist in this version) to apply without a full restart. Verified via a real LAN client (`warp-vm`): DNS resolves, `HTTP 200` end-to-end over HTTPS.
+
+**Every future new `.lan` Caddy route needs a matching Pi-hole entry added by hand** -- this is not automatic. Also noticed while in here: `vaultwarden.lan` and `9router.lan` are still in Pi-hole's list even though their Caddy routes were removed earlier this session ([[pod-internet-egress-isp-ttl-bug]]-adjacent cleanup) -- dangling DNS entries now (resolve to `192.168.50.80` but nothing serves them there), left alone since cleanup wasn't specifically requested for the DNS side.
+
 ## Next: Wave 3
 
 Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
