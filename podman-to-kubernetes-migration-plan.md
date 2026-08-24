@@ -334,3 +334,35 @@ Set up the cluster's first real CSI-native snapshot capability, then proved a fu
 6. Cleaned up all drill-specific objects (test PVC, `VolumeSnapshot`, and the `VolumeSnapshotContent` left behind by the `Retain` policy) -- the `VolumeSnapshotClass` and snapshot-controller infrastructure stay permanently.
 
 **What this proves for Wave 3**: real point-in-time backups of any PVC-backed app are now possible with a single `VolumeSnapshot` object, and restoring from one produces a genuinely independent, fully-functional copy -- not just a file-level copy that might be silently corrupted. This is the safety net the plan required before starting on Nextcloud/Immich/Forgejo/OneTerm's real data.
+
+### Forgejo migrated (Wave 3, first service, 2026-08-24)
+
+Two-Deployment pattern: `forgejo-db` (`postgres:16-alpine`, same `PGDATA=/var/lib/postgresql/data/pgdata` subdirectory fix as Wave 1/2's other Postgres apps -- `initdb` refuses a mount-point root with a stray `lost+found`) and `forgejo-app` (`codeberg.org/forgejo/forgejo:16`).
+
+**SSH gotcha**: `START_SSH_SERVER=false` means Forgejo relies on a real system OpenSSH server rather than its own minimal built-in one -- this had to be replicated as a real `sshd_config` (ConfigMap, mounted via `subPath` at `/etc/ssh/sshd_config`), copied verbatim from the podman quadlet's bind-mounted config (port 2223, `HostKey`s under `/data/ssh/`, `AllowUsers git`, etc.) rather than left to defaults.
+
+**SSH host keys preserved**: `forgejo-data`'s PVC migration carries `/data/ssh/ssh_host_*_key` along with the rest of the app data, so SSH clients see no host-key-changed warning after cutover -- this was a deliberate reason to migrate the whole PVC wholesale rather than app-data-only.
+
+**Data migration**: standard stop-source -> tar -> relay -> load-into-PVC -> final-resync-immediately-before-cutover discipline (same as every other Wave 1/2 app). Final tarballs: `forgejo-data` ~1.1GB, `forgejo-db-data` ~14MB. Verified post-load via real API calls (`/api/v1/version`, `/api/v1/repos/search` showing the real `samu/claude-research` and `samu/grimoire` repos) and a real SSH banner check (`SSH-2.0-OpenSSH_10.2`) on the new LoadBalancer IP, not just file-presence checks.
+
+**Cutover**: LoadBalancer IP `192.168.50.231` (MetalLB pool now at `.220-.231`, 13 assigned). Only the Cloudflare Tunnel ingress rule needed repointing (`git.<PERSONAL_DOMAIN>` : `http://localhost:3500` -> `http://192.168.50.231:3500`) -- Forgejo was never exposed via a `.lan` Caddy route or external SSH forwarding, so no Caddy change and no new SSH exposure was needed; LAN-only SSH access on `192.168.50.231:2223` was preserved exactly as before. Podman's `forgejo-app.service`/`forgejo-db.service` disabled and stopped (not removed yet, matching the pattern used for other migrated services).
+
+### Topology Spread Constraints added to all migrated apps (2026-08-24)
+
+All PVC-backed apps in this migration use TrueNAS-iSCSI network storage, so every pod is schedulable on any of the 3 workers -- nothing pinned pods to specific nodes, and the scheduler's default bin-packing behavior had been letting multiple single-replica app pods pile onto the same node. Added a soft topology spread constraint to all 14 migrated Deployments (`bookstack-app`, `bookstack-db`, `cekping-agent`, `copyparty`, `couchdb`, `crawl4ai`, `forgejo-app`, `forgejo-db`, `grafana`, `jellyfin`, `openwebui`, `searxng`, `suwayomi`, `uptime-kuma`):
+
+```yaml
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              spread-group: homelab-app
+```
+
+Every pod template also got a new shared label `spread-group: homelab-app` (additive, doesn't touch each Deployment's existing `app:`-keyed `selector`/labels) -- the constraint's `labelSelector` matches on this shared label across *all* migrated apps together, not each Deployment's own single replica against itself (which would be a no-op skew-0-always case for singleton Deployments). `whenUnsatisfiable: ScheduleAnyway` (soft) deliberately, not `DoNotSchedule` (hard) -- a hard constraint on a 3-node cluster with single-replica apps could block scheduling entirely during a node drain.
+
+Rollout hit the same **RWO PVC multi-attach deadlock** documented earlier this session (recurred for `couchdb`, `grafana`, `openwebui`, `suwayomi` -- new pod scheduled to a different node than the old one, can't attach until the old pod releases). Same fix applied again: `kubectl scale rs <old-replicaset> --replicas=0` for each stuck one (never just `kubectl delete pod`, which lets the old ReplicaSet recreate another broken replica).
+
+**Result**: even spread confirmed across all 3 workers -- `ts-worker01`: 5 pods, `ts-worker02`: 4 pods, `ts-worker03`: 5 pods. Source manifests in `homelab-apps/*.yaml` updated to match (not just live `kubectl patch`), so a future `kubectl apply -f` won't revert this.
