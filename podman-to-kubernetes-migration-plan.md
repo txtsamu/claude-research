@@ -3,7 +3,7 @@ type: investigation
 tags: [kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi]
 created: 2026-08-23
 last_verified: 2026-08-24
-status: current — Wave 1 + Wave 2 fully deployed, migrated, and cut over (both Caddy and Cloudflare Tunnel); homelab-vm podman containers for these apps stopped
+status: current — Wave 1 + Wave 2 fully deployed/migrated/cut over; backup/restore drill proven; Wave 3 not started
 ---
 
 # Migrating `homelab-vm`'s Podman services to Kubernetes, for learning
@@ -314,4 +314,23 @@ Tried loading `aquareader.org` through `camofox-browser` (the anti-detection Fir
 
 ## Next: Wave 3
 
-Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
+Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- gated on a proven backup/restore drill, per the original plan. **Drill completed and proven 2026-08-24, Wave 3 not otherwise started yet.**
+
+### Backup/restore drill: proven end-to-end (2026-08-24)
+
+Set up the cluster's first real CSI-native snapshot capability, then proved a full backup-and-restore cycle before touching any Wave 3 data.
+
+**Infrastructure installed** (real, reusable, not drill-only artifacts):
+- `VolumeSnapshotClass`/`VolumeSnapshotContent`/`VolumeSnapshot` CRDs (`kubernetes-csi/external-snapshotter` v8.0.1)
+- `snapshot-controller` Deployment in `kube-system` (2 replicas) -- the cluster-side controller; `democratic-csi`'s driver-side `external-snapshotter` sidecar was already running, just had nothing to talk to until now
+- `VolumeSnapshotClass` `truenas-iscsi-snapshot` (driver `org.democratic-csi.iscsi`, `deletionPolicy: Retain` -- deliberately: deleting the k8s `VolumeSnapshot` object should not silently delete the underlying ZFS snapshot on TrueNAS)
+
+**Drill** (using `grafana-data`, low-stakes, real content):
+1. `VolumeSnapshot` of the live `grafana-data` PVC -> `READYTOUSE: true` in 8 seconds (a genuine ZFS snapshot on TrueNAS via the CSI driver, not an app-level tar export like the podman-to-k8s migrations used).
+2. New PVC (`grafana-data-drill-restored`) provisioned with that snapshot as its `dataSource` -> bound cleanly, a real independent volume, not a reference to the original.
+3. Mounted the restored PVC in a temporary pod: real content confirmed (`grafana.db`, correct size, full directory structure) -- checksum deliberately differs from the live original, which is expected and correct (the live DB kept being written to after the snapshot was taken; checksum equality was never the right test).
+4. **The actual proof**: mounted the restored `grafana.db` in a real, fresh Grafana container (not just `ls`/checksum on the file) -- started cleanly, `All modules healthy`, no corruption errors, no fresh-database bootstrap indicators, and `/api/health` returned `200`. This is what actually validates a backup: the restored data is genuinely usable by the real application, not just present as bytes.
+5. Confirmed the *live* `grafana` deployment was completely undisturbed throughout (same pod, same 3h+ uptime, never touched) -- the whole drill ran against an independent snapshot/clone, zero risk to the running service.
+6. Cleaned up all drill-specific objects (test PVC, `VolumeSnapshot`, and the `VolumeSnapshotContent` left behind by the `Retain` policy) -- the `VolumeSnapshotClass` and snapshot-controller infrastructure stay permanently.
+
+**What this proves for Wave 3**: real point-in-time backups of any PVC-backed app are now possible with a single `VolumeSnapshot` object, and restoring from one produces a genuinely independent, fully-functional copy -- not just a file-level copy that might be silently corrupted. This is the safety net the plan required before starting on Nextcloud/Immich/Forgejo/OneTerm's real data.
