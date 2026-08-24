@@ -236,6 +236,27 @@ Verified nothing else in the cluster referenced the standalone `flaresolverr` Se
 
 Hit the same stuck-rollout deadlock as before during the merge (new 2-container pod landed on a different node than the old single-container one, couldn't attach the RWO PVC until the old pod released it) -- same fix, scale the old ReplicaSet to 0.
 
+## Recurring external-connectivity flakiness: investigated, leading theory is ISP-side CGNAT, not fixable from our side (2026-08-24)
+
+Followed up on the pattern flagged during Wave 2 (SearXNG search engines, `github.com`, `huggingface.co`, then `aquareader.org` via Suwayomi/FlareSolverr) with a real investigation rather than another one-off patch.
+
+### What was ruled out
+
+- **Not MTU/PMTUD**: verified PMTUD is actually working correctly on this WAN link -- `ping -M do` against `1.1.1.1` gets a proper ICMP "Frag needed (mtu=1492)" response from the ISP modem, and the pod's own MTU (1400, Kube-OVN) is already comfortably under that. A full TLS handshake (including a 2696+402 byte Certificate message, well over one packet's worth) completes cleanly and fast in every capture -- rules out a deterministic size-based blackhole.
+- **Not HTTP/2-specific**: forcing `--http1.1` on a request to `github.com` failed identically.
+- **Not a permanent/deterministic block**: repeated attempts to the same destination (`1.1.1.1`, 30 back-to-back requests; `aquareader.org`) both succeeded cleanly on retest, minutes after failing. Genuinely intermittent, not a fixed rule blocking specific hosts.
+- **Not (this time) correlated with cluster instability**: re-tested `github.com`/`huggingface.co` well after the cluster had fully settled post node-reboots/`ovs-ovn` cleanup -- they still failed the same way, so this is a real, separate, ongoing issue, not just a symptom of the day's cluster churn.
+
+### What the evidence points to
+
+A router-level packet capture (Mikrotik `/tool sniffer` on `ether1`, same technique as the original TTL bug) during a live, reproducing `github.com` failure shows: SYN/SYN-ACK, full TLS 1.3 handshake (ClientHello -> ServerHello -> Certificate -> Finished, session tickets exchanged), our side sends its final request bytes -- then **total silence**. No ACK, no RST, no retransmission from either side, ever, for the rest of the capture window.
+
+This is the textbook signature of **NAT/conntrack mapping loss mid-connection** (commonly from LRU eviction under table pressure on a NAT device) rather than packet corruption or a routing blackhole: the connection establishes and works fine while its NAT mapping exists, then the mapping gets evicted and every subsequent packet on that flow -- in both directions -- is silently unroutable, with no signal to either endpoint that anything changed. Given this LAN's topology (Mikrotik NAT -> ISP modem, very likely CGNAT beyond that) and the ISP's already-confirmed edge-level anomalies (see [[pod-internet-egress-isp-ttl-bug]]), ISP-side CGNAT table pressure or edge-routing instability is the leading explanation -- not something fixable from our side (Mikrotik or cluster config), since we have no visibility into or control over the ISP's own NAT device.
+
+### Practical implications
+
+Not correctness-affecting in practice -- every app that hit this eventually succeeded via its own retry/backoff logic (Open WebUI's HuggingFace download, Suwayomi's extension/source fetches). It mostly shows up as occasional extra latency or a need to retry, not permanent failure. No cluster-side fix applied because there is not believed to be one; if this keeps recurring and becomes disruptive, the next step would be raising it with the ISP directly, with this investigation (plus the original TTL bug) as supporting evidence of edge-level issues on this connection.
+
 ## Next: Wave 3
 
 Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
