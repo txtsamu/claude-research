@@ -288,6 +288,30 @@ Checked FlareSolverr's logs after the proxy config landed. It correctly picked i
 
 Conclusion: the proxy fix is confirmed working for FlareSolverr's actual purpose (solving real Cloudflare challenges), not just raw connectivity. `aquareader.org` specifically still fails -- most likely because that particular site has stricter anti-bot/anti-VPN protection than a generic test site, which could plausibly flag WARP's egress IP range more aggressively. That's a site-specific limitation to accept, not evidence the proxy setup is wrong.
 
+## WARP proxy rolled out to SearXNG and Open WebUI -- resolves the original Wave 1 SearXNG bug (2026-08-24)
+
+Applied the same WARP-egress SOCKS5 proxy fix (see above) to the other two apps most likely to hit the same recurring connectivity issue.
+
+### SearXNG: the original unresolved Wave 1 bug is fixed
+
+Added `outgoing.proxies: {all://: [socks5h://192.168.50.200:1080]}` to `searxng-settings`' `settings.yml` (`socks5h` so DNS resolution also happens proxy-side). Restarted. **Real search results now come back** -- `wget http://localhost:8888/search?q=test&format=json` returned 29 genuine results (Speedtest, star.net.id, nperf, etc.). This is the very first time in this entire session's Wave 1 verification that SearXNG has returned real search results at all -- every earlier hypothesis (IPv6 stall, stale pod, TLS packet size, timeout budget) got ruled out one by one without fixing it; the actual root cause was the same ISP-side connectivity issue root-caused today, and the same proxy fix resolved it. `plan.md`'s "Wave 1 verification" SearXNG row should be treated as superseded by this.
+
+### Open WebUI
+
+Added `HTTP_PROXY`/`HTTPS_PROXY=socks5://192.168.50.200:1080` with `NO_PROXY=192.168.50.80,localhost,127.0.0.1` (excluding the LAN-local `headroom-proxy` and podman SearXNG dependencies, so only genuinely external traffic goes through the extra hop). Verified after rollout: health `200`, both exposure layers (`openwebui.lan`, `ai.<PERSONAL_DOMAIN>`) still `200`, and `headroom-proxy` still reachable directly (unproxied, `401` = reachable, just needs its own auth) confirming `NO_PROXY` is working as intended.
+
+### Suwayomi/FlareSolverr pod: added multi-DNS resilience + debug logging
+
+At the user's request (found a docker-compose pattern using custom `dns:` + `LOG_LEVEL=debug` for FlareSolverr): added pod-level `dnsConfig` and bumped FlareSolverr's log verbosity.
+
+**Real constraint hit and worked around**: Kubernetes/glibc hard-caps a pod at **3 total nameservers**, and `dnsPolicy: ClusterFirst` always consumes one of those three for CoreDNS -- so the first attempt (CoreDNS + `1.1.1.1` + `8.8.8.8`) was already at the cap; there was no room to add a requested 4th resolver. Fixed by switching to `dnsPolicy: None` (dropping CoreDNS entirely for this pod, which is safe here specifically because this pod no longer resolves any in-cluster Service by name -- Suwayomi reaches FlareSolverr via `localhost` and the WARP proxy via a raw IP, not a cluster DNS name) and using all 3 slots for public resolvers: `1.1.1.1` (Cloudflare), `8.8.8.8` (Google), `9.9.9.9` (Quad9, also blocks known-malicious domains). `dnsPolicy: None` requires the full `dnsConfig` (nameservers, searches, options) to be specified explicitly -- there is no fallback/inherited default. Verified: resolution still works (`getent hosts github.com` succeeds), Suwayomi health `200`, `mihon.lan` `200`.
+
+FlareSolverr's `LOG_LEVEL` bumped from `info` to `debug` -- confirmed via its own startup log lines now showing `DEBUG`-level detail (e.g. chromedriver process spawn info) that weren't visible before.
+
+### aquareader.org: investigated further via camofox, still unsolved (expected)
+
+Tried loading `aquareader.org` through `camofox-browser` (the anti-detection Firefox-based browser already running on `homelab-vm`) to see if a genuinely different, more sophisticated browser engine could get past what FlareSolverr's Chromium (even proxied) couldn't. It got further than before -- reached and rendered a real interactive Cloudflare Turnstile checkbox widget ("Verify you are human"), rather than an immediate block or a silent hang. Could not actually solve it: the checkbox is inside an iframe not exposed via camofox's accessibility-snapshot API, and camofox's `/tabs/{id}/click` endpoint is ref-based (needs an accessible element reference), not coordinate-based, so there was no way to drive the click through the available API. Left as-is -- `aquareader.org` is one manga source among many Suwayomi can use, and the actual objective (general connectivity fixed) is already achieved.
+
 ## Next: Wave 3
 
 Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
