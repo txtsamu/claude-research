@@ -279,6 +279,15 @@ Both containers are the merged Suwayomi+FlareSolverr pod from the earlier merge 
 
 Only Suwayomi/FlareSolverr have been switched over so far, since that pair had the actively-reported, reproducible symptom. Other apps that could plausibly hit the same recurring issue (Open WebUI's HuggingFace embedding-model download, SearXNG's search engines) have not been reconfigured to use this proxy yet -- worth doing if/when they show the same symptom again, using the same pattern (most apps: an HTTP/SOCKS proxy env var or app-level setting pointed at `192.168.50.200:1080`).
 
+### Follow-up: proxy confirmed working for FlareSolverr's real function, aquareader.org is a separate site-specific limitation
+
+Checked FlareSolverr's logs after the proxy config landed. It correctly picked it up (`Using proxy URL ENV`, request body shows `'proxy': {'url': 'socks5://192.168.50.200:1080'}`) -- but `aquareader.org` still timed out at the full 60s through the proxy too, unlike the earlier plain `curl` tests which succeeded fast. Isolated this with two follow-up tests directly against FlareSolverr's own API:
+
+- A plain, non-Cloudflare-protected site (`example.com`) through the proxy: fast, clean `200`.
+- `nowsecure.nl` (the standard Cloudflare-challenge test site) through the proxy: **succeeded**, real `cf_clearance` cookie obtained -- notably this same site had failed with a timeout earlier in the session (before the proxy fix), so this is genuine improvement, not a coincidence.
+
+Conclusion: the proxy fix is confirmed working for FlareSolverr's actual purpose (solving real Cloudflare challenges), not just raw connectivity. `aquareader.org` specifically still fails -- most likely because that particular site has stricter anti-bot/anti-VPN protection than a generic test site, which could plausibly flag WARP's egress IP range more aggressively. That's a site-specific limitation to accept, not evidence the proxy setup is wrong.
+
 ## Next: Wave 3
 
 Critical stateful tier (Nextcloud, Immich, Forgejo, Vaultwarden's eventual replacement) -- only after a full backup/restore drill has been proven in the new cluster at least once, per the original plan. Not started.
