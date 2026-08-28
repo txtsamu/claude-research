@@ -1,0 +1,21 @@
+machine:
+  network:
+    interfaces:
+      - interface: eth0
+        dhcp: false
+        addresses:
+          - <CP2_STATIC_IP>/24
+        routes:
+          - network: 0.0.0.0/0
+            gateway: <LAN_GATEWAY_IP>
+        vip:
+          ip: <CONTROLPLANE_VIP>
+    nameservers:
+      - <DNS_SERVER_IP_original>
+  install:
+    disk: /dev/sda
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+hostname: ts-master02
+auto: off

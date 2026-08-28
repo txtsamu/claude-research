@@ -1,0 +1,56 @@
+# Node-debug DaemonSet: one privileged pod per node (control-plane + workers),
+# each with the node's real root filesystem bind-mounted at /host. Talos has
+# no SSH and no shell of its own, so this is the standard way to get a real
+# root shell on a Talos node:
+#   kubectl -n kube-system exec -it ds/node-debug -c debug \
+#     --field-selector spec.nodeName=<node> -- chroot /host
+# or simpler, pick the exact pod for a node first:
+#   kubectl -n kube-system get pods -l app=node-debug -o wide
+#   kubectl -n kube-system exec -it <pod-on-that-node> -- chroot /host
+#
+# `chroot /host` uses the HOST's own binaries (Talos's own busybox-derived
+# userland via /host), not the container image's -- so the debug container's
+# own image just needs `chroot` and a shell, nothing more.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-debug
+  namespace: kube-system
+  labels:
+    app: node-debug
+spec:
+  selector:
+    matchLabels:
+      app: node-debug
+  template:
+    metadata:
+      labels:
+        app: node-debug
+    spec:
+      hostPID: true
+      hostIPC: true
+      hostNetwork: true
+      tolerations:
+        # run on control-plane nodes too, not just workers
+        - operator: Exists
+      containers:
+        - name: debug
+          image: docker.io/library/alpine:3.20
+          command: ["sleep", "infinity"]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory

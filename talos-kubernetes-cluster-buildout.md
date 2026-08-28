@@ -2,7 +2,7 @@
 type: how-to
 tags: [kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm, kube-ovn]
 created: 2026-08-23
-last_verified: 2026-08-24
+last_verified: 2026-08-28
 status: current
 ---
 
@@ -51,6 +51,43 @@ etcd quorum = `floor(n/2)+1`. With 3 nodes, quorum is 2 — the cluster tolerate
 6. **Storage** — `democratic-csi` (iSCSI driver) deployed via Helm, pointed at a dedicated TrueNAS API key and a fresh parent dataset (kept separate from any existing hand-managed zvols on the NAS).
 7. **Rancher UI** — Helm + `cert-manager` prerequisite, exposed via a MetalLB LoadBalancer IP, 2 replicas for actual redundancy.
 8. **MetalLB** — Helm install, L2Advertisement mode (no BGP router on this LAN), with the BGP/FRR subsystem explicitly disabled since it's unused overhead (see gotchas).
+
+## Step-by-step: the actual reproducible sequence
+
+The list above is a summary. This is the real command-by-command walkthrough — see [[talos-cluster-config]] for the actual files referenced below (secrets and real IPs replaced with placeholders, everything else identical to what was really run).
+
+**1. Build the node image.** Pulled a qcow2 from the [Talos Image Factory](https://factory.talos.dev) with a custom schematic baking in the `iscsi-tools` extension (needed later for `democratic-csi`; Talos ships none of these by default). Imported as a Proxmox VM template.
+
+**2. Generate the base machine configs.**
+```sh
+talosctl gen config talos-homelab https://<CONTROLPLANE_VIP>:6443 --output-dir ~/talos-cluster/talosconfig
+```
+The cluster name is just a label (ends up as the `talosconfig` file's `context:`). The VIP endpoint is used even though nothing is listening there yet — every node gets configured to expect the cluster to live at that address once it exists. Produces **three files**: `controlplane.yaml`, `worker.yaml`, and `talosconfig` — each generated with a fresh, random cluster CA/PKI baked in (this is why a cluster's identity can't just be "renamed" after the fact).
+
+**3. Patch each node's own identity onto the base config.** `gen config`'s output is identical for all 3 CPs (or all 3 workers) — each still needs its own static IP, hostname, and (CPs only) the VIP declaration. This is a **local, offline** operation — `talosctl machineconfig patch` (distinct from `talosctl patch machineconfig`/`patch mc`, the *live* command for changing an already-running node) reads a base file + a small patch file and writes a new merged file, no node contact at all:
+```sh
+talosctl machineconfig patch controlplane.yaml --patch @patch-cp1.yaml --output cp1.yaml
+talosctl machineconfig patch worker.yaml       --patch @patch-worker1.yaml --output worker1.yaml
+# ...repeated per node
+```
+Each resulting `cp1.yaml`..`worker3.yaml` is a complete, ready-to-boot config for one specific node.
+
+**4. Terraform: create the VMs, feeding each its finished config as cloud-init data.** The Terraform clones 6 VMs from the template and uploads each node's merged config as a Proxmox snippet, wired in as cloud-init `user-data`. Talos's `nocloud` platform reads this directly on first boot — **no separate `apply-config` step for the initial build**, unlike every later config change (which patches an already-running node). A second small snippet per node overrides Proxmox's own auto-generated cloud-init metadata specifically to avoid a hostname collision (see gotcha #1 below). Applied with plain `terraform init && terraform plan && terraform apply`.
+
+**5. Bootstrap etcd — once, ever.**
+```sh
+talosctl bootstrap -n <cp1-ip> --talosconfig ~/talos-cluster/talosconfig/talosconfig
+```
+Targets *one* control-plane node (doesn't matter which) and tells it to initialize a brand-new etcd cluster from scratch. Can only meaningfully run once per cluster's lifetime — there's no "re-bootstrap"; recovering a broken cluster is a different, more involved etcd-recovery procedure.
+
+**6. Pull `kubeconfig`** — a separate credentials file, for `kubectl`/the Kubernetes API, distinct from `talosconfig` (`talosctl`/the node-OS API):
+```sh
+talosctl kubeconfig --talosconfig ~/talos-cluster/talosconfig/talosconfig -n <vip>
+```
+
+**7. Verify.** `kubectl get nodes` → all 6 `Ready`. `talosctl -n <vip> etcd status --talosconfig ...` → 3-member quorum healthy, both within a few minutes of step 5.
+
+Everything after this point is Kubernetes-level work (`kubectl`/Helm) — the only times `talosctl` shows up again are genuine node-level changes: the hostname rename, RAM/disk bumps (via live `apply-config` + reboot, not this initial-boot path), and later live-config fixes via `talosctl patch mc` or `talosctl edit machineconfig` (a third, distinct mechanism — see [[talos-node-dns-resolver-regression]] if that doc exists, or the migration plan doc, for why the first two patch mechanisms don't always work for replacing list fields on an already-running node).
 
 ## Gotchas hit along the way
 
@@ -145,7 +182,7 @@ Rolling the RAM upgrades one node at a time, confirming quorum survived each ste
 
 ## Notes on secrets
 
-Real values for the Proxmox API token, TrueNAS API key, and Rancher bootstrap password are not recorded in this doc — they live in the cluster's own secret store / the Proxmox and TrueNAS admin UIs. Retrieve the Rancher bootstrap password (if not yet changed) via:
+Real values for the Proxmox API token, TrueNAS API key, Rancher bootstrap password, and the Talos cluster's own PKI (CA cert/key, node-join token, `talosconfig`'s client cert/key) are not recorded in this doc — they live in the cluster's own secret store / the Proxmox and TrueNAS admin UIs / the bastion host only. [[talos-cluster-config]] has the real config *files* for reference, with fake-but-structurally-valid placeholder secrets substituted in (freshly generated, not derived from the real ones) so the shape/format is still genuinely useful without exposing anything real. Retrieve the Rancher bootstrap password (if not yet changed) via:
 
 ```sh
 kubectl -n cattle-system get secret bootstrap-secret -o go-template='{{.data.bootstrapPassword|base64decode}}'
