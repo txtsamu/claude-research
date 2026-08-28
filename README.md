@@ -41,7 +41,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [cosmic-de-install-fedora43.md](cosmic-de-install-fedora43.md) | cosmic, cosmic-de, fedora, gdm, desktop-environment | 2026-07-23 |
 | [flameshot-shortcut-cosmic-fedora43.md](flameshot-shortcut-cosmic-fedora43.md) | flameshot, screenshot, cosmic, keyboard-shortcuts, fedora | 2026-07-23 |
 | [immich-pgdata-iscsi-lun-resize.md](immich-pgdata-iscsi-lun-resize.md) | truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm | 2026-08-23 |
-| [talos-kubernetes-cluster-buildout.md](talos-kubernetes-cluster-buildout.md) | kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm, kube-ovn | 2026-08-24 |
+| [talos-kubernetes-cluster-buildout.md](talos-kubernetes-cluster-buildout.md) | kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm, kube-ovn | 2026-08-28 |
 
 ### Troubleshooting
 

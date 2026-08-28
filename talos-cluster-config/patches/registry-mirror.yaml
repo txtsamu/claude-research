@@ -1,0 +1,186 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: registry-mirror
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: docker-mirror-data
+  namespace: registry-mirror
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: truenas-iscsi
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ghcr-mirror-data
+  namespace: registry-mirror
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: truenas-iscsi
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docker-mirror-config
+  namespace: registry-mirror
+data:
+  config.yml: |
+    version: 0.1
+    log:
+      fields:
+        service: registry
+    storage:
+      cache:
+        blobdescriptor: inmemory
+      filesystem:
+        rootdirectory: /var/lib/registry
+    http:
+      addr: :5000
+    proxy:
+      remoteurl: https://registry-1.docker.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ghcr-mirror-config
+  namespace: registry-mirror
+data:
+  config.yml: |
+    version: 0.1
+    log:
+      fields:
+        service: registry
+    storage:
+      cache:
+        blobdescriptor: inmemory
+      filesystem:
+        rootdirectory: /var/lib/registry
+    http:
+      addr: :5000
+    proxy:
+      remoteurl: https://ghcr.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docker-mirror
+  namespace: registry-mirror
+  labels:
+    app: docker-mirror
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: docker-mirror
+  template:
+    metadata:
+      labels:
+        app: docker-mirror
+    spec:
+      containers:
+        - name: registry
+          image: docker.io/library/registry:2
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/registry
+            - name: config
+              mountPath: /etc/docker/registry
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: docker-mirror-data
+        - name: config
+          configMap:
+            name: docker-mirror-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docker-mirror
+  namespace: registry-mirror
+spec:
+  type: LoadBalancer
+  loadBalancerIP: <DOCKER_MIRROR_LB_IP>
+  selector:
+    app: docker-mirror
+  ports:
+    - port: 5000
+      targetPort: 5000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghcr-mirror
+  namespace: registry-mirror
+  labels:
+    app: ghcr-mirror
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ghcr-mirror
+  template:
+    metadata:
+      labels:
+        app: ghcr-mirror
+    spec:
+      containers:
+        - name: registry
+          image: docker.io/library/registry:2
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/registry
+            - name: config
+              mountPath: /etc/docker/registry
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ghcr-mirror-data
+        - name: config
+          configMap:
+            name: ghcr-mirror-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghcr-mirror
+  namespace: registry-mirror
+spec:
+  type: LoadBalancer
+  loadBalancerIP: <GHCR_MIRROR_LB_IP>
+  selector:
+    app: ghcr-mirror
+  ports:
+    - port: 5000
+      targetPort: 5000
