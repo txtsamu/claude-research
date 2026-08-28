@@ -2,7 +2,7 @@
 type: how-to
 tags: [mikrotik, routeros, firewall, security, dpi-bypass, hardening]
 created: 2026-08-27
-last_verified: 2026-08-27
+last_verified: 2026-08-28
 status: current
 ---
 
@@ -138,3 +138,45 @@ were applied.
 14    chain=forward action=drop protocol=tcp in-interface=ether1 content="Location: http://lamanlabuh.aduankonten.id/"  ;;; BebasIT | Bypass DPI  [NEW]
 15    chain=forward action=drop tcp-flags=rst,ack protocol=tcp in-interface=ether1  ;;; BebasIT | Bypass DPI  [NEW]
 ```
+
+## Update 2026-08-28: re-audit found one real gap this pass missed
+
+A follow-up session re-audited the same router the next day. Most of the
+above still held (already-correct items stayed correct), but found one gap
+this pass's fixes hadn't actually closed, plus a few smaller items:
+
+- **The `forward` chain still had no catch-all `drop` at the end.** This
+  pass added `connection-state=invalid` drop to `forward` (see table above),
+  but never added the final default-deny drop that `input` already had (item
+  1's "Reference" section above shows `forward` ending at rule 4, the
+  LAN→WAN accept — nothing after it). Not exploitable at the time (no dstnat
+  rules existed to let WAN traffic in), but a real gap versus the standard
+  RouterOS defconf template, and it's exactly the kind of thing that becomes
+  dangerous the moment someone adds a port-forward later without revisiting
+  this rule. Fixed:
+  ```
+  /ip firewall filter add action=drop chain=forward comment="Drop other forward (default deny)"
+  ```
+- **RouterBOARD firmware badly out of sync** with the installed RouterOS
+  version (several major versions behind on the bootloader). Flagged for
+  `/system routerboard upgrade` + reboot; not applied automatically since it
+  needs a reboot.
+- **Storage nearly full** on this flash-backed model — turned out to be
+  mostly the RouterOS system partition itself, not reclaimable user files
+  (only a stray leftover packet-capture file from a prior `/tool sniffer`
+  session was worth removing). Genuinely just a hardware ceiling on this
+  model, not a config problem.
+- **`/tool sniffer` left configured** (not running, but with a `file-limit`
+  larger than the entire free disk) — a landmine if it's ever started by
+  accident. Left as-is after confirming it wasn't actively capturing, flagged
+  rather than force-changed in case it's wanted for on-demand debugging.
+- **VPN credential reuse**: the L2TP PPP password and the IPsec pre-shared
+  key for the same profile were set to the *identical* string — one secret
+  protecting two independent security layers instead of two. (Found by
+  querying the live property directly — `/ppp secret get [find name=...]
+  password` and `/ip ipsec identity get [find] secret` — since `/export`
+  and `print detail` both mask these fields even though the values were
+  real, not blank.) Recommended splitting them; not changed automatically
+  since it'd break the existing VPN client without coordinating.
+- Default-`admin`-account gap (see "deliberately NOT fixed" above) still
+  open — same reasoning still applies, still flagged rather than force-changed.
