@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [mikrotik, routeros, cloudflare-warp, policy-routing, ip-rule, outage, postmortem]
 created: 2026-08-28
-last_verified: 2026-08-28
+last_verified: 2026-08-29
 status: current
 ---
 
@@ -111,3 +111,10 @@ down) takes out all three tiers simultaneously. The only tier that's actually
 independent is the pre-existing USB-tether-via-phone backup at the bottom of
 the priority list, since that's the only path that doesn't touch the primary
 uplink at all.
+
+**Update 2026-08-29:** the OpenVPN/WARP-relay doc's underlying premise —
+"this ISP blocks raw UDP outright, so WireGuard is a dead end" — turned out
+to be narrower than first concluded. Direct WireGuard to a *different* VPS
+worked cleanly with no relay involved (see that doc's update section). The
+WARP-relay tier built here is still a legitimately useful hardened fallback,
+just not the only path that happens to work.

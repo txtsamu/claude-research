@@ -2,7 +2,7 @@
 type: how-to
 tags: [mikrotik, routeros, openvpn, wireguard, cloudflare-warp, digitalocean, isp, dpi, vpn]
 created: 2026-08-28
-last_verified: 2026-08-28
+last_verified: 2026-08-29
 status: current
 ---
 
@@ -173,3 +173,44 @@ each needing a different fix:
 
 Rotating source IPs on retries and `timeout` vs. `connection refused` vs.
 `corrupted handshake` are the cheap, distinguishing signals between these.
+
+## Update 2026-08-29: the "ISP blocks all raw UDP" theory doesn't fully hold up
+
+The VPS got migrated to a different provider/host a day later. Rebuilt plain
+WireGuard from scratch against the new host — same MikroTik, same
+`/interface wireguard` config shape, default port `51820`, no relay, no
+tricks — and it **worked immediately**: real handshake, 0% packet loss
+bidirectional, full LAN reachability confirmed through the tunnel from the
+far end.
+
+This directly contradicts the "ISP blocks non-standard UDP almost entirely"
+conclusion from Attempt 1 above, which was based on real evidence at the
+time (WireGuard failing on two different ports, *and* a protocol-agnostic
+raw `nc -u` UDP test failing the same way, against the original VPS). That
+evidence wasn't wrong — the underlying interpretation of *why* was
+incomplete.
+
+**Revised understanding:** whatever was blocking UDP was more likely
+specific to the *original* VPS's provider/IP range/ASN reputation than a
+blanket "this ISP drops all non-standard UDP" policy. Possible mechanisms
+(not confirmed, just plausible): that provider/ASN was already on some
+threat-intel or abuse-reputation blocklist the ISP subscribes to, or
+something about that specific IP had accumulated a bad reputation before
+this session ever touched it. The MITM/handshake-corruption behavior
+against direct OpenVPN/TCP (also in this doc, above) still stands as
+independently confirmed on its own terms — that was a live, observed
+active-interception behavior, not just an absence of a response, and
+nothing has since contradicted it.
+
+**Practical takeaway:** "my ISP blocks protocol X" conclusions drawn against
+a single destination/provider don't necessarily generalize — worth
+re-testing against a different provider/IP range before fully trusting a
+protocol-level verdict, especially for UDP where blocking is cheap for a
+network to apply selectively (by destination reputation) rather than
+universally.
+
+The WARP-relay setup built in this doc still stands as a working, hardened
+fallback — general "wrap it in traffic the ISP already trusts" is a
+robust pattern regardless of whether the direct path happens to work for
+a given VPS. But it's no longer accurate to say direct WireGuard *always*
+fails on this connection — it depends on the destination.
