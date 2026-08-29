@@ -2,7 +2,7 @@
 type: how-to
 tags: [infrastructure, forgejo, kubernetes, kube-ovn, talos, networking, egress, homelab]
 created: 2026-08-27
-last_verified: 2026-08-27
+last_verified: 2026-08-30
 status: unresolved
 ---
 
