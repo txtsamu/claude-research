@@ -2,7 +2,7 @@
 type: how-to
 tags: [mikrotik, routeros, openvpn, wireguard, cloudflare-warp, digitalocean, isp, dpi, vpn]
 created: 2026-08-28
-last_verified: 2026-08-29
+last_verified: 2026-08-30
 status: current
 ---
 
@@ -214,3 +214,34 @@ fallback — general "wrap it in traffic the ISP already trusts" is a
 robust pattern regardless of whether the direct path happens to work for
 a given VPS. But it's no longer accurate to say direct WireGuard *always*
 fails on this connection — it depends on the destination.
+
+## Update 2026-08-30: the raw `wg0` server (from the "Update 2026-08-29"
+section above) has been decommissioned
+
+That direct `wg0` WireGuard server — the one that worked immediately
+against the new VPS host, contradicting the original "ISP blocks all raw
+UDP" theory — has since been fully replaced by a self-hosted NetBird
+deployment on the same box (see
+[netbird-selfhosted-podman-quadlet-setup.md](netbird-selfhosted-podman-quadlet-setup.md)),
+which offers proper peer/policy management and an exit-node feature
+instead of one static point-to-point tunnel. Torn down cleanly rather than
+left running unused:
+
+```bash
+sudo systemctl stop wg-quick@wg0
+sudo systemctl disable wg-quick@wg0
+sudo iptables -D FORWARD -i wg0 -j ACCEPT
+sudo iptables -D FORWARD -o wg0 -j ACCEPT
+sudo iptables -t nat -D POSTROUTING -s 10.10.10.0/24 -o ens3 -j MASQUERADE
+sudo netfilter-persistent save
+sudo cp /etc/wireguard/wg0.conf /root/wg0-old-backup/wg0.conf.bak   # kept, not deleted, just in case
+sudo rm /etc/wireguard/wg0.conf
+```
+
+Config backed up under `/root/wg0-old-backup/` on the VPS before deletion
+rather than discarded outright. The MikroTik's own client-side
+counterparts (`/interface wireguard` `wg-vpz`, `/interface ovpn-client`
+`ovpn-vpz`) were already disabled, not deleted, from earlier in this same
+transition — now permanently orphaned since the server side is gone, worth
+deleting outright next time there's a reason to be in that config, but
+inert in the meantime.
