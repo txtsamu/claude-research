@@ -2,7 +2,7 @@
 type: investigation
 tags: [kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi]
 created: 2026-08-23
-last_verified: 2026-08-25
+last_verified: 2026-08-30
 status: current — Wave 1 + Wave 2 fully deployed/migrated/cut over; backup/restore drill proven; Wave 3 not started
 ---
 
@@ -442,3 +442,58 @@ MikroTik `/ip dhcp-server network` and `/ip dns` both hard-coded `192.168.50.80`
 
 ### Final state
 `homelab-vm` now runs nothing except `tiktok-bot` (deliberate fallback) -- Pi-hole, Caddy, cloudflared, hermes, evomem, camofox, claude-telegram, proxmox-mcp-plus are all stopped and disabled there, fully live on `warp-vm` (natively, or inside the `warp-box` Incus container for WARP+microsocks specifically). Full end-to-end verification done post-cutover, not just per-service checks in isolation.
+
+## Post-decommission fixes: Talos DNS, Uptime Kuma, WARP-proxy rework (2026-08-25 to 2026-08-30)
+
+A batch of real bugs and follow-up work surfaced after the `homelab-vm` decommission above, mostly triggered while trying to upgrade Uptime Kuma. Grouped here since they span several days but are all part of the same post-decommission cleanup.
+
+### Talos node DNS regression (found via an Uptime Kuma v2 upgrade attempt)
+
+All 6 Talos nodes' static machine config still had `192.168.50.80` (the now-decommissioned old Pi-hole) as their first `nameservers` entry -- missed during the decommission's client-focused DNS cutover, since it's baked into each node's own config, not learned via DHCP. Surfaced as `ImagePullBackOff` (`registry-1.docker.io` lookup failing with "server misbehaving") while bumping Uptime Kuma to `:2`.
+
+Real gotcha fixing it: `talosctl patch mc` on this cluster's Talos version (v1.13.9) can't cleanly *replace* a list field on an already-populated config -- plain strategic-merge **appends** instead (matches [siderolabs/talos#12005](https://github.com/siderolabs/talos/issues/12005)), and `$patch: replace` isn't supported at all here (`unknown keys found during decoding`). JSON6902 is also unsupported for this cluster's multi-document config. **Working fix**: `talosctl edit machineconfig` with `EDITOR` pointed at a small non-interactive script (`sed -i '/^\s*- 192\.168\.50\.80$/d' "$1"`) -- edits the live full document directly (no merge-patch ambiguity, no secret-redaction risk) and applies atomically. Verified via `--dry-run` first, then applied to all 6 nodes (workers first, then control-plane one at a time with a `kubectl get nodes` health check between each -- the 3 CPs share a VIP). Zero reboots needed, cluster stayed healthy throughout.
+
+### Uptime Kuma v1 -> v2: migration skipped by explicit choice
+
+The v1.23.17->v2 automatic DB migration (heartbeat-by-heartbeat, an official "DON'T STOP" warning) was genuinely mid-flight when the decision was made to skip it -- one monitor with a 1-second check interval alone took ~5 minutes to migrate ~72 days of history, 12 monitors total, ETA was 75-80 more minutes. The old data wasn't needed, so: scaled the deployment to 0, ran a temporary pod to wipe the PVC's `/app/data` clean, scaled back up. Fresh install landed on v2.5.3 (confirmed genuinely latest via the Docker Hub tags API). Pre-upgrade backups (a real CSI `VolumeSnapshot` + an independent tar) were taken first and still exist, just unused.
+
+Later, added 10 real `ping` monitors from the user's own `/etc/hosts` (LAN infra + a VPS). Real API-access finding along the way: Uptime Kuma API keys are **REST-only** (e.g. `/metrics`) -- confirmed via the server's own `api-key-socket-handler.js`, which only handles key CRUD, not socket authentication. The general monitor-management interface is Socket.IO-only and needs a real username/password login (`sio.call('login', {username, password, token: ''})`, returns a JWT). Also had to empirically work out the `add`-monitor payload schema against the live server (docs/wrappers were inconsistent) -- the real gotcha: passing `tags: []` explicitly breaks the server's SQL insert (serializes to an empty string, not valid JSON, causing a raw MariaDB syntax error); omitting the field entirely works fine.
+
+### Two more `type: LoadBalancer` misses found and fixed
+
+Same class of oversight as everything else that's needed a `type:` fix historically: `crawl4ai` and `searxng` were both plain `ClusterIP` (`spec.type` simply omitted, unlike every sibling service) -- neither was ever going to get a MetalLB IP regardless of pool state. Checked the pool wasn't actually the problem first (`.220-.239`, 15/20 assigned, not exhausted). Fixed both, got `.235` (crawl4ai) and `.236` (searxng).
+
+### SearXNG real-search-results bug, back again -- root cause and full fix
+
+Logs showed `httpx.ProxyError` on every search engine once `searxng` had a real LoadBalancer IP to actually test against. Traced the whole chain: the WARP-egress SOCKS5 proxy (`192.168.50.200:1080`, backed at the time by the Incus `warp-box` container described in the decommission section above) failed 100% of real requests from every angle tested -- via the host-level Incus proxy device, and directly inside the container against `microsocks` itself. `warp-svc`'s own device-state report showed the real number: `status: Connected`, WireGuard handshake succeeding (17ms) -- but `estimated_loss: 0.6862745`. **68.6% packet loss**, not disconnected, not misconfigured, just severely degraded. Confirmed via a real 20-ping loss test (40-45% at a slightly-better moment) -- and confirmed it was specific to the WARP tunnel path, not general connectivity: the host's own direct uplink tested 0-5% loss, and LAN-local pings from *inside* the same container (bypassing the tunnel) were 0% both times.
+
+Separately, `openwebui.yaml`'s `SEARXNG_QUERY_URL` was still pointing at `192.168.50.80:8888` -- the old podman SearXNG on the now-fully-dead `homelab-vm` -- a real dangling reference left over from before the k8s SearXNG existed. Repointed at the in-cluster Service (`searxng.homelab.svc.cluster.local:8888`) and added that hostname to `NO_PROXY` so same-cluster traffic never takes the WARP hop. Hit the same RWO multi-attach PVC deadlock as prior rollouts on this cluster (new pod can't attach while the old one still holds it) -- fixed the same documented way, `kubectl scale rs <old-rs> --replicas=0`.
+
+### WARP-egress proxy moved off Incus, onto a second host's native WARP
+
+The Incus `warp-box` container's real, unresolved packet loss made it a bad long-term egress path. A full container restart (`incus restart warp-box`) separately fixed a *different*, now-resolved bug -- `warp-cli status` cycling `Connecting` -> `Disconnected: Manual Disconnection` -> IPC timeouts, caused by leftover/inconsistent `nftables` state from repeated `disconnect`/`connect`/`systemctl restart warp-svc` cycles during troubleshooting, **not** the original port-53 conflict the container was built to isolate against (checked directly: `systemd-resolved` still disabled inside it, nothing on port 53). But the packet loss itself persisted through that fix -- a separate, unresolved problem.
+
+Realized the whole reason `warp-box` needed network-namespace isolation in the first place doesn't apply to one of the ARM cluster nodes (`arm2`): it's a standalone SBC with no local DNS server running, so WARP can run there natively, no container needed. `arm2` also already had its own separate, pre-existing WARP install (`2025.9.558.0`, unrelated to this session's work) -- discovered while chasing its own "often disconnects" symptom (below), and its WireGuard tunnel tested clean (0% loss) once that was fixed.
+
+Removed `warp-box` entirely. Installed `microsocks` natively on `arm2` (`apt install microsocks`, straight from Ubuntu's arm64 repo), bound to its own LAN IP on port 1080, systemd-managed. **Kept the well-known proxy address stable for every consumer** (Suwayomi, FlareSolverr, OpenWebUI, SearXNG all already reference `192.168.50.200:1080` directly): rather than repoint every app's config, added a `socat` relay systemd service on `warp-vm` (`TCP-LISTEN:1080,bind=192.168.50.200,fork,reuseaddr TCP:<arm2-ip>:1080`) -- zero config changes needed anywhere downstream. Verified end-to-end: fast (0.15-0.18s), 100% consistent, and SearXNG returns real search results again. Net result: simpler architecture (no container layer at all for this egress path), and a tunnel that's currently healthy instead of the old one's 40-68% loss.
+
+### arm2's real eth0 packet-drop issue (found while chasing its WARP disconnects)
+
+`ip -s link show eth0` on `arm2` showed **542,541 RX packets dropped** out of ~3.3M (~16% cumulative). Ruled out: ISP/WAN loss (0% on a live ping test at the time), undervoltage (no dmesg warnings; this is an Amlogic `meson-gx` board, not a Raspberry Pi, so `vcgencmd` doesn't apply), CPU/softirq saturation (`/proc/net/softnet_stat` drop column was zero on all 4 cores, load trivial). The drops weren't visible at the `ethtool -S` hardware-stat level either -- internal to the `st_gmac` driver (a somewhat idiosyncratic Amlogic SoC ethernet driver that also oddly advertises 10baseT-only link modes while actually negotiated at 100Mb/s). Mitigation applied: bumped RX/TX ring buffers from their default 512 to the driver's max of 1024 (`ethtool -G eth0 rx 1024 tx 1024`), persisted via a NetworkManager dispatcher script (this board uses NetworkManager, not ifupdown/networkd). Correlates with (not proven to be the sole cause of) its WARP client's intermittent captive-portal-check failures.
+
+### nas.lan: two real, independent DNS bugs
+
+`nas.lan` resolved to `192.168.50.200` (the DNS server's own IP) instead of TrueNAS's real `192.168.50.10` -- a wrong Pi-hole custom-DNS entry, likely a casualty of the earlier bulk `.80`->`.200` migration edit catching an entry it shouldn't have. Fixed directly in `pihole.toml` (in-place edit preserving the inode, not `sed -i`, per the documented bind-mount gotcha elsewhere in this repo) + `systemctl restart pihole-pod.service pihole.service` (restarting just `pihole.service` alone left it down -- it's `BindsTo` the pod unit, both needed starting explicitly).
+
+**Second, independent bug on top of that**: a client machine's own resolver had a second public DNS server configured alongside Pi-hole. systemd-resolved's "current server" selection had drifted to that public server, which correctly returns a definitive NXDOMAIN for `.lan` (not a real TLD) without ever falling back to Pi-hole -- resolved treats a definitive negative answer as final, not a failure to retry. This is exactly why "IP works, hostname doesn't" was *intermittent* rather than constant. Fixed by dropping the redundant public DNS entry from that host's own resolver config entirely -- Pi-hole already forwards non-local queries upstream itself, so having it configured redundantly on a client directly was actively harmful for split-horizon `.lan` records, not just redundant.
+
+### SSH identity + /etc/hosts consolidated onto warp-vm
+
+With `homelab-vm` down to just the `tiktok-bot` fallback, copied its root SSH identity onto `warp-vm` (both `root` and the primary user) so it can act as the bastion for everything homelab's `root` used to reach directly -- `~/.ssh/config` (all the `Host` aliases), the real key pair. Left behind: `.bak` key copies and the live SSH multiplexing control socket (not needed, and a socket can't be tar'd anyway). Functionally verified with a real SSH connection using the migrated key, not just file presence.
+
+Also merged homelab's `/etc/hosts` custom block onto warp-vm's -- but not verbatim: dropped entries that would've reintroduced dead pointers (the old app-alias IP, since those apps now live in k8s at different addresses; the old Pi-hole IP, since Pi-hole is now on this host; a self-referential entry mapping warp-vm's own IP to an old alternate hostname). Kept the still-valid LAN infra entries. Flagged, not yet acted on: warp-vm's `/etc/hosts` has cloud-init's `manage_etc_hosts: True`, same as homelab-vm had -- a future cloud-init re-run could regenerate the file and silently wipe this manual append.
+
+### Talos buildout documentation expanded
+
+Separately, added a real step-by-step command-by-command walkthrough (gen config -> per-node patch -> Terraform -> bootstrap -> kubeconfig) to [[talos-kubernetes-cluster-buildout]], plus a new `talos-cluster-config/` directory in this repo with the actual Terraform, machine configs, and "patch history" (later live cluster-level config changes) pulled from the bastion host -- real IPs replaced with placeholder tokens, real secrets replaced with freshly-generated fake ones (never derived from the real cluster PKI), consistent with that doc's existing convention of zero real internal IPs.
+

@@ -77,7 +77,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 |---|---|---|
 | [llama-server-dspark-gemma4-draft-investigation.md](llama-server-dspark-gemma4-draft-investigation.md) | llama-server, gemma4, dspark | blocked — upstream Qwen3-only, no Gemma4 support yet |
 | [arm-cluster-security-audit.md](arm-cluster-security-audit.md) | security, ssh, arm-cluster, armbian, cloudflared | current — clean, extra SSH keys confirmed legitimate |
-| [podman-to-kubernetes-migration-plan.md](podman-to-kubernetes-migration-plan.md) | kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi | current — Wave 1 deployed + verified on the cluster; Caddy/DNS cutover not done yet |
+| [podman-to-kubernetes-migration-plan.md](podman-to-kubernetes-migration-plan.md) | kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi | current — migration complete (Waves 1-3 + homelab-vm decommission), now tracking post-decommission fixes |
 | [netbird-exit-node-throughput-isp-hop-loss.md](netbird-exit-node-throughput-isp-hop-loss.md) | netbird, wireguard, throughput, packet-loss, isp, mtr, iperf3, exit-node | current — root cause confirmed (ISP-internal hop loss), not pursued further |
 
 ## Secrets policy
