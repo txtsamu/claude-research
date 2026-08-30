@@ -49,6 +49,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [homelab-cluster-memory-limits-audit.md](homelab-cluster-memory-limits-audit.md) | kubernetes, kubectl, resource-limits, oom, memory, rwo-pvc, rollingupdate, homelab | 2026-08-30 |
 | [talos-worker-disk-resize-proxmox.md](talos-worker-disk-resize-proxmox.md) | talos, kubernetes, proxmox, disk-resize, ephemeral-partition, cordon, drain, ovs-ovn, homelab | 2026-08-30 |
 | [rancher-upgrade-2.15.1.md](rancher-upgrade-2.15.1.md) | rancher, helm, kubernetes, upgrade, cattle-system, security | 2026-08-30 |
+| [android-phone-proxy-via-vpz.md](android-phone-proxy-via-vpz.md) | android, proxy, socks5, http-proxy, freeproxy, vpz, squid, microsocks | 2026-08-30 |
 
 ### Troubleshooting
 
