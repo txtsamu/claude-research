@@ -1,8 +1,8 @@
 ---
 type: troubleshooting
-tags: [talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm]
+tags: [talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm]
 created: 2026-08-24
-last_verified: 2026-08-24
+last_verified: 2026-08-30
 status: current
 ---
 
@@ -130,3 +130,77 @@ While investigating, found that a mangle rule policy-routing *all* LAN traffic t
 - **A suspicious-looking packet characteristic (very low TTL) needs a baseline comparison before being treated as evidence of something adversarial.** Checking what a *known-good* successful request looks like on the same path would have caught the "ttl=1 is just how this network replies" explanation much earlier.
 - **Capture as close to the actual source of a symptom as your tooling allows.** The decisive capture was on the router's raw WAN interface, upstream of every layer that had been the focus of debugging for hours.
 - Container image pulls (`docker.io`, `ghcr.io`, etc.) were unaffected by this bug throughout the whole investigation, which was itself a clue in hindsight: `containerd` pulls images via the **host's** network namespace, not the pod network — zero extra hops, same as any other single-hop traffic.
+
+## Update 2026-08-30: the fix above only protected the *first packet* of each connection — FastTrack was silently undoing it for everything after
+
+Six days after the fix above was applied and verified, the identical class of symptom resurfaced, discovered indirectly: Suwayomi (a manga reader running in this same cluster) started failing to fetch its extension catalog from GitHub with `SocketTimeoutException`/`StreamResetException`. Initial suspicion fell on a newly-built SOCKS proxy setup (unrelated work from the same session) — disabling that proxy helped partially but didn't fully fix it, which was the signal that something deeper was still wrong.
+
+### Re-diagnosis, this time isolating exactly which phase of a connection was slow
+
+`curl`'s per-phase timing (`time_connect`/`time_appconnect`/`time_total`) against a pod in this same cluster showed a very specific split:
+
+```
+dns=0.000040 connect=0.004777 tls=9.280577 total=10.749287
+```
+
+- **Raw TCP handshake: ~5ms.** Fast, healthy.
+- **TLS handshake specifically: ~9.3 seconds.** Every time, against multiple destinations (`1.1.1.1`, `9.9.9.9`), regardless of TLS version or cipher-suite count (forcing a smaller TLS 1.2 ClientHello didn't help — ruling out a packet-fragmentation/MTU theory that fit the symptom shape at first glance).
+- **Plain HTTP (no TLS) to the same destination: ~1.1 seconds total.** Fast. This was the decisive test — it proved the problem was specific to TLS's back-and-forth, not a generic "pod egress is just slow" characteristic, and not encryption/entropy-related (`/proc/sys/kernel/random/entropy_avail` was a healthy `256`, ruling out CSPRNG starvation).
+
+### The actual packet capture
+
+A privileged `hostNetwork: true` pod on the *same node* as the test pod, running `tcpdump -i eth0 -n -v` during a slow request, showed the real signature — inconsistent TTL within a single TCP flow:
+
+```
+1.1.1.1.443 > <node>.<port>: Flags [S.] ... ttl 63     <- SYN-ACK, correctly fixed
+1.1.1.1.443 > <node>.<port>: Flags [.]  ... ttl 1      <- next packet, NOT fixed
+1.1.1.1.443 > <node>.<port>: Flags [P.] ... ttl 1      <- NOT fixed
+...
+1.1.1.1.443 > <node>.<port>: Flags [.]  ... ttl 63     <- fixed again, briefly
+1.1.1.1.443 > <node>.<port>: Flags [.]  ... ttl 1      <- NOT fixed
+```
+
+The *same flow*, same 4-tuple, flips between the fixed value (`63` — the router's `set:64` mangle rule minus one hop) and the raw broken ISP value (`1`) packet by packet. A single connection cannot see the ISP suddenly change its behaviour mid-stream — this had to be something on the router applying the fix inconsistently.
+
+### Root cause: RouterOS FastTrack bypasses mangle for established connections
+
+Checked the router's `/ip firewall filter` and found a long-standing, heavily-used rule:
+
+```
+chain=forward action=fasttrack-connection connection-state=established,related
+```
+
+51.6 million packets matched. **FastTrack's entire purpose is to skip the full netfilter pipeline — including mangle — for packets belonging to an already-established connection**, routing them through an accelerated path instead. The original fix (`change-ttl` in `chain=prerouting`) only ever ran against the *first* packet or two of a connection, before conntrack promoted it to FastTrack-eligible. Everything after that point — the bulk of a TLS handshake (`ServerHello` + certificate chain, several KB, many packets), any file download, anything beyond a trivial single-packet exchange — reverted to the ISP's raw, broken TTL and started dying again exactly as before the original fix, just now intermittently and only for larger/longer exchanges instead of universally.
+
+This also explains why the original fix's verification (`ping`, a `nc`/`curl` connectivity check, a few registry-mirror pods) never caught it: those are either ICMP (not subject to the same `established,related` TCP fasttrack path in the same way) or complete within the pre-FastTrack window.
+
+### Fix: exempt WAN-inbound connections from FastTrack specifically, rather than disabling it
+
+FastTrack is genuinely load-bearing for this router (weak MIPS CPU, documented elsewhere in this repo) — disabling it globally to fix a WAN-specific problem would be a bad trade. Instead, mark only the connections that need the TTL fix, and exclude those from FastTrack eligibility, leaving FastTrack fully intact for LAN-to-LAN traffic (which was never affected by this bug in the first place):
+
+```
+/ip firewall mangle add chain=prerouting in-interface=ether1 \
+    action=mark-connection new-connection-mark=wan-inbound-no-fasttrack \
+    passthrough=yes comment="Mark WAN-inbound conns to exempt from FastTrack (preserves TTL fix)" \
+    place-before=[find comment="Fix ISP low incoming TTL"]
+
+/ip firewall filter set [find comment="FastTrack LAN traffic"] \
+    connection-mark=!wan-inbound-no-fasttrack
+```
+
+The mark-connection rule must run *before* the `change-ttl` rule (same `chain=prerouting`, both matching `in-interface=ether1`) so every WAN-inbound connection is tagged from its very first packet, before FastTrack's `chain=forward` rule ever gets a chance to evaluate it.
+
+### Verification
+
+- Fresh connections from a cluster pod to `1.1.1.1`/`9.9.9.9`, TLS handshake: **9.3s → 30-40ms**, consistent across repeated runs.
+- The exact Keiyoushi extension-catalog fetch that started this investigation (`https://github.com/keiyoushi/extensions/raw/repo/index.pb`): **timeout → 69ms, HTTP 302**.
+- LAN-to-LAN latency (MikroTik → a LAN host) unaffected: sub-millisecond, `ttl=64`, FastTrack still firing normally for that traffic.
+- Existing already-established connections at the time of the fix don't retroactively benefit (connection tracking state persists) — only new connections after the fix was applied are covered. Not an issue in practice since TCP connections are short-lived relative to this being a one-time router config change.
+
+### Revised key lesson
+
+**A fix verified against a connection's first packet or two is not verified against that connection's full lifetime.** FastTrack (or any conntrack-based acceleration path) can silently exempt "established" traffic from mangle/filter processing that a fix depends on, without any error, warning, or obviously broken behaviour on the first exchange. The tell here was inconsistent TTL *within a single flow* — worth specifically checking for on any future "intermittent, only for larger exchanges" symptom on a router using connection-tracking acceleration.
+
+This also explains an earlier same-session observation that never got its own write-up: pods reaching an external HTTP proxy consistently showed several seconds of latency on new connections, provisionally chalked up in conversation to "pod network egress is just inherently slow for new connections." That provisional explanation was never verified against packet captures and should be treated as superseded by this finding, not as an independently-confirmed separate characteristic.
+
+Note this is a different phenomenon from the [netbird-exit-node-throughput-isp-hop-loss.md](netbird-exit-node-throughput-isp-hop-loss.md) investigation (real, independently-confirmed ~20% packet loss at a specific ISP backbone hop on the `wg-bypass` VM ↔ `vpz` NetBird tunnel) — that one is unrelated to this FastTrack/TTL bug and its conclusion stands as-is.

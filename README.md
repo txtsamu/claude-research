@@ -59,7 +59,8 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | git, secrets, git-filter-repo, github, security, privacy | 2026-08-03 |
 | [homelab-lvm-thin-reclaim-fstrim.md](homelab-lvm-thin-reclaim-fstrim.md) | proxmox, lvm-thin, xfs, fstrim, storage, podman, homelab-vm | 2026-08-23 |
 | [immich-random-stops-automount-root-cause.md](immich-random-stops-automount-root-cause.md) | immich, systemd, automount, nfs, quadlet, podman, forensics, nextcloud, podman-auto-update | 2026-08-23 |
-| [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm | 2026-08-24 |
+| [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm | 2026-08-30 |
+| [suwayomi-k8s-deployment-fixes.md](suwayomi-k8s-deployment-fixes.md) | suwayomi, kubernetes, kubectl, rollout, rwo-pvc, flaresolverr, byparr, cloudflare, socks-proxy, warp-vm, vpz | 2026-08-30 |
 | [mikrotik-double-nat-dmz-isp-filtering-investigation.md](mikrotik-double-nat-dmz-isp-filtering-investigation.md) | mikrotik, routeros, nat, dmz, isp, firewall, digitalocean | 2026-08-28 |
 | [lan-wide-warp-failover-routing-outage.md](lan-wide-warp-failover-routing-outage.md) | mikrotik, routeros, cloudflare-warp, policy-routing, ip-rule, outage, postmortem | 2026-08-28 |
 | [homelab-cloudflared-tunnel-stopped.md](homelab-cloudflared-tunnel-stopped.md) | cloudflared, cloudflare-tunnel, systemd, homelab | 2026-08-28 |
