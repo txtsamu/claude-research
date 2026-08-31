@@ -2,7 +2,7 @@
 type: how-to
 tags: [kubernetes, kubectl, resource-limits, oom, memory, rwo-pvc, rollingupdate, homelab]
 created: 2026-08-30
-last_verified: 2026-08-30
+last_verified: 2026-08-31
 status: current
 ---
 
@@ -116,3 +116,29 @@ real headroom anywhere (confirmed via the `bookstack` regression + fix
 above that "right-sized" doesn't mean "bare minimum"). The under-requesting
 containers now give the scheduler an accurate picture instead of a
 systematically low one.
+
+## Follow-up, 2026-08-31: 5 more containers drifted past their request, plus the real gap was elsewhere
+
+Re-ran the same `kubectl top --containers` vs. configured `requests`
+comparison a day later (triggered by investigating why a Rancher dashboard
+panel's "Reserved" and "Used" memory numbers didn't track each other —
+see [k8s-deployment-memory-ranking-technique.md](k8s-deployment-memory-ranking-technique.md)).
+Real usage had drifted past the declared request on 5 containers since
+this audit: `suwayomi` (512Mi→730Mi actual), `openwebui` (768Mi→700Mi,
+already close), `immich/server` (1Gi→1000Mi, right at the line),
+`crawl4ai` (320Mi→326Mi), `immich/redis` (256Mi→300Mi). Bumped requests
+only (limits already had headroom) — full before/after table and exact
+commands in
+[homelab-system-namespace-resource-audit.md](homelab-system-namespace-resource-audit.md).
+
+The bigger finding that day, though, was that this `homelab`-namespace
+audit was never the whole picture — **every deployment outside
+`homelab`** (cert-manager, metallb, fleet/capi, democratic-csi,
+snapshot-controller, and `rancher` itself) had **no `resources` block at
+all**, not even an under-sized one. `rancher` specifically was the
+cluster's single largest memory consumer (2.2-2.3Gi) with zero declared
+request — invisible to any scheduler-side accounting. See
+[homelab-system-namespace-resource-audit.md](homelab-system-namespace-resource-audit.md)
+for that pass, and
+[rancher-startup-probe-cpu-throttle-restart-loop.md](rancher-startup-probe-cpu-throttle-restart-loop.md)
+for what broke when a CPU limit was finally added to Rancher.
