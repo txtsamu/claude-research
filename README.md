@@ -55,6 +55,10 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [keel-image-auto-update-and-version-pinning.md](keel-image-auto-update-and-version-pinning.md) | keel, kubernetes, kubectl, image-updates, semver, homelab | 2026-08-31 |
 | [syncyomi-suwayomi-sync-k8s-deployment.md](syncyomi-suwayomi-sync-k8s-deployment.md) | syncyomi, suwayomi, kubernetes, kubectl, mihon, manga, dns, tls, hostaliases | 2026-08-31 |
 | [llama-server-qwen3.6-hauhau-uncensored-swap.md](llama-server-qwen3.6-hauhau-uncensored-swap.md) | llama-server, qwen, moe, rocm, gguf, uncensored, systemd | 2026-08-31 |
+| [nas-lvm-thin-proxmox-setup.md](nas-lvm-thin-proxmox-setup.md) | truenas, iscsi, proxmox, lvm-thin, zfs, storage, homelab | 2026-08-31 |
+| [talos-worker-storage-migration-nas-lvm-thin.md](talos-worker-storage-migration-nas-lvm-thin.md) | talos, kubernetes, proxmox, storage-migration, lvm-thin, live-migration, cloudinit, iscsi, homelab, warp-vm | 2026-08-31 |
+| [homelab-system-namespace-resource-audit.md](homelab-system-namespace-resource-audit.md) | kubernetes, resource-limits, cert-manager, metallb, fleet, capi, democratic-csi, snapshot-controller, rancher, homelab | 2026-08-31 |
+| [k8s-deployment-memory-ranking-technique.md](k8s-deployment-memory-ranking-technique.md) | kubernetes, kubectl, memory, rancher, monitoring, homelab, warp-vm | 2026-08-31 |
 
 ### Troubleshooting
 
@@ -78,6 +82,8 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [mikrotik-doh-bypasses-local-dns-for-lan-domains.md](mikrotik-doh-bypasses-local-dns-for-lan-domains.md) | mikrotik, routeros, dns, doh, dns-over-https, lan, cloudflare | 2026-08-31 |
 | [homelab-stale-dns-hosts-ssh-config-sweep.md](homelab-stale-dns-hosts-ssh-config-sweep.md) | dns, hosts-file, ssh-config, nmcli, networkmanager, homelab, cleanup | 2026-08-31 |
 | [fedora-memory-audit-warp-svc-leak-daily-restart.md](fedora-memory-audit-warp-svc-leak-daily-restart.md) | fedora, memory, warp-svc, llama-server, systemd, memory-leak, cloudflare-warp, sudo | 2026-08-31 |
+| [rancher-startup-probe-cpu-throttle-restart-loop.md](rancher-startup-probe-cpu-throttle-restart-loop.md) | rancher, kubernetes, cpu-limits, startup-probe, helm, cattle-system, homelab | 2026-08-31 |
+| [talos-worker-memory-downsize-qemu-reboot-semantics.md](talos-worker-memory-downsize-qemu-reboot-semantics.md) | talos, proxmox, qemu, memory, reboot, talosctl, kexec, powercycle, homelab, warp-vm | 2026-08-31 |
 
 ### Investigations
 
