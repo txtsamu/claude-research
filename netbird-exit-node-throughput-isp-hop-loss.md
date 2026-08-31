@@ -2,7 +2,7 @@
 type: investigation
 tags: [netbird, wireguard, throughput, packet-loss, isp, mtr, iperf3, exit-node]
 created: 2026-08-30
-last_verified: 2026-08-30
+last_verified: 2026-08-31
 status: current
 ---
 
@@ -144,3 +144,48 @@ compute or is it the path" question definitively. Also worth remembering:
 trusting a "direct" baseline** — an exit-node route left selected from
 a previous test silently routed the first "direct" attempt through the
 same tunnel being measured, producing a falsely tunnel-like result.
+
+
+## Recurrence: same hop affects Kubernetes pod egress to vpz (2026-08-31)
+
+Independently rediscovered while troubleshooting a flapping Uptime Kuma
+monitor (`vpz`, TCP port check on 22, deployed as a k8s Deployment on
+`warp-vm`'s Talos cluster) — not via NetBird this time, plain pod
+egress through Kube-OVN.
+
+Isolated methodically before concluding it was the same known issue,
+rather than assuming:
+1. Pod-network test (`kubectl exec` into the monitor's own pod,
+   `curl` to `103.134.154.180:22`): ~50% connection failures.
+2. Node-network test (same target, via the cluster's
+   `node-debug` DaemonSet with `hostNetwork: true`, bypassing the CNI
+   overlay entirely): 6/6 succeeded in ~30ms — ruled out anything
+   Kube-OVN-specific.
+3. Same pod, different external target (`1.1.1.1:443`): 6/6 succeeded in
+   ~3ms — ruled out a generic egress/SNAT problem, confirmed it's
+   specific to the route toward `vpz`.
+4. A fresh `traceroute` from an unrelated network (a sandbox environment,
+   not this homelab's ISP) toward the same public IP passed through the
+   identical `175.184.238.x` block repeatedly — same
+   backbone neighborhood as the originally-identified lossy hop
+   (`175.184.238.144`) above.
+
+Consistent with the original conclusion: this is upstream, inside transit
+infrastructure, not anything in this homelab's stack. A related pattern
+(intermittent loss on traffic transiting Indonesian ISPs via Singapore
+peering) is corroborated as a fairly common, previously-reported category
+of issue in a public [Cloudflare Community
+thread](https://community.cloudflare.com/t/constant-packet-loss-from-indonesia-over-sin-datacenter-as13335-as55518/567195),
+for whatever that's worth as external confirmation this isn't unique to
+this network.
+
+**Practical fix applied where it actually matters (monitoring noise, not
+the path itself):** bumped the Uptime Kuma `vpz` monitor's
+`maxretries` from `0` to `3`
+(`retry_interval`: 15s) directly in its embedded MariaDB
+(`/app/data/run/mariadb.sock`, database `kuma`) —
+requires a pod restart to take effect, since Uptime Kuma holds monitor
+schedulers in memory and doesn't hot-reload a raw DB edit. Now needs 4
+consecutive failures (~1 minute) before flagging down, which should absorb
+this hop's transient loss without false-positive alerts while still
+catching a genuine outage.
