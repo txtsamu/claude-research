@@ -6,12 +6,14 @@ last_verified: 2026-08-31
 status: current
 ---
 
-# Migrating from Pi-hole to a 3-node Technitium DNS deployment
+# Migrating from Pi-hole to a 4-node Technitium DNS deployment
 
-Replaced a single-point-of-failure Pi-hole (on `warp-vm`) with three
+Replaced a single-point-of-failure Pi-hole (on `warp-vm`) with four
 independent [Technitium DNS Server](https://technitium.com/dns/) v15.4.0
-instances — `warp-vm`, `arm3`, `arm1` — so `.lan` resolution and ad-blocking
-survive any one of those hosts going down.
+instances — `warp-vm`, `arm3`, `arm1` (all LAN, added first) and `vpz`
+(the public VPS, added later — see its own section below) — so `.lan`
+resolution and ad-blocking survive any one host going down, and remain
+reachable even off the LAN via `vpz`.
 
 ## Why Technitium, and why 3 independent nodes instead of its Clustering feature
 
@@ -38,6 +40,7 @@ all three nodes individually rather than syncing automatically.
 | `warp-vm` | 192.168.50.200 | Primary reference node, also runs Caddy (reverse-proxies all `.lan` HTTPS sites) |
 | `arm3` | 192.168.50.42 | ARM SBC, independent instance |
 | `arm1` | 192.168.50.40 | ARM SBC, independent instance |
+| `vpz` | 10.150.161.254 (LAN-facing; public IP `<VPZ_PUBLIC_IP>` is NAT'd, not on any local interface) | Public VPS, independent instance — reachable off the home LAN (e.g. via NetBird) |
 
 Two other ARM boards were tried and rejected for this deployment:
 - `arm4` (192.168.50.43): Technitium bound port 53 cleanly but never
@@ -51,6 +54,88 @@ Two other ARM boards were tried and rejected for this deployment:
   runs a Cloudflare WARP client (`warp-svc`) bound to `127.0.2.2`/
   `127.0.2.3:53` — suspected interference, not confirmed. Also excluded;
   service stopped/disabled.
+
+## The 4th node: `vpz` — wildcard bind silently never worked, specific-IP bind did
+
+Added later, same Quadlet pattern, one genuinely new binding failure mode
+not seen on any of the 3 LAN nodes.
+
+`vpz`'s public IP (`<VPZ_PUBLIC_IP>`, used in SSH config etc.) turned out
+to not exist on any local interface at all —
+```
+ip -4 addr show   # only shows 127.0.0.1, the private ens3 IP (10.150.161.254),
+                   # docker0, wt0 (NetBird), podman1 — never the public IP
+```
+It's NAT'd by the hosting provider at their edge; the box itself only
+ever sees its private LAN-facing address. Not itself the cause of the
+binding problem below, but relevant context for where Technitium *can*
+usefully bind on this host.
+
+**The actual problem**: `dnsServerLocalEndPoints=0.0.0.0:53,[::]:53` (the
+same dual-stack wildcard config that worked everywhere else) only ever
+bound `[::]:53` here — IPv4 never bound, silently, no error in logs or API
+response, reproducible across multiple `systemctl restart`s. Setting
+IPv4-only (`0.0.0.0:53` alone) was worse — bound *nothing at all*. Kernel
+`bindv6only` was `0` (dual-stack enabled), ruling out the simple version of
+that theory; direct IPv4 queries to the `[::]:53` socket got `connection
+refused`, confirming it genuinely wasn't dual-stack-accepting despite the
+sysctl. Root cause not fully confirmed — three other specific-address
+binders already exist on this host (`aardvark-dns` on the podman bridge,
+NetBird's own internal DNS on its tunnel IP, `systemd-resolved`'s stub),
+none of them wildcard, so a simple conflict doesn't explain it either.
+
+**Fix**: bind to the specific interface addresses instead of the
+wildcard:
+```
+dnsServerLocalEndPoints=10.150.161.254:53,127.0.0.1:53
+```
+Bound cleanly first try, resolution confirmed working immediately.
+Verified no conflict with the existing binders (all still functioning:
+NetBird status stayed `Connected`, `systemd-resolved`'s own upstream
+resolution unaffected).
+
+`vpz`'s public IP does not forward port 53 through to the box by
+default (checked: `dig @<VPZ_PUBLIC_IP>` from outside gets nothing) — and
+that's arguably the right default anyway, since an open recursive-ish
+resolver on the public internet is a DNS-amplification-attack vector.
+Reachable today only from the VPS itself and its LAN-facing IP; the
+intended way to reach it from off-network is through NetBird (its own
+internal DNS already occupies the tunnel IP's port 53, so this would need
+wiring through NetBird's Nameserver Groups feature to point at Technitium
+for handled domains — not yet done, tracked as a follow-up).
+
+`vpz` also runs several other services on a VPS with genuinely tight
+memory (~850MB available at deploy time) — the Quadlet got an explicit cap
+so a runaway Technitium process can't starve everything else on the box:
+```ini
+[Service]
+Restart=always
+RestartSec=5
+MemoryMax=300M
+```
+(everything else in the `.container` file identical to the base template
+above, just `Environment=DNS_SERVER_DOMAIN=dns-vpz`).
+
+Config synced identically to the 3 LAN nodes — exact commands, run against
+`10.150.161.254` once bound correctly:
+```bash
+BLOCKLISTS='https://blocklistproject.github.io/Lists/ads.txt,https://blocklistproject.github.io/Lists/redirect.txt,https://raw.githubusercontent.com/ABPindo/indonesianadblockrules/master/subscriptions/abpindo.txt,https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'
+TOK=$(curl -s "http://127.0.0.1:5380/api/user/login?user=admin&pass=<pw>" | jq -r .token)
+
+curl -s -H "Authorization: Bearer $TOK" -G "http://127.0.0.1:5380/api/settings/set" \
+  --data-urlencode "forwarders=1.1.1.1,1.0.0.1" --data-urlencode "forwarderProtocol=Udp" \
+  --data-urlencode "blockListUrls=$BLOCKLISTS" --data-urlencode "blockListUpdateIntervalHours=24" \
+  --data-urlencode "blockingType=AnyAddress"
+
+curl -s -H "Authorization: Bearer $TOK" -G "http://127.0.0.1:5380/api/zones/create" --data-urlencode "zone=lan" --data-urlencode "type=Primary"
+curl -s -H "Authorization: Bearer $TOK" -G "http://127.0.0.1:5380/api/zones/create" --data-urlencode "zone=test.<PERSONAL_DOMAIN>" --data-urlencode "type=Primary"
+# then the same per-record zones/records/add calls as the other 3 nodes
+
+# blocklists don't finish downloading instantly — force + poll rather than assume:
+curl -s -H "Authorization: Bearer $TOK" "http://127.0.0.1:5380/api/settings/forceUpdateBlockLists"
+curl -s -H "Authorization: Bearer $TOK" "http://127.0.0.1:5380/api/dashboard/stats/get?type=lastHour" | jq .response.stats.blockListZones
+# poll until > 0 (took under 5s here) before trusting a blocking test
+```
 
 ## Deployment: Podman Quadlet (per node)
 
@@ -170,8 +255,10 @@ Records carried over 1:1 from the old Pi-hole `dns.hosts` list (all →
 `192.168.50.200` except `nas.lan` → `192.168.50.10`): `jellyfin`,
 `nextcloud`, `immich`, `grafana`, `uptime`, `bastion`, `bookstack`,
 `openwebui`, `copyparty`, `mihon`, `rancher`, `proxmox`, `dns` (Technitium's
-own dashboard, added after cutover — see below), `nas`. `pihole.lan` was
-removed post-decommission. Two genuinely dead entries (`vaultwarden.lan`,
+own dashboard, added after cutover — see below), `syncyomi` (added when
+that app was deployed — see
+[syncyomi-suwayomi-sync-k8s-deployment.md](syncyomi-suwayomi-sync-k8s-deployment.md)),
+`nas`. `pihole.lan` was removed post-decommission. Two genuinely dead entries (`vaultwarden.lan`,
 `9router.lan` — DNS existed but no Caddy route at all) were dropped during
 the pre-migration audit, not carried over.
 
@@ -337,7 +424,16 @@ dns.lan {
 	tls internal
 	reverse_proxy 127.0.0.1:5380
 }
+
+syncyomi.lan {
+	tls internal
+	reverse_proxy 192.168.50.237:8282
+}
 ```
+(`syncyomi.lan` added later, pointing at the SyncYomi app's MetalLB
+LoadBalancer IP — see
+[syncyomi-suwayomi-sync-k8s-deployment.md](syncyomi-suwayomi-sync-k8s-deployment.md).)
+
 `pihole.lan`'s block (`reverse_proxy 127.0.0.1:8081`) was removed once
 Pi-hole was stopped, along with its DNS record on all 3 nodes.
 
@@ -349,7 +445,7 @@ final config, in case it's ever needed for reference or restore.
 ## Verification checklist used throughout
 
 ```bash
-for ip in 192.168.50.200 192.168.50.42 192.168.50.40; do
+for ip in 192.168.50.200 192.168.50.42 192.168.50.40 10.150.161.254; do
   dig +short jellyfin.lan @$ip        # .lan record
   dig +short doubleclick.net @$ip     # ad-block → 0.0.0.0
   dig +short github.com @$ip          # normal forwarding
