@@ -84,6 +84,8 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [fedora-memory-audit-warp-svc-leak-daily-restart.md](fedora-memory-audit-warp-svc-leak-daily-restart.md) | fedora, memory, warp-svc, llama-server, systemd, memory-leak, cloudflare-warp, sudo | 2026-08-31 |
 | [rancher-startup-probe-cpu-throttle-restart-loop.md](rancher-startup-probe-cpu-throttle-restart-loop.md) | rancher, kubernetes, cpu-limits, startup-probe, helm, cattle-system, homelab | 2026-08-31 |
 | [talos-worker-memory-downsize-qemu-reboot-semantics.md](talos-worker-memory-downsize-qemu-reboot-semantics.md) | talos, proxmox, qemu, memory, reboot, talosctl, kexec, powercycle, homelab, warp-vm | 2026-08-31 |
+| [proxmox-px1-px2-rename-cert-fix.md](proxmox-px1-px2-rename-cert-fix.md) | proxmox, hostname-rename, pmxcfs, tls, ssl-cert, dns, apt, storage-cfg, caddy, px1, px2 | 2026-09-05 |
+| [talos-etcd-kube-ovn-peer-url-disaster-recovery.md](talos-etcd-kube-ovn-peer-url-disaster-recovery.md) | talos, kubernetes, etcd, kube-ovn, disaster-recovery, reboot, proxmox, democratic-csi, registry-mirror, containerd, px1 | 2026-09-05 |
 
 ### Investigations
 
