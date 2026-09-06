@@ -59,6 +59,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [talos-worker-storage-migration-nas-lvm-thin.md](talos-worker-storage-migration-nas-lvm-thin.md) | talos, kubernetes, proxmox, storage-migration, lvm-thin, live-migration, cloudinit, iscsi, homelab, warp-vm | 2026-08-31 |
 | [homelab-system-namespace-resource-audit.md](homelab-system-namespace-resource-audit.md) | kubernetes, resource-limits, cert-manager, metallb, fleet, capi, democratic-csi, snapshot-controller, rancher, homelab | 2026-08-31 |
 | [k8s-deployment-memory-ranking-technique.md](k8s-deployment-memory-ranking-technique.md) | kubernetes, kubectl, memory, rancher, monitoring, homelab, warp-vm | 2026-08-31 |
+| [openrgb-rc3-update-fedora.md](openrgb-rc3-update-fedora.md) | openrgb, fedora, rpm, versioning | 2026-09-06 |
 
 ### Troubleshooting
 
@@ -86,6 +87,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [talos-worker-memory-downsize-qemu-reboot-semantics.md](talos-worker-memory-downsize-qemu-reboot-semantics.md) | talos, proxmox, qemu, memory, reboot, talosctl, kexec, powercycle, homelab, warp-vm | 2026-08-31 |
 | [proxmox-px1-px2-rename-cert-fix.md](proxmox-px1-px2-rename-cert-fix.md) | proxmox, hostname-rename, pmxcfs, tls, ssl-cert, dns, apt, storage-cfg, caddy, px1, px2 | 2026-09-05 |
 | [talos-etcd-kube-ovn-peer-url-disaster-recovery.md](talos-etcd-kube-ovn-peer-url-disaster-recovery.md) | talos, kubernetes, etcd, kube-ovn, disaster-recovery, reboot, proxmox, democratic-csi, registry-mirror, containerd, px1 | 2026-09-05 |
+| [immich-bull-queue-leftover-cleanup.md](immich-bull-queue-leftover-cleanup.md) | immich, redis, bullmq, job-queue, kubernetes, homelab | 2026-09-06 |
 
 ### Investigations
 

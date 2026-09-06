@@ -2,8 +2,8 @@
 type: investigation
 tags: [kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi]
 created: 2026-08-23
-last_verified: 2026-08-30
-status: current — Wave 1 + Wave 2 fully deployed/migrated/cut over; backup/restore drill proven; Wave 3 not started
+last_verified: 2026-09-06
+status: current — migration complete (Waves 1-3 + homelab-vm decommission), post-decommission fixes ongoing; see 2026-09-06 addendum re: a real discrepancy against the decommission record below
 ---
 
 # Migrating `homelab-vm`'s Podman services to Kubernetes, for learning
@@ -497,3 +497,31 @@ Also merged homelab's `/etc/hosts` custom block onto warp-vm's -- but not verbat
 
 Separately, added a real step-by-step command-by-command walkthrough (gen config -> per-node patch -> Terraform -> bootstrap -> kubeconfig) to [[talos-kubernetes-cluster-buildout]], plus a new `talos-cluster-config/` directory in this repo with the actual Terraform, machine configs, and "patch history" (later live cluster-level config changes) pulled from the bastion host -- real IPs replaced with placeholder tokens, real secrets replaced with freshly-generated fake ones (never derived from the real cluster PKI), consistent with that doc's existing convention of zero real internal IPs.
 
+
+## 2026-09-06 addendum: Jellyfin/OneTerm paused, Immich queue cleanup, and a real discrepancy against the decommission record above
+
+Session check-in after the user said the migration was "finished" (it already was, per the sections above — Wave 1-3 cut over, `homelab-vm` decommissioned). Verified via `kubectl` (through the `warp` host) and cross-checked against the live `Caddyfile`.
+
+### Jellyfin and OneTerm are intentionally at 0 replicas
+
+Both k8s Deployments' live `.spec.replicas` is `0` while their manifests still declare `replicas: 1` (an out-of-band `kubectl scale`, no matching event left). **Confirmed with the user this is deliberate** — their own decision to pause both services, not a bug. Caddy's `jellyfin.lan`/`jelly.<PERSONAL_DOMAIN>` and `bastion.lan`/`bas.<PERSONAL_DOMAIN>` routes still point at the k8s LoadBalancer IPs (`.227`/`.232`), so both hostnames are down by design until scaled back up (`kubectl scale deploy/jellyfin deploy/oneterm -n homelab --replicas=1`).
+
+### A real discrepancy: `homelab-vm` was found alive, running the full pre-decommission Podman stack
+
+This directly contradicts the "Final state" note above (`homelab-vm` should be running nothing but `tiktok-bot`). At the start of this check-in, `ssh homelab` (`root@192.168.50.80`) succeeded and `podman ps -a` showed the **entire original stack** — Jellyfin, Caddy, SearXNG, Forgejo, Uptime Kuma, Immich, copyparty, OneTerm (+ sidecars), Suwayomi, Pi-hole, Nextcloud, Grafana, BookStack, Open WebUI, cekping-agent, CouchDB, crawl4ai, FlareSolverr — all `Up 17 hours`, i.e. started around the time of the last commit to this doc. Not a partial leftover; a full, freshly-(re)started copy of the pre-decommission environment.
+
+Acted on what was actually observed rather than assuming the decommission note was still accurate: confirmed live Caddy routing (still correctly pointed at the k8s LoadBalancer IPs for the migrated apps, matching the cutover tables above), then — per the "don't decommission until proven stable" rule, and since the k8s Jellyfin/OneTerm are themselves intentionally paused right now, not "stable and taking traffic" — the user agreed to stop `homelab-vm`'s idle `jellyfin-app` and `oneterm-ui/api/mysql/guacd/acl/redis` containers for real (they'd been sitting there running-but-unused).
+
+**Gotcha**: stopping quadlet-managed containers with a raw `podman stop` instead of `systemctl stop <unit>` left `oneterm-guacd.service`, `oneterm-mysql.service`, and `oneterm-redis.service` in a `failed` state in systemd (unexpected-exit bookkeeping), even though the containers stopped cleanly. Fixed with `systemctl reset-failed <unit>...`. **For next time**: prefer `systemctl stop` on quadlet units directly so this doesn't happen at all.
+
+**Then, later in the same session, `homelab-vm` went completely unreachable** — no ping response (`Destination Host Unreachable` from the LAN gateway) and SSH connection timeout, confirmed from two independent LAN hosts (this Fedora machine and `warp`). Not caused by the container-stop actions above (those only touch two services' containers, not host networking; unreachability was checked for and absent before that point, and the containers stopped cleanly with no related host-level errors).
+
+**Net effect: this doc's own decommission record and what was actually observed today don't agree**, and neither the re-appearance of the full stack nor the subsequent total unreachability has been root-caused. Two real possibilities, unconfirmed either way: (a) `homelab-vm` was deliberately brought back up as a fallback at some point after the decommission and this session caught it mid-way through being shut down again, or (b) something is toggling its state outside of any session's awareness. Worth a dedicated investigation pass rather than assuming either explanation — flagging here so the next session doesn't take the "Final state" section above at face value without checking first.
+
+### Immich's leftover BullMQ queues (found while checking Immich's health, unrelated to the above) — see [[immich-bull-queue-leftover-cleanup]] for the full writeup
+
+Short version: disabling Smart Search/Duplicate Detection in the Immich UI paused the queues but never flushed the ~247k/~36 already-queued jobs sitting in the migrated Immich pod's Redis — cleared via a server-side Lua script.
+
+### claude-research itself: two divergent copies found, reconciled
+
+This session found the write-up archive existing in two disconnected places: a git-less snapshot at `/root/evomem-kb/claude-research` on `warp`/`warp-vm` (frozen since roughly 2026-08-24/25, missing everything from the actual decommission onward — likely a one-time copy taken for evomem's search indexing, never kept in sync), and this actual git repo, whose real GitHub history (`github.com/txtsamu/claude-research`) turned out to be current through 2026-09-05. No live git-tracked working copy was found on `warp` or in the k8s cluster — the original clone likely lived on `homelab-vm` itself and went with it. Re-synced a local clone on the Fedora desktop (`~/claude-research`, `git reset --hard origin/master` past a diverged/rewritten history — nothing local-only was lost, verified first) and committed this addendum plus two new docs from there, restoring a real git-backed copy going forward. **Anyone editing this repo should use a live git clone kept in sync with GitHub, not the `warp` evomem-kb copy** — that copy is stale and shouldn't be treated as current without diffing against GitHub first.
