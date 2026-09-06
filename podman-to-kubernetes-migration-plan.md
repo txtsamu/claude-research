@@ -3,7 +3,7 @@ type: investigation
 tags: [kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi]
 created: 2026-08-23
 last_verified: 2026-09-06
-status: current — migration complete (Waves 1-3 + homelab-vm decommission), post-decommission fixes ongoing; see 2026-09-06 addendum re: a real discrepancy against the decommission record below
+status: "current — migration complete (Waves 1-3 + homelab-vm decommission), post-decommission fixes ongoing; see 2026-09-06 addendum for a real discrepancy against the decommission record below"
 ---
 
 # Migrating `homelab-vm`'s Podman services to Kubernetes, for learning
