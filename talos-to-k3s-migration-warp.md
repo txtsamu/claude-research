@@ -3,7 +3,7 @@ type: how-to
 tags: [kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox]
 created: 2026-09-06
 last_verified: 2026-09-06
-status: current — homelab namespace fully cut over, Talos scaled to 0 and kept as rollback
+status: current — homelab namespace fully cut over; Talos VMs powered off (not deleted) same day as final rollback
 ---
 
 # Migrating the `homelab` namespace from Talos to k3s on warp
@@ -198,9 +198,33 @@ not from inside the target container.)
   externally after cutover — both resolved through the unmodified tunnel straight to
   the new k3s-hosted pods.
 
+## Talos VM shutdown
+
+Same session, once both the `homelab` namespace and Rancher (see
+[[rancher-talos-to-k3s-migration]]) were confirmed working on k3s: powered off all 6
+Talos VMs on `px1` via graceful ACPI shutdown, not deleted — full rollback path
+(disks/config intact, `qm start <id>` brings any of them back) stays available if
+anything surfaces later.
+
+```bash
+for id in 111 112 113 114 115 116; do
+  ssh px1 "qm shutdown $id --timeout 60" &
+done
+wait
+```
+
+One VM (a worker) didn't respond to the first ACPI signal in the parallel batch
+(`VM quit/powerdown failed`, likely lock contention from running all 6 shutdowns
+concurrently) — a second, sequential `qm shutdown` on just that VM succeeded
+cleanly. If a shutdown fails, retry it alone before falling back to a hard `qm stop`.
+
+Frees ~30GB RAM (3× control-plane at 4GB + 3× worker at 6GB) and ~190GB disk on
+`px1` while the VMs sit stopped.
+
 ## Open / follow-up
 
-- Talos cluster itself not yet decommissioned — kept live, fully scaled down, as a
-  rollback path.
 - Disk on warp needs monitoring — three growth rounds in one session, single-node
   clusters concentrate all image-pull weight on one disk.
+- Talos VMs are stopped but not deleted/unregistered from px1 — a further cleanup
+  step (actually removing them) would be a separate, more deliberate decision later
+  once confident nothing needs the rollback.
