@@ -93,6 +93,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [immich-bull-queue-leftover-cleanup.md](immich-bull-queue-leftover-cleanup.md) | immich, redis, bullmq, job-queue, kubernetes, homelab | 2026-09-06 |
 | [pihole-technitium-port53-conflict-warp.md](pihole-technitium-port53-conflict-warp.md) | dns, pihole, technitium, warp-vm, iptables, port-conflict | 2026-09-06 |
 | [netbird-reverse-proxy-k3s-forward-filter-drop.md](netbird-reverse-proxy-k3s-forward-filter-drop.md) | netbird, reverse-proxy, k3s, kube-router, nftables, cloudflare-tunnel, metallb, vpz, warp-vm | 2026-09-06 |
+| [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm | 2026-09-07 |
 
 ### Investigations
 
