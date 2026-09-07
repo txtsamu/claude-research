@@ -3,7 +3,7 @@ type: troubleshooting
 tags: [truenas, zfs, arc, iscsi, scst, proxmox, vzdump, backup, warp-vm, px1]
 created: 2026-09-08
 last_verified: 2026-09-08
-status: current
+status: current — fix confirmed under a real full backup run
 ---
 
 # warp-vm (101) manual backup hangs/fails — TrueNAS iSCSI SCST buffer allocation starved by ZFS ARC
@@ -127,15 +127,45 @@ c_max                           4    12884901888
 `free -h` before → after: `3.7Gi free / 7.2Gi available` → `10Gi free / 13Gi
 available`.
 
-## Not yet verified
+## Validation
 
-Did **not** re-run the backup to confirm the SCST allocation failures stop
-reproducing under real load — should do a follow-up `vzdump 101` and check
-`journalctl -k` on TrueNAS for `sgv_pool_obj` during it. If it recurs even at
-12GiB, the forum thread's advice is to watch `/proc/buddyinfo` and
-`compact_stall`/`compact_fail`/`compact_success` (`/proc/vmstat`) under load
-rather than just `free -h` — fragmentation, not raw free memory, is the actual
-constraint on high-order allocations.
+Re-ran `vzdump 101` (same command as the two failed attempts) right after
+applying the ARC cap:
+
+```
+INFO: starting new backup job: vzdump 101 --node px1 --storage nas-vm --compress zstd --mode snapshot ...
+INFO: Backup started at 2026-09-08 02:46:26
+...
+INFO: 100% (100.0 GiB of 100.0 GiB) in 26m 56s, read: 1.3 GiB/s, write: 8.0 KiB/s
+INFO: backup is sparse: 27.17 GiB (27%) total zero data
+INFO: transferred 100.00 GiB in 1616 seconds (63.4 MiB/s)
+INFO: archive file size: 32.03GB
+INFO: Finished Backup of VM 101 (00:27:08)
+INFO: Backup finished at 2026-09-08 03:13:34
+INFO: Backup job finished successfully
+```
+
+Watched progress and `journalctl -k` on TrueNAS the entire run (both prior
+failures had died at ~9-10 minutes in). Result:
+
+- **Completed successfully**, full 100GiB / 27m8s, no stalls, no I/O errors on px1
+- **`scst.*Allocation` error count for the whole run: 0** (prior failed runs:
+  16,000–21,000+ in the space of a few seconds each)
+- TrueNAS memory held steady throughout: `10Gi free / 13Gi available` — never
+  dipped, no sign of the ARC cap itself causing pressure elsewhere
+- One transient write-throughput dip (9 KiB/s–96 KiB/s vs. reads staying
+  >70 MiB/s) around the 35–37% mark, self-recovered within ~30s with no error
+  logged anywhere — noted here in case a future run shows the same pattern
+  worsen, but on its own this is not evidence of a problem
+
+**Confirmed: capping `zfs_arc_max` to 12GiB fully resolves the SCST allocation
+failures under real backup load.** No further action needed unless it recurs
+on a future backup, in which case see the fragmentation-monitoring note below.
+
+If it *does* recur despite the cap, the forum thread's advice is to watch
+`/proc/buddyinfo` and `compact_stall`/`compact_fail`/`compact_success`
+(`/proc/vmstat`) under load rather than just `free -h` — fragmentation, not raw
+free memory, is the actual constraint on high-order allocations.
 
 ## Useful commands
 
