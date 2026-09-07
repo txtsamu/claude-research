@@ -63,6 +63,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-09-06 |
 | [rancher-talos-to-k3s-migration.md](rancher-talos-to-k3s-migration.md) | rancher, kubernetes, talos, k3s, migration, cert-manager, metallb, caddy, cattle-system | 2026-09-06 |
 | [vpz-netbird-update-podman-autoupdate-rollout.md](vpz-netbird-update-podman-autoupdate-rollout.md) | netbird, podman, quadlet, auto-update, vpz, pangolin, technitium | 2026-09-06 |
+| [wine-standalone-exe-steam-proton-shortcut.md](wine-standalone-exe-steam-proton-shortcut.md) | wine, wine-wow64, fedora, proton, steam, non-steam-game, pulseaudio, alsa, mmdevapi, gaming, python-vdf | 2026-09-08 |
 
 ### Troubleshooting
 
