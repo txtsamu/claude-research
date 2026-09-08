@@ -26,7 +26,7 @@ Goal (user's framing): make `warp-vm` declarative/reproducible by moving it to N
 | Service | What it is | Runtime | Key config |
 |---|---|---|---|
 | `technitium.service` | LAN DNS server (replaced Pi-hole) | Podman container (`docker.io/technitium/dns-server:15.4.0`), volume `systemd-technitium-data:/etc/dns` | env `DNS_SERVER_DOMAIN`, `DNS_SERVER_ADMIN_PASSWORD` (**secret**, redacted), `DNS_SERVER_RECURSION=AllowOnlyForPrivateNetworks` |
-| `caddy.service` | LAN reverse proxy, `.lan` domains w/ HTTPS | Podman Quadlet (`/etc/containers/systemd/caddy.container`), image `caddy:latest`, network=host | `/root/caddy/Caddyfile`, 18 site blocks — **confirmed current** against all 8 dated `.bak` copies (all differ from live, none more current; backups are pure cruft, skip them). Fronts more than just k8s `homelab` apps: also the **px1 and px2 Proxmox web UIs directly** (`px1.lan`/`px2.lan` → `:8006`) and the **TrueNAS UI** (`nas.lan`) — port all 18 blocks to `services.caddy`, not just the app-namespace subset |
+| `caddy.service` | LAN reverse proxy, `.lan` domains w/ HTTPS | Podman Quadlet (`/etc/containers/systemd/caddy.container`), image `caddy:latest`, network=host | `/root/caddy/Caddyfile`, 18 site blocks live on `warp-vm` (**17 to actually port** — drop `syncyomi.lan`, out of scope as of 2026-09-09) — **confirmed current** against all 8 dated `.bak` copies (all differ from live, none more current; backups are pure cruft, skip them). Fronts more than just k8s `homelab` apps: also the **px1 and px2 Proxmox web UIs directly** (`px1.lan`/`px2.lan` → `:8006`) and the **TrueNAS UI** (`nas.lan`) — port to `services.caddy`, not just the app-namespace subset |
 | `cloudflared.service` | Cloudflare Tunnel (public exposure layer, see [[homelab-dual-exposure-layer]]) | native binary `/usr/local/bin/cloudflared` | `--token <TUNNEL_TOKEN>` inline in ExecStart — **secret**, redacted; token is per-tunnel, get a fresh one or read it from the CF dashboard, don't hardcode the old one in Nix |
 | `netbird.service` | Mesh VPN client | native | `/etc/netbird/install.conf` — re-enroll fresh on new host rather than copy state |
 | `microsocks.service` | SOCKS5 proxy, binds `192.168.50.200:1080`, used as WARP egress by cluster apps (crawl4ai, suwayomi, etc. — see [[warp-vm-socks-proxy]]) | native binary, runs as `nobody` | `-i 192.168.50.200 -p 1080` — **IP is hardcoded**, must be updated if the new host's IP changes |
@@ -40,7 +40,7 @@ Goal (user's framing): make `warp-vm` declarative/reproducible by moving it to N
 | `proxmox-mcp-plus.service` | MCP server exposing Proxmox control to Claude | `/usr/local/bin/proxmox-mcp-plus` | `PROXMOX_MCP_CONFIG=/etc/proxmoxmcp/config.json` — **contains Proxmox API credentials, secret** |
 | `camofox-browser.service` | Anti-detection headless browser server, backs tiktok-bot's profile-scraping fallback | Node (`/root/.hermes/node/bin/node server.js`), `/root/camofox-browser` | `CAMOFOX_API_KEY` (**secret**), addon at `/root/camofox-browser/addons/quetta_xpi` |
 | `tiktok-bot.service` | TikTok/IG/PornHub bulk-downloader Telegram bot, ~4900 lines, `/opt/tiktok-bot/tiktok_bot.py` | `/opt/hermes-venv` | see §1.4, has a locally-patched f2 import (backup at `tiktok_bot.py.bak-before-f2-disable`) — **this patch must survive the migration, don't re-pull a clean copy of the bot and lose it** |
-| `claude-telegram.service` | Claude Code Telegram bot | Poetry venv `/root/.cache/pypoetry/virtualenvs/claude-code-telegram-...` | `/root/claude-telegram-bot` |
+| ~~`claude-telegram.service`~~ | ~~Claude Code Telegram bot~~ | **out of scope, not migrating** — user no longer uses it; stopped + disabled on `warp-vm` 2026-09-09 | — |
 | `headroom-proxy.service` | Context-compression proxy | `/opt/headroom-proxy/venv`, runs as `moo` | `HEADROOM_HOST=0.0.0.0` |
 | `check-mk-agent-async` / `cmk-agent-ctl-daemon` | Checkmk monitoring agent (see [[caddy-checkmk-monitor-setup]]) | package | reporting to `monitor.lan` on warp k3s |
 | `k3s.service` | Kubernetes | see §1.2 | |
@@ -68,10 +68,10 @@ Platform layer (all namespaces besides `homelab`/`default`): Rancher + Fleet + C
 | nextcloud | PVC | |
 | openwebui | PVC | |
 | searxng | — | |
-| suwayomi + syncyomi | PVC | manga sync pair, [[syncyomi-suwayomi-sync-k8s-deployment]] |
+| suwayomi | PVC | previously paired with syncyomi for sync, see [[syncyomi-suwayomi-sync-k8s-deployment]] — now standalone, migrates alone |
 | uptime-kuma | PVC | |
 
-Scaled to 0 replicas currently (exist as manifests, not actively running): `grafana`, `jellyfin`, `oneterm`. Include in manifest export even though idle.
+Scaled to 0 replicas: `grafana`, `jellyfin`, `oneterm` (idle, include in manifest export), and as of 2026-09-09 also `syncyomi` — **out of scope, not migrating**, user no longer uses it. PVC left intact (not deleted) in case it's wanted back later.
 
 Storage: `democratic-csi` (`org.democratic-csi.iscsi`, default StorageClass `truenas-iscsi`) provisions iSCSI LUNs off an external **TrueNAS NAS** (`192.168.50.10` — same host serving the `/mnt/photos` NFS mount). This is the important structural fact for the migration: **PVC data lives on the NAS, not on the VM's own disk.** `lsblk` shows ~15 iSCSI-attached block devices already mounted under `/var/lib/kubelet/...` — normal steady-state for this setup, not a problem.
 
