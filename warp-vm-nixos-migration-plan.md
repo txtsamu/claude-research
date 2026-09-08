@@ -94,7 +94,7 @@ State that must move, not just code: the `WatchDB` (555 entries), per-user `--do
 
 ## 2. NixOS target design
 
-Recommend: **new Proxmox VM (new VMID) built from the official NixOS ISO/qcow2, on `px1`, in parallel with the live `warp-vm`** — not an in-place conversion. `px1` is already at ~80% RAM (see [[homelab-k8s-ram-overhead-analysis]]) so check free capacity before sizing the new VM; if headroom is tight, this is also the moment to right-size (does this box really need 16GB, or was that a typo from the 8GB originally provisioned?).
+Recommend: **new Proxmox VM (new VMID) on `px1`, installed via `nixos-anywhere` + `disko`, in parallel with the live `warp-vm`** — not an in-place conversion. `nixos-anywhere` kexecs into a NixOS installer and uses `disko` for fully declarative disk partitioning, which fits the "everything centralized in config" goal better than a manual ISO install (partition layout becomes part of the flake, not a one-off click-through) — see the "NixOS + Proxmox: a recipe for a declarative homelab" and "Proxmox to NixOS + Incus" write-ups for the pattern other homelabbers use for exactly this. Either way, make sure `services.qemuGuest.enable = true;` is set so Proxmox integration (clean shutdown, IP reporting) keeps working like it does on the Debian VM today. `px1` is already at ~80% RAM (see [[homelab-k8s-ram-overhead-analysis]]) so check free capacity before sizing the new VM; if headroom is tight, this is also the moment to right-size (does this box really need 16GB, or was that a typo from the 8GB originally provisioned?).
 
 Suggested module layout (flake-based, so this itself becomes the "centralized config" the user wants):
 
@@ -103,24 +103,25 @@ warp-nixos/
   flake.nix
   hosts/warp/
     configuration.nix       # networking (static 192.168.50.200/24), users, base packages
-    k3s.nix                 # services.k3s + iscsid/rpcbind for democratic-csi
-    dns.nix                 # technitium (oci-containers or podman module)
-    proxy.nix                # caddy (either services.caddy natively, or oci-containers to keep parity)
+    disko.nix                # declarative disk layout (nixos-anywhere target)
+    k3s.nix                 # services.k3s + services.openiscsi/rpcbind for democratic-csi
+    dns.nix                 # services.technitium-dns-server (native nixpkgs module)
+    proxy.nix                # services.caddy (native)
     tunnel.nix               # cloudflared (services.cloudflared exists in nixpkgs)
-    vpn.nix                  # netbird (services.netbird exists in nixpkgs), warp-svc, socks/relay units
+    vpn.nix                  # netbird (services.netbird, nixpkgs unstable), warp-svc, socks/relay units
     mcp.nix                  # hermes-gateway, hermes-mcp, proxmox-mcp-plus as systemd units
-    tiktok-bot.nix           # camofox-browser + tiktok-bot as systemd units, python env via poetry2nix or a plain venv
+    tiktok-bot.nix           # camofox-browser + tiktok-bot as systemd units, python env via uv2nix or a plain venv
     evomem.nix               # evomem server unit + persistent /var/lib/evomem-kb
     secrets.nix               # sops-nix or agenix wiring
-  secrets/                    # sops-nix encrypted secrets, safe to commit
+  secrets/                    # encrypted secrets, safe to commit
 ```
 
-Key decisions to make before writing Nix:
+Key decisions to make before writing Nix (verified against current nixpkgs/tooling, 2026-09-09):
 
-1. **Secrets management** — currently everything is plaintext in `Environment=` lines in systemd units (DNS admin password, Camofox API key, Cloudflare tunnel token, Proxmox API creds, TikTok cookies). NixOS config is world-readable in the Nix store by default, so this is the point to introduce **sops-nix** or **agenix** rather than carrying the plaintext-env-var pattern forward. This is the single biggest quality improvement available in this migration, worth doing even though it's extra work.
-2. **k3s: native `services.k3s` vs. keep Talos-style / stay on Debian for just this node** — nixpkgs has a `services.k3s` module; single-node control-plane should translate cleanly. Rancher/Fleet/cert-manager/MetalLB/democratic-csi are all Helm-installed *inside* the cluster, so they don't need Nix modules at all — just `k3s` up, then re-apply the same Helm releases (ideally via a GitOps tool like Fleet pointing at a git repo, which is already partially in place given Fleet is running).
-3. **Podman-quadlet services (technitium, caddy) → NixOS `virtualisation.oci-containers` or native packages.** nixpkgs ships `caddy` natively (`services.caddy`) which would let the Caddyfile become real declarative Nix instead of a container volume mount — recommended over carrying Podman forward for just two containers.
-4. **Python services (hermes, tiktok-bot, camofox, headroom-proxy, claude-telegram)** — four different Python venv layouts today (raw venv, poetry, mixed). Decide once: `poetry2nix`/`uv2nix` per-service flake inputs, or keep plain venvs bootstrapped by an `ExecStartPre`. Given these are actively-developed bots (not vendored packages), a pragmatic middle ground — Nix manages Python interpreter + system deps, venv/pip still manages the fast-moving app deps — is likely less migration risk than fully hermetic Nix builds of each bot on day one.
+1. **Secrets management** — currently everything is plaintext in `Environment=` lines in systemd units (DNS admin password, Camofox API key, Cloudflare tunnel token, Proxmox API creds, TikTok cookies). NixOS config is world-readable in the Nix store by default, so this is the point to introduce **sops-nix** or **agenix** rather than carrying the plaintext-env-var pattern forward. This is the single biggest quality improvement available in this migration, worth doing even though it's extra work. Given the secret count here is modest (~6, spread across independent services, not one big templated config like a mail server), **agenix is the better fit** — no YAML schema or `.sops.yaml` to keep in sync, `secrets.nix` is plain Nix; reach for sops-nix instead only if the secret count grows a lot or a service needs several secrets templated into one generated config file.
+2. **k3s: confirmed available.** `services.k3s` is a real, actively maintained nixpkgs module (45 options as of current nixpkgs — `role`, `token`/`tokenFile`, `extraFlags`, `manifests` for auto-deployed addons, `images` for pre-imported containerd images, etc.). Single-node control-plane translates cleanly. Rancher/Fleet/cert-manager/MetalLB/democratic-csi are all Helm-installed *inside* the cluster, so they don't need Nix modules at all — just `k3s` up, then re-apply the same Helm releases (ideally via a GitOps tool like Fleet pointing at a git repo, which is already partially in place given Fleet is running). For the iSCSI initiator side that democratic-csi needs on the node, use `services.openiscsi.enable = true` (the real nixpkgs option — plain `iscsid`/`open-iscsi` aren't separate NixOS services the way they are Debian packages).
+3. **Correction from the first draft: Technitium *does* have a native nixpkgs module** (`services.technitium-dns-server`, in `nixos/modules/services/networking/`) — no need to keep it containerized. Use it alongside `services.caddy` (also native) instead of `virtualisation.oci-containers`; this drops Podman from the new host entirely for these two, which is a real win for "everything declarative" since container volume-mounted config (the current Caddyfile-via-bind-mount setup) is exactly the kind of imperative-adjacent pattern this migration is trying to get away from.
+4. **Python services (hermes, tiktok-bot, camofox, headroom-proxy, claude-telegram)** — four different Python venv layouts today (raw venv, poetry, mixed). The nixpkgs Python-packaging ecosystem has shifted since poetry2nix was the default answer: **uv2nix is now the maintainer-recommended path for new work** (poetry2nix's own maintainers point new users to it), so plan any packaging effort here around `uv`/`uv2nix` rather than `poetry2nix`, and use plain `uv`-managed venvs (not full hermetic Nix builds) for the actively-developed bots as a pragmatic middle ground — Nix manages the Python interpreter + system deps, `uv` still manages the fast-moving app deps.
 
 ## 3. Data that must be copied (not just config)
 
@@ -156,10 +157,23 @@ Key decisions to make before writing Nix:
 
 ## 6. Open questions for the user
 
-- Target NixOS install method: fresh ISO install into a new Proxmox VM (recommended, cleanest), or `nixos-anywhere`/`nixos-infect` onto a clone of the existing disk (faster but drags along Debian cruft and makes rollback via "just don't touch the old VM" less clean)?
-- Keep Podman for technitium/caddy (`virtualisation.oci-containers`, less porting work) or move both to native NixOS services (`services.caddy` exists; Technitium does not have a nixpkgs module, so it'd stay containerized either way)?
-- Secrets: sops-nix or agenix? (Both integrate cleanly with flakes; sops-nix is more common for "many small secrets across many services" like this box has.)
+- Target NixOS install method: **`nixos-anywhere` + `disko` onto a new Proxmox VM is the recommended default** (see §2) — confirm that's acceptable vs. a manual ISO install (simpler mentally, but disk layout stays a one-off click-through instead of Nix config), or `nixos-infect` (current community consensus is against it for anything beyond a quick VPS test — no declarative disk partitioning, relies on lustrate, "promised myself I wouldn't do it again" is a representative comment from long-time users).
+- Confirmed both native now: `services.caddy` and `services.technitium-dns-server` are real nixpkgs modules — plan drops Podman for these two rather than treating Technitium as containerized-forever.
+- Secrets: **agenix recommended** for this box's secret count (see §2.1) — confirm, or say if sops-nix's templating is wanted instead.
 - k3s re-platform: keep single-node k3s as-is, or use this migration as the point to reconsider HA/topology given [[homelab-k8s-ram-overhead-analysis]] found the platform overhead (~10GB) already costs ~2× the actual app workload (~5.4GB)?
+
+## 7. Verification pass (2026-09-09)
+
+Checked the tooling assumptions above against current docs/discourse before finalizing:
+
+- `services.k3s` — real, current nixpkgs module. [MyNixOS reference](https://mynixos.com/nixpkgs/options/services.k3s)
+- `services.caddy`, `services.cloudflared`, `services.netbird` — all real; netbird's module lives in nixpkgs unstable. [cloudflared module source](https://github.com/NixOS/nixpkgs/blob/release-26.05/nixos/modules/services/networking/cloudflared.nix), [netbird options](https://search.nixos.org/options?channel=unstable&query=services.netbird)
+- `services.technitium-dns-server` — **real, corrects the first draft's claim that Technitium has no module.** [module source](https://github.com/NixOS/nixpkgs/blob/7eee17a8a5868ecf596bbb8c8beb527253ea8f4d/nixos/modules/services/networking/technitium-dns-server.nix)
+- `services.openiscsi` — real, confirmed as the option democratic-csi node initiators need. [NixOS Discourse thread](https://discourse.nixos.org/t/how-setup-iscsi/42129/2)
+- `nixos-anywhere` over `nixos-infect` — current community consensus, kexec+disko vs. lustrate-based conversion. [nixos-anywhere no-os howto](https://github.com/nix-community/nixos-anywhere/blob/main/docs/howtos/no-os.md), [HN thread on nixos-infect maturity](https://news.ycombinator.com/item?id=38242334)
+- `agenix` vs `sops-nix` — both current and maintained; agenix favored for simpler/fewer-secret setups, sops-nix for templated multi-secret configs. [NixOS Discourse overview](https://discourse.nixos.org/t/handling-secrets-in-nixos-an-overview-git-crypt-agenix-sops-nix-and-when-to-use-them/35462)
+- `uv2nix` over `poetry2nix` — poetry2nix's own maintainers now point new users to uv2nix. [poetry2nix repo](https://github.com/nix-community/poetry2nix), [uv2nix announcement](https://discourse.nixos.org/t/uv2nix-build-develop-python-projects-using-uv-with-nix/58563)
+- Proxmox+NixOS pattern (disko + `services.qemuGuest.enable`) matches other homelab write-ups doing this exact px→NixOS move. [NixOS + Proxmox declarative homelab](https://medium.com/@joshleecreates/nixos-proxmox-a-recipe-for-a-declarative-homelab-84d4a02360b6), [Proxmox to NixOS + Incus](https://www.nijho.lt/post/proxmox-to-nixos/)
 
 ## Notes on secrets
 
