@@ -2,7 +2,7 @@
 type: how-to
 tags: [checkmk, kubernetes, k3s, homelab, monitoring, caddy, technitium, truenas, firewalld]
 created: 2026-09-08
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 status: current
 ---
 
