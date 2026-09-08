@@ -1,6 +1,6 @@
 ---
 type: investigation
-tags: [nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1]
+tags: [nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1, wayfinder]
 created: 2026-09-09
 status: current
 last_verified: 2026-09-09
@@ -13,7 +13,7 @@ Goal (user's framing): make `warp-vm` declarative/reproducible by moving it to N
 ## 0. Current topology
 
 - `px1` (alias `pve-pc`) — Proxmox VE 9.2.11 host, 16c/62.7GiB RAM, HP EliteDesk 705 G4. Already tight on RAM (~80% used before this migration; see [[homelab-k8s-ram-overhead-analysis]]).
-- `warp-vm` = Proxmox VMID **101**, 4 vCPU/16GiB RAM (per `qm list` earlier this was 8GB; now shows 16384MB — confirm before rebuild), 100GB disk (`/dev/sda1`, 68G used / 72%), Debian 13 (trixie), static LAN IP **192.168.50.200/24**, gw `192.168.50.1`, single NIC `eth0`.
+- `warp-vm` = Proxmox VMID **101**, **8 vCPU / 16GiB RAM** (confirmed via `qm config 101` — deliberate current allocation, not a stale doc), 100GB disk (`/dev/sda1`, 68G used / 72%), Debian 13 (trixie), static LAN IP **192.168.50.200/24**, gw `192.168.50.1`, single NIC `eth0`.
 - **New NixOS host will be named `home`** (new Proxmox VM, new VMID, new hostname — not a rename of `warp-vm` in place). Every "new host" reference below refers to this `home` box; `warp-vm` stays `warp-vm` until decommissioned per §4 step 6.
 - It is **not** a spare bastion — it's the single most heavily-loaded host in the homelab: a k3s control-plane + Rancher stack, ~13 user-facing apps, a TikTok/IG/PH bulk-downloader Telegram bot, the evomem knowledge server this very session is capturing to, both Hermes MCP services, the Proxmox MCP server, DNS for the whole LAN (Technitium), the LAN reverse proxy (Caddy), the Cloudflare Tunnel, NetBird mesh client, and multiple SOCKS/TCP relay shims for WARP egress. See [[talos-to-k3s-migration-warp]] and [[tiktok-bot-warp-vm-migration-fixes]] for prior history on this box.
 
@@ -26,13 +26,13 @@ Goal (user's framing): make `warp-vm` declarative/reproducible by moving it to N
 | Service | What it is | Runtime | Key config |
 |---|---|---|---|
 | `technitium.service` | LAN DNS server (replaced Pi-hole) | Podman container (`docker.io/technitium/dns-server:15.4.0`), volume `systemd-technitium-data:/etc/dns` | env `DNS_SERVER_DOMAIN`, `DNS_SERVER_ADMIN_PASSWORD` (**secret**, redacted), `DNS_SERVER_RECURSION=AllowOnlyForPrivateNetworks` |
-| `caddy.service` | LAN reverse proxy, `.lan` domains w/ HTTPS | Podman Quadlet (`/etc/containers/systemd/caddy.container`), image `caddy:latest`, network=host | `/root/caddy/Caddyfile` (+ 9 dated `.bak` copies — Caddyfile has been through several manual cutovers, worth diffing before porting) |
+| `caddy.service` | LAN reverse proxy, `.lan` domains w/ HTTPS | Podman Quadlet (`/etc/containers/systemd/caddy.container`), image `caddy:latest`, network=host | `/root/caddy/Caddyfile`, 18 site blocks — **confirmed current** against all 8 dated `.bak` copies (all differ from live, none more current; backups are pure cruft, skip them). Fronts more than just k8s `homelab` apps: also the **px1 and px2 Proxmox web UIs directly** (`px1.lan`/`px2.lan` → `:8006`) and the **TrueNAS UI** (`nas.lan`) — port all 18 blocks to `services.caddy`, not just the app-namespace subset |
 | `cloudflared.service` | Cloudflare Tunnel (public exposure layer, see [[homelab-dual-exposure-layer]]) | native binary `/usr/local/bin/cloudflared` | `--token <TUNNEL_TOKEN>` inline in ExecStart — **secret**, redacted; token is per-tunnel, get a fresh one or read it from the CF dashboard, don't hardcode the old one in Nix |
 | `netbird.service` | Mesh VPN client | native | `/etc/netbird/install.conf` — re-enroll fresh on new host rather than copy state |
 | `microsocks.service` | SOCKS5 proxy, binds `192.168.50.200:1080`, used as WARP egress by cluster apps (crawl4ai, suwayomi, etc. — see [[warp-vm-socks-proxy]]) | native binary, runs as `nobody` | `-i 192.168.50.200 -p 1080` — **IP is hardcoded**, must be updated if the new host's IP changes |
 | `socks-relay.service` | `socat` TCP relay, `192.168.50.200:1080` → `192.168.50.41:1080` | native `socat` | forwards to another LAN SOCKS proxy — check if still needed or superseded by `microsocks` above |
 | `ovpn-relay.service` | `socat` TCP relay, `192.168.50.200:12443` → a DigitalOcean VPS `:443` (see [[mikrotik-openvpn-warp-relay-bypass-isp-udp-block]]) | native `socat` | target is a **public IP — redact** in any write-up; this is part of the ISP-DPI-bypass OpenVPN relay chain |
-| `warp-bypass-route.service` | Custom routing setup for WARP split-tunnel/bypass | shell script `/usr/local/sbin/warp-bypass-setup.sh` | **must pull the actual script content before migrating** — not yet captured in this pass |
+| `warp-bypass-route.service` | Custom routing setup for WARP split-tunnel/bypass | shell script `/usr/local/sbin/warp-bypass-setup.sh` | **captured**: just `ip rule` policy routing (LAN traffic → WARP's routing table 65743, plus one narrow bypass rule for a specific IP) + `iptables-restore`. Ports directly, no redesign needed for `vpn.nix` — just must run *after* `warp-svc` brings up its routing table, same ordering as today |
 | `warp-svc.service` | Cloudflare WARP client daemon | native (`cloudflare-warp` package) | known to leak memory on fedora hosts per [[fedora-memory-audit-warp-svc-leak-daily-restart]] — worth a periodic-restart timer on the NixOS side too |
 | `evomem.service` | This session's knowledge server, REST API on :7700 | native binary `/usr/local/bin/evomem` | `--knowledge /root/evomem-kb serve --host 0.0.0.0 --port 7700`; **the knowledge base directory `/root/evomem-kb` is the single most important thing to not lose** — it's the shared memory every Claude Code session (homelab+fedora) auto-captures into |
 | `hermes-gateway.service` | Hermes messaging-platform gateway | `/opt/hermes-venv` (Python venv) + Node under `/root/.hermes/node`, source at `/opt/hermes-source` | `WorkingDirectory=/root/.hermes`, `HERMES_HOME=/root/.hermes` — this is an MCP-adjacent piece, see §1.3 |
@@ -87,11 +87,18 @@ Storage: `democratic-csi` (`org.democratic-csi.iscsi`, default StorageClass `tru
 
 ### 1.4 tiktok-bot specifics
 
-Per [[tiktok-bot-warp-vm-migration-fixes]], this instance has two live local patches that a fresh clone/pull would **not** have:
-1. `f2` import wrapped in try/except with a stub `TokenManager` (backup: `/opt/tiktok-bot/tiktok_bot.py.bak-before-f2-disable`).
-2. A `pip` corruption fix for `gallery-dl` (stray `~allery_dl-1.32.9.dist-info` cleaned up).
+**Corrected after a full enumeration (2026-09-09) — the picture below supersedes the original draft's assumptions.**
 
-State that must move, not just code: the `WatchDB` (555 entries), per-user `--download-archive` files, `cookies.txt` (session cookies — **secret**), and any Instagram `instagrapi` session files. Locate these under `/opt/tiktok-bot/` (subdirectories weren't enumerated yet — do `ls -la /opt/tiktok-bot` before the cutover and list every stateful file explicitly).
+`/opt/tiktok-bot` is a **local git repo** (`.git/` present). This changes the migration approach for the better: clone/pull the code instead of manually reconciling backup files. The f2 fix from [[tiktok-bot-warp-vm-migration-fixes]] is already a **tracked patch**, not a loose manual edit: `patches/f2-device-id-manager-fallback.patch` + `patches/apply.sh`. Migrate by cloning the repo and running `patches/apply.sh`, not by diffing `.py.bak` files.
+
+Five historical `tiktok_bot.py.bak-*` copies exist (before-f2-disable, before-manifest-source-fix, before-photo-typing, before-post-manifest, phbatch) — all superseded by git history now that this is confirmed a repo; safe to leave behind, don't migrate them.
+
+**Actual stateful data to rsync** (not code — code comes via git):
+
+- **7 cookie files, not 1**: `cookies.txt`, `tiktok_cookies.txt`, `user_cookies.txt`, `ph_cookies.txt`, and `cookies/{facebook,instagram,nhentai,patreon,reddit,twitter}_cookies.txt` — all **secrets**.
+- **`watchlist.json`** (267KB) — the real persistent watch state. `watchdb.sqlite3` also exists but is **0 bytes**; the "555-entry WatchDB" figure from [[tiktok-bot-warp-vm-migration-fixes]] either lives in `watchlist.json` now or is stale — sanity-check against the running bot before cutover, don't just copy blind.
+- **Per-target scrape state**: `scripts/*_capture_state.json`, `*_links.json`, `*_recon.json` (e.g. `liliibunny_*`, `asiatcnn_*`) — live scrape progress per target, not just code.
+- Skip: `logs/` (~90 small rotated f2 logs, mostly noise, several exactly 192 bytes), `__pycache__/`.
 
 ## 2. NixOS target design
 
@@ -130,7 +137,8 @@ Key decisions to make before writing Nix (verified against current nixpkgs/tooli
 | Data | Location on warp | Size/notes | Destination |
 |---|---|---|---|
 | evomem knowledge base | `/root/evomem-kb` | shared memory for **every** Claude Code session — highest-value data on this box | rsync to new host, same path or update `EVOMEM_ROOT` everywhere it's referenced |
-| tiktok-bot state | `/opt/tiktok-bot/{WatchDB,*.txt,cookies.txt,download-archives,...}` | needs explicit enumeration first | rsync |
+| tiktok-bot code | `/opt/tiktok-bot/` (git repo) | code + the f2 patch | `git clone`, then run `patches/apply.sh` — not rsync |
+| tiktok-bot state | 7 cookie files (see §1.4), `watchlist.json`, `scripts/*_{capture_state,links,recon}.json` | all secrets/live scrape state, enumerated 2026-09-09 | rsync |
 | Hermes state | `/root/.hermes/` | sessions, MCP daemon state | rsync |
 | Caddy TLS data | `/root/caddy/data`, `/root/caddy/config` | ACME certs/keys for `.lan` HTTPS | rsync or just let it re-issue |
 | Claude Code state (warp's own) | `/home/moo/.claude/`, `/home/moo/.claude.json` | sessions/creds if warp itself is used as a Claude Code host | rsync, treat `.credentials.json` as secret |
@@ -140,7 +148,7 @@ Key decisions to make before writing Nix (verified against current nixpkgs/tooli
 
 ## 4. Suggested phased plan
 
-1. **Freeze & document.** Pull the actual `warp-bypass-setup.sh` content, enumerate `/opt/tiktok-bot/*` fully, diff the 9 Caddyfile `.bak` files down to what's actually live, dump `/root/.hermes/` tree and `/etc/proxmoxmcp/config.json` structure (redacted). Confirm `warp-vm`'s real current RAM allocation (`qm config 101` on px1) since `qm list` showed 16384MB against a memory doc that said 8GB — reconcile before sizing the new VM.
+1. **Freeze & document.** ~~Pull the actual `warp-bypass-setup.sh` content, enumerate `/opt/tiktok-bot/*` fully, diff the 9 Caddyfile `.bak` files down to what's actually live, confirm `warp-vm`'s real RAM allocation.~~ **Done 2026-09-09** — see §0, §1.1, §1.4 and §3 above, findings tracked as resolved tickets on [the wayfinder map](https://github.com/txtsamu/claude-research/issues/1). Still outstanding: dump `/root/.hermes/` tree and `/etc/proxmoxmcp/config.json` structure (redacted).
 2. **Stand up NixOS skeleton** on a new VM (new VMID on `px1`, hostname `home`) — base networking, SSH, users, flake scaffolding. No workloads yet. Validate it can reach the LAN, DNS, and the TrueNAS iSCSI portal.
 3. **Migrate infra services one at a time, in dependency order, each verified working before moving to the next:** DNS (technitium) → reverse proxy (caddy) → tunnel (cloudflared) → VPN/relays (netbird, warp-svc, microsocks, socat relays) → evomem → MCP trio (hermes-gateway, hermes-mcp, proxmox-mcp-plus) → camofox + tiktok-bot → claude-telegram → headroom-proxy → checkmk agent. Keep the old warp-vm's copies **enabled but able to be stopped**, not deleted, until each new-host service is confirmed good (this is exactly the "two copies both enabled" bug pattern already seen once with tiktok-bot per [[tiktok-bot-warp-vm-migration-fixes]] — be deliberate about which copy is authoritative at every point, and stop+disable the old one the moment the new one is verified, don't leave both running).
 4. **Bring up k3s on the new host**, join/re-authorize against the same TrueNAS iSCSI backend, re-install the platform Helm stack (Rancher, Fleet, cert-manager, MetalLB, democratic-csi), then re-apply/re-deploy the 13 `homelab` app manifests. Since PVC data lives on the NAS, this should mostly be "point new node's CSI driver at the same TrueNAS target IQNs" rather than a data copy — but test this assumption on a throwaway PVC before trusting it for immich/forgejo/nextcloud.
@@ -157,12 +165,14 @@ Key decisions to make before writing Nix (verified against current nixpkgs/tooli
 - **warp-svc memory leak** ([[fedora-memory-audit-warp-svc-leak-daily-restart]]) — carry forward whatever periodic-restart mitigation exists, or add one in the NixOS unit if none exists yet.
 - **px1 headroom** — host is already ~80% RAM used; sizing the new VM (especially if larger than the old one) may require freeing capacity first (e.g. the powered-off Talos VMs still reserve no RAM since they're off, but double-check nothing else is competing).
 
-## 6. Open questions for the user
+## 6. Decisions (locked 2026-09-09)
 
-- Target NixOS install method: **`nixos-anywhere` + `disko` onto a new Proxmox VM is the recommended default** (see §2) — confirm that's acceptable vs. a manual ISO install (simpler mentally, but disk layout stays a one-off click-through instead of Nix config), or `nixos-infect` (current community consensus is against it for anything beyond a quick VPS test — no declarative disk partitioning, relies on lustrate, "promised myself I wouldn't do it again" is a representative comment from long-time users).
-- Confirmed both native now: `services.caddy` and `services.technitium-dns-server` are real nixpkgs modules — plan drops Podman for these two rather than treating Technitium as containerized-forever.
-- Secrets: **agenix recommended** for this box's secret count (see §2.1) — confirm, or say if sops-nix's templating is wanted instead.
-- k3s re-platform: keep single-node k3s as-is, or use this migration as the point to reconsider HA/topology given [[homelab-k8s-ram-overhead-analysis]] found the platform overhead (~10GB) already costs ~2× the actual app workload (~5.4GB)?
+All three were open questions in the original draft; resolved via a wayfinder session and tracked on [the map (issue #1)](https://github.com/txtsamu/claude-research/issues/1) — closed decision tickets linked below for full rationale.
+
+- **Install method: [`nixos-anywhere` + `disko`](https://github.com/txtsamu/claude-research/issues/2)**, confirmed over a manual ISO install or `nixos-infect` (community consensus was already against `nixos-infect` — no declarative disk partitioning, relies on lustrate).
+- `services.caddy` and `services.technitium-dns-server` confirmed native nixpkgs modules — plan drops Podman for these two.
+- **Secrets: [`agenix`](https://github.com/txtsamu/claude-research/issues/3)**, confirmed over sops-nix, for this box's secret count (see §2.1).
+- **k3s topology: [keep single-node](https://github.com/txtsamu/claude-research/issues/4)**, confirmed as-is rather than using this migration to also reconsider HA/topology (that's a separate, later effort if pursued at all).
 
 ## 7. Verification pass (2026-09-09)
 
