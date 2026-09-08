@@ -8,6 +8,14 @@ status: current
 
 # Migrating from Pi-hole to a 4-node Technitium DNS deployment
 
+**Update 2026-09-08**: the "three independent `Primary` zones, manually
+kept in sync" tradeoff described below (for `warp-vm`/`arm1`/`arm3`) has
+been replaced with real AXFR-based `Primary`/`Secondary` zone replication
+— it had silently drifted out of sync and caused a real `NXDOMAIN`. See
+[technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md)
+for the fix; `vpz` (off-LAN) is unaffected and still follows the
+manual-sync model described here.
+
 Replaced a single-point-of-failure Pi-hole (on `warp-vm`) with four
 independent [Technitium DNS Server](https://technitium.com/dns/) v15.4.0
 instances — `warp-vm`, `arm3`, `arm1` (all LAN, added first) and `vpz`

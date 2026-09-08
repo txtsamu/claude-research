@@ -96,6 +96,8 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [netbird-reverse-proxy-k3s-forward-filter-drop.md](netbird-reverse-proxy-k3s-forward-filter-drop.md) | netbird, reverse-proxy, k3s, kube-router, nftables, cloudflare-tunnel, metallb, vpz, warp-vm | 2026-09-06 |
 | [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm | 2026-09-07 |
 | [truenas-scst-arc-memory-backup-timeout.md](truenas-scst-arc-memory-backup-timeout.md) | truenas, zfs, arc, iscsi, scst, proxmox, vzdump, backup, warp-vm, px1 | 2026-09-08 |
+| [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | checkmk, kubernetes, k3s, homelab, monitoring, caddy, technitium, truenas, firewalld | 2026-09-08 |
+| [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | technitium, dns, zone-transfer, axfr, notify, secondary-zone, warp-vm, arm1, arm3, checkmk | 2026-09-08 |
 
 ### Investigations
 
