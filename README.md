@@ -98,6 +98,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [truenas-scst-arc-memory-backup-timeout.md](truenas-scst-arc-memory-backup-timeout.md) | truenas, zfs, arc, iscsi, scst, proxmox, vzdump, backup, warp-vm, px1 | 2026-09-08 |
 | [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | checkmk, kubernetes, k3s, homelab, monitoring, caddy, technitium, truenas, firewalld | 2026-09-08 |
 | [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | technitium, dns, zone-transfer, axfr, notify, secondary-zone, warp-vm, arm1, arm3, checkmk | 2026-09-08 |
+| [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | checkmk, truenas, scale, docker, containers, monitoring, package-management-blocked | 2026-09-09 |
 
 ### Investigations
 

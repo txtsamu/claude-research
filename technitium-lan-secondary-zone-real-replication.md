@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [technitium, dns, zone-transfer, axfr, notify, secondary-zone, warp-vm, arm1, arm3, checkmk]
 created: 2026-09-08
-last_verified: 2026-09-08
+last_verified: 2026-09-09
 status: current
 ---
 
@@ -161,15 +161,52 @@ Confirmed on 2026-09-08: both secondaries reached `soaSerial: 28` (then
 per-node record pushes needed — the actual bug this session set out to
 fix.
 
+## Update 2026-09-09: `vpz` converted too, over NetBird
+
+`vpz` (public VPS, reachable from `warp-vm` over the NetBird mesh —
+`warp-vm` at NetBird IP `100.68.220.132`, `vpz` at `100.68.54.91`, both
+also able to reach `warp-vm`'s real LAN IP `192.168.50.200:53` directly
+since `vpz` has `192.168.50.0/24` as an advertised NetBird route) was
+converted the same way: added `100.68.54.91` to `warp-vm`'s zone
+`notifyNameServers`/`zoneTransferNetworkACL` alongside the two LAN
+secondaries, then the same delete/create-as-Secondary/resync sequence
+run against `vpz`. Zone-transfer conversion itself worked identically —
+`vpz` reached `soaSerial: 30` (matching the primary) on the very first
+resync.
+
+**Caveat found here that didn't affect the LAN-only nodes**: outbound
+NOTIFY (UDP, fire-and-forget, no built-in retry) to `vpz`'s NetBird IP
+failed —
+`GET /api/zones/options/get` on the primary showed
+`"notifyFailed": true, "notifyFailedFor": ["100.68.54.91"]` even though
+the zone-transfer ACL was correct and a *manual* resync immediately
+pulled the new record fine over TCP. Root cause not fully chased down,
+but the likely explanation is NetBird's `Lazy connection: true` peer
+mode (confirmed via `netbird status` on both ends) — the WireGuard
+tunnel to a given peer is only established on-demand on first traffic,
+and a single UDP NOTIFY packet sent during that connection-negotiation
+window can easily get dropped with no retry, whereas the TCP-based AXFR
+pull naturally retries at the TCP layer and succeeds once the tunnel is
+actually up.
+
+**Practical effect**: `vpz` doesn't get *instant* (~1s) propagation like
+`arm1`/`arm3` do — it falls back to the zone's normal SOA `refresh`
+timer (900s / 15 min per the current SOA), which still means it
+self-heals with **zero manual intervention**, just with up to a 15-minute
+lag instead of near-instant. Confirmed both add and delete of a test
+record eventually landed correctly via manual `resync` (proving the
+underlying AXFR mechanism itself is sound); not confirmed whether the
+plain 15-minute refresh timer alone (without a manual nudge) actually
+fires reliably through the lazy NetBird connection — worth checking if
+this ever seems to lag further than expected in practice.
+
 ## Residual state / what's still manual
 
-- **`vpz`** (the public VPS node from the original 4-node doc) was **not**
-  touched — it's off-LAN, wasn't part of the broken `notify`/`zoneTransfer`
-  config investigated here, and stays an independent `Primary` per the
-  original design. Same manual-sync caveat still applies to it.
 - **`arm4`** stays fully excluded (no DNS service running) — only its
   stale `NS` glue record was cleaned up, nothing was deployed there.
-- Any *new* LAN Technitium node added to this cluster in future should be
-  created as `type=Secondary` from the start (pointed at `warp-vm`), not
-  as another independent `Primary` — otherwise this exact split-brain
-  bug recurs.
+- Any *new* LAN or NetBird-reachable Technitium node added to this
+  cluster in future should be created as `type=Secondary` from the start
+  (pointed at `warp-vm`), not as another independent `Primary` —
+  otherwise this exact split-brain bug recurs. If it's reachable only
+  over NetBird, don't expect instant NOTIFY-driven propagation to it —
+  budget for the ~15-minute refresh-timer fallback instead.

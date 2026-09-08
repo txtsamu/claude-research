@@ -152,7 +152,7 @@ sudo firewall-cmd --permanent --add-port=6556/tcp && sudo firewall-cmd --reload
 ```
 No other host in this fleet runs a local firewall that got in the way.
 
-### `nas` could NOT get the agent — it's a TrueNAS SCALE appliance
+### `nas` initially could NOT get the agent — it's a TrueNAS SCALE appliance
 
 `/etc/os-release` reports plain Debian 12, which is misleading — TrueNAS
 SCALE hard-blocks `apt`/`dpkg`:
@@ -161,10 +161,15 @@ Package management tools are disabled on TrueNAS appliances.
 Attempting to update TrueNAS with apt or methods other than the TrueNAS
 web interface can result in a nonfunctional system.
 ```
-Not pursued further this session. Options for later: TrueNAS SCALE's own
-"Apps" custom-container feature (run the checkmk agent as a supported
-app rather than a raw package), or drop to SNMP-only monitoring for this
-host instead of the full agent.
+**Update 2026-09-09**: fixed via TrueNAS's own Docker/Apps subsystem —
+running the same agent package version as a container, sharing the
+host's PID/network namespaces, with a non-obvious `/.dockerenv` gotcha
+that silently swaps checkmk's agent to container-scoped (wrong) metrics
+if you don't strip it. See
+[checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md)
+for the full writeup — `nas` now reports real `Memory`/`CPU
+load`/`Uptime` (filesystem/ZFS pool visibility is still a known gap, not
+chased further).
 
 ### Hosts skipped entirely this pass
 
