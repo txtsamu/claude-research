@@ -25,6 +25,8 @@ status: current | historical | blocked
 
 When adding a new doc: same flat layout, same frontmatter block, descriptive kebab-case filename (`service-what-happened.md`), one topic per file — don't bundle unrelated work into one doc just because it happened the same day.
 
+**If the write-up involved any web research** (an official docs page, a GitHub issue/PR, a changelog, a forum/Discourse thread, a blog post — anything found via search rather than derived on-box), end the doc with a `## References` section linking every source that actually contributed, not just a summary of "I searched and found a fix." A future session hitting the same problem should be able to jump straight to the primary source instead of re-searching from scratch.
+
 Each index table below has a **Last verified** column and is sorted by it, **newest first**. Insert new rows at the top of their table, not the bottom, and re-sort if a `last_verified` bump moves an existing doc out of place.
 
 ## Index
