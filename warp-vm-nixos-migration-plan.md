@@ -16,7 +16,9 @@ Goal (user's framing): make `warp-vm` declarative/reproducible by moving it to N
 
 Every app-redeploy ticket (T14-T18) has `warp-vm`'s old copies genuinely stopped, not deferred - RWO iSCSI storage makes that unavoidable, unlike the service-only tickets (T3-T8) where every deferral is still outstanding, tracked against T19. The temp MetalLB pool is `192.168.50.240-252` (started as `.240-249` in T13, expanded in T17 when it filled up) - check remaining capacity before assuming a `<pending>` LoadBalancer IP is a real bug. `home`'s own Caddy config (`hosts/home/proxy.nix`, from T4) still has the pre-migration `warp-vm` IPs for these apps - user explicitly said leave that for T19.
 
-Frontier as of this update: T9 camofox (#17, blocks T10 tiktok-bot #18), T11 headroom-proxy (#19), T12 checkmk agent (#20, host monitoring agent - not the checkmk *app* already on home's k3s from T14). After those: T19 cutover (#27) and T20 decommission (#28) are the only tickets left, both still blocked pending T9-T12.
+Frontier as of this update: T10 tiktok-bot (#18, unblocked now that T9 is done - depends on camofox, which is live on `home` but `warp-vm`'s copy is deliberately still running since `warp-vm`'s own tiktok-bot needs it until T10 migrates), T11 headroom-proxy (#19), T12 checkmk agent (#20, host monitoring agent - not the checkmk *app* already on home's k3s from T14). After those: T19 cutover (#27) and T20 decommission (#28) are the only tickets left, both still blocked pending T10-T12.
+
+T9 (#17, camofox-browser) done - hit two real NixOS bugs: Camoufox (a Firefox fork) and its bundled native Node addons are dynamically-linked ELFs expecting standard FHS paths NixOS doesn't have (same class as T8's node-on-NixOS finding, but for an entire browser) - fixed by wrapping the whole ExecStart in `pkgs.steam-run`; and `steam-run` pulls in the unfree `steam-unwrapped`, needing a scoped `allowUnfreePredicate`. Verified with a real live TikTok page snapshot, not just a health check.
 
 ## 0. Current topology
 
