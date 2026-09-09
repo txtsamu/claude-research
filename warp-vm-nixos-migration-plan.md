@@ -10,6 +10,8 @@ last_verified: 2026-09-09
 
 Goal (user's framing): make `warp-vm` declarative/reproducible by moving it to NixOS, config centralized instead of imperatively hand-built. This doc is the **plan**, built from a live inventory of the VM on 2026-09-09 — not yet executed. Update `status`/`last_verified` as phases land, and treat any IP/version/secret-name below as a snapshot that can drift.
 
+**Progress (2026-09-09):** T1 (#9, provisioning), T2 (#10, agenix), T7 (#15, evomem), T13 (#21, k3s core platform) done and closed — see each issue's resolution comment for exact commands, values, and real bugs hit (stale root Nix eval cache needing `--refresh`, containerd's `/etc/localtime` bind-mount needing `time.timeZone` set, democratic-csi's `/var/iscsi` hostPath, the T1-era virtio_scsi/DNS-resolver fixes). `home` (192.168.50.202) is a real single-node k3s cluster with the full Rancher/Fleet/cert-manager/MetalLB/democratic-csi platform layer up, proven against the live TrueNAS backend. Frontier as of this update: T3 DNS (#11), T6 VPN (#14), T8 MCP trio (#16), T9 camofox (#17), T11 headroom-proxy (#19), T12 checkmk (#20), and T14-T18 app redeploys (#22-26, now unblocked by T13).
+
 ## 0. Current topology
 
 - `px1` (alias `pve-pc`) — Proxmox VE 9.2.11 host, 16c/62.7GiB RAM, HP EliteDesk 705 G4. Already tight on RAM (~80% used before this migration; see [[homelab-k8s-ram-overhead-analysis]]).
