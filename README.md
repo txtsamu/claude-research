@@ -25,31 +25,23 @@ status: current | historical | blocked
 
 When adding a new doc: same flat layout, same frontmatter block, descriptive kebab-case filename (`service-what-happened.md`), one topic per file — don't bundle unrelated work into one doc just because it happened the same day.
 
+Each index table below is sorted by date, **newest first** — `last_verified` for the how-to/troubleshooting tables, the linked doc's own `last_verified`/`created` for the investigations table (it has no date column of its own). Insert new rows at the top of their table, not the bottom, and re-sort if a `last_verified` bump moves an existing doc out of place.
+
 ## Index
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
-| [local-lan-domains-caddy-pihole-setup.md](local-lan-domains-caddy-pihole-setup.md) | caddy, pihole, dns, https, podman, mikrotik, brave | 2026-07-13 |
-| [oneterm-podman-quadlet-deploy.md](oneterm-podman-quadlet-deploy.md) | oneterm, podman, quadlet, systemd | 2026-06-26 |
-| [agentmemory-shared-mcp-multi-host-setup.md](agentmemory-shared-mcp-multi-host-setup.md) | agentmemory, mcp, claude-code, firewalld, homelab, multi-host | 2026-07-31 |
-| [oneterm-dark-mode.md](oneterm-dark-mode.md) | oneterm, frontend, vue | 2026-06-26 |
-| [cekping-agent-podman-quadlet-deploy.md](cekping-agent-podman-quadlet-deploy.md) | podman, quadlet, systemd | 2026-07-11 |
-| [llama-server-gemma4-qat-mtp-swap.md](llama-server-gemma4-qat-mtp-swap.md) | llama-server, gemma4, mtp, qat | 2026-06-24 |
-| [gnome-windows7-theme-fedora.md](gnome-windows7-theme-fedora.md) | gnome, gnome-shell, theming, fedora, wayland | 2026-07-17 |
-| [cosmic-de-install-fedora43.md](cosmic-de-install-fedora43.md) | cosmic, cosmic-de, fedora, gdm, desktop-environment | 2026-07-23 |
-| [flameshot-shortcut-cosmic-fedora43.md](flameshot-shortcut-cosmic-fedora43.md) | flameshot, screenshot, cosmic, keyboard-shortcuts, fedora | 2026-07-23 |
-| [immich-pgdata-iscsi-lun-resize.md](immich-pgdata-iscsi-lun-resize.md) | truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm | 2026-08-23 |
-| [talos-kubernetes-cluster-buildout.md](talos-kubernetes-cluster-buildout.md) | kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm, kube-ovn | 2026-08-28 |
-| [mikrotik-hardening-dpi-bypass-2026-08-27.md](mikrotik-hardening-dpi-bypass-2026-08-27.md) | mikrotik, routeros, firewall, security, dpi-bypass, hardening | 2026-08-28 |
-| [mikrotik-openvpn-warp-relay-bypass-isp-udp-block.md](mikrotik-openvpn-warp-relay-bypass-isp-udp-block.md) | mikrotik, routeros, openvpn, wireguard, cloudflare-warp, digitalocean, isp, dpi, vpn | 2026-08-30 |
-| [netbird-selfhosted-podman-quadlet-setup.md](netbird-selfhosted-podman-quadlet-setup.md) | netbird, podman, quadlet, wireguard, traefik, vpn, self-hosted, mesh, exit-node, acme, kubernetes | 2026-08-30 |
-| [pangolin-vpz-podman-quadlet-deploy.md](pangolin-vpz-podman-quadlet-deploy.md) | pangolin, podman, quadlet, traefik, gerbil, wireguard, acme, letsencrypt, tunnel, self-hosted, vpz | 2026-08-30 |
-| [homelab-cluster-memory-limits-audit.md](homelab-cluster-memory-limits-audit.md) | kubernetes, kubectl, resource-limits, oom, memory, rwo-pvc, rollingupdate, homelab | 2026-08-30 |
-| [talos-worker-disk-resize-proxmox.md](talos-worker-disk-resize-proxmox.md) | talos, kubernetes, proxmox, disk-resize, ephemeral-partition, cordon, drain, ovs-ovn, homelab | 2026-08-30 |
-| [rancher-upgrade-2.15.1.md](rancher-upgrade-2.15.1.md) | rancher, helm, kubernetes, upgrade, cattle-system, security | 2026-08-30 |
-| [android-phone-proxy-via-vpz.md](android-phone-proxy-via-vpz.md) | android, proxy, socks5, http-proxy, freeproxy, vpz, squid, microsocks | 2026-08-30 |
+| [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | checkmk, kubernetes, k3s, homelab, monitoring, caddy, technitium, truenas, firewalld | 2026-09-09 |
+| [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | checkmk, truenas, scale, docker, containers, monitoring, package-management-blocked | 2026-09-09 |
+| [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | evomem, mcp, pi, coding-agent, knowledge-base, homelab, nixos, memory | 2026-09-09 |
+| [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | nixos, uv, python, venv, home, hermes, proxmox-mcp-plus, mcp, migration, systemd | 2026-09-09 |
+| [wine-standalone-exe-steam-proton-shortcut.md](wine-standalone-exe-steam-proton-shortcut.md) | wine, wine-wow64, fedora, proton, steam, non-steam-game, pulseaudio, alsa, mmdevapi, gaming, python-vdf | 2026-09-08 |
+| [openrgb-rc3-update-fedora.md](openrgb-rc3-update-fedora.md) | openrgb, fedora, rpm, versioning | 2026-09-06 |
+| [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-09-06 |
+| [rancher-talos-to-k3s-migration.md](rancher-talos-to-k3s-migration.md) | rancher, kubernetes, talos, k3s, migration, cert-manager, metallb, caddy, cattle-system | 2026-09-06 |
+| [vpz-netbird-update-podman-autoupdate-rollout.md](vpz-netbird-update-podman-autoupdate-rollout.md) | netbird, podman, quadlet, auto-update, vpz, pangolin, technitium | 2026-09-06 |
 | [technitium-dns-3node-cluster-deployment.md](technitium-dns-3node-cluster-deployment.md) | technitium, dns, podman, quadlet, mikrotik, caddy, talos, pihole-migration, ad-blocking, ha, vpz | 2026-08-31 |
 | [pihole-podman-quadlet-config-historical.md](pihole-podman-quadlet-config-historical.md) | pihole, podman, quadlet, dns, ad-blocking, historical | 2026-08-31 |
 | [keel-image-auto-update-and-version-pinning.md](keel-image-auto-update-and-version-pinning.md) | keel, kubernetes, kubectl, image-updates, semver, homelab | 2026-08-31 |
@@ -59,59 +51,69 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [talos-worker-storage-migration-nas-lvm-thin.md](talos-worker-storage-migration-nas-lvm-thin.md) | talos, kubernetes, proxmox, storage-migration, lvm-thin, live-migration, cloudinit, iscsi, homelab, warp-vm | 2026-08-31 |
 | [homelab-system-namespace-resource-audit.md](homelab-system-namespace-resource-audit.md) | kubernetes, resource-limits, cert-manager, metallb, fleet, capi, democratic-csi, snapshot-controller, rancher, homelab | 2026-08-31 |
 | [k8s-deployment-memory-ranking-technique.md](k8s-deployment-memory-ranking-technique.md) | kubernetes, kubectl, memory, rancher, monitoring, homelab, warp-vm | 2026-08-31 |
-| [openrgb-rc3-update-fedora.md](openrgb-rc3-update-fedora.md) | openrgb, fedora, rpm, versioning | 2026-09-06 |
-| [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-09-06 |
-| [rancher-talos-to-k3s-migration.md](rancher-talos-to-k3s-migration.md) | rancher, kubernetes, talos, k3s, migration, cert-manager, metallb, caddy, cattle-system | 2026-09-06 |
-| [vpz-netbird-update-podman-autoupdate-rollout.md](vpz-netbird-update-podman-autoupdate-rollout.md) | netbird, podman, quadlet, auto-update, vpz, pangolin, technitium | 2026-09-06 |
-| [wine-standalone-exe-steam-proton-shortcut.md](wine-standalone-exe-steam-proton-shortcut.md) | wine, wine-wow64, fedora, proton, steam, non-steam-game, pulseaudio, alsa, mmdevapi, gaming, python-vdf | 2026-09-08 |
-| [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | checkmk, kubernetes, k3s, homelab, monitoring, caddy, technitium, truenas, firewalld | 2026-09-09 |
-| [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | checkmk, truenas, scale, docker, containers, monitoring, package-management-blocked | 2026-09-09 |
-| [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | evomem, mcp, pi, coding-agent, knowledge-base, homelab, nixos, memory | 2026-09-09 |
-| [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | nixos, uv, python, venv, home, hermes, proxmox-mcp-plus, mcp, migration, systemd | 2026-09-09 |
+| [mikrotik-openvpn-warp-relay-bypass-isp-udp-block.md](mikrotik-openvpn-warp-relay-bypass-isp-udp-block.md) | mikrotik, routeros, openvpn, wireguard, cloudflare-warp, digitalocean, isp, dpi, vpn | 2026-08-30 |
+| [netbird-selfhosted-podman-quadlet-setup.md](netbird-selfhosted-podman-quadlet-setup.md) | netbird, podman, quadlet, wireguard, traefik, vpn, self-hosted, mesh, exit-node, acme, kubernetes | 2026-08-30 |
+| [pangolin-vpz-podman-quadlet-deploy.md](pangolin-vpz-podman-quadlet-deploy.md) | pangolin, podman, quadlet, traefik, gerbil, wireguard, acme, letsencrypt, tunnel, self-hosted, vpz | 2026-08-30 |
+| [homelab-cluster-memory-limits-audit.md](homelab-cluster-memory-limits-audit.md) | kubernetes, kubectl, resource-limits, oom, memory, rwo-pvc, rollingupdate, homelab | 2026-08-30 |
+| [talos-worker-disk-resize-proxmox.md](talos-worker-disk-resize-proxmox.md) | talos, kubernetes, proxmox, disk-resize, ephemeral-partition, cordon, drain, ovs-ovn, homelab | 2026-08-30 |
+| [rancher-upgrade-2.15.1.md](rancher-upgrade-2.15.1.md) | rancher, helm, kubernetes, upgrade, cattle-system, security | 2026-08-30 |
+| [android-phone-proxy-via-vpz.md](android-phone-proxy-via-vpz.md) | android, proxy, socks5, http-proxy, freeproxy, vpz, squid, microsocks | 2026-08-30 |
+| [talos-kubernetes-cluster-buildout.md](talos-kubernetes-cluster-buildout.md) | kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm, kube-ovn | 2026-08-28 |
+| [mikrotik-hardening-dpi-bypass-2026-08-27.md](mikrotik-hardening-dpi-bypass-2026-08-27.md) | mikrotik, routeros, firewall, security, dpi-bypass, hardening | 2026-08-28 |
+| [immich-pgdata-iscsi-lun-resize.md](immich-pgdata-iscsi-lun-resize.md) | truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm | 2026-08-23 |
+| [agentmemory-shared-mcp-multi-host-setup.md](agentmemory-shared-mcp-multi-host-setup.md) | agentmemory, mcp, claude-code, firewalld, homelab, multi-host | 2026-07-31 |
+| [cosmic-de-install-fedora43.md](cosmic-de-install-fedora43.md) | cosmic, cosmic-de, fedora, gdm, desktop-environment | 2026-07-23 |
+| [flameshot-shortcut-cosmic-fedora43.md](flameshot-shortcut-cosmic-fedora43.md) | flameshot, screenshot, cosmic, keyboard-shortcuts, fedora | 2026-07-23 |
+| [gnome-windows7-theme-fedora.md](gnome-windows7-theme-fedora.md) | gnome, gnome-shell, theming, fedora, wayland | 2026-07-17 |
+| [local-lan-domains-caddy-pihole-setup.md](local-lan-domains-caddy-pihole-setup.md) | caddy, pihole, dns, https, podman, mikrotik, brave | 2026-07-13 |
+| [cekping-agent-podman-quadlet-deploy.md](cekping-agent-podman-quadlet-deploy.md) | podman, quadlet, systemd | 2026-07-11 |
+| [oneterm-podman-quadlet-deploy.md](oneterm-podman-quadlet-deploy.md) | oneterm, podman, quadlet, systemd | 2026-06-26 |
+| [oneterm-dark-mode.md](oneterm-dark-mode.md) | oneterm, frontend, vue | 2026-06-26 |
+| [llama-server-gemma4-qat-mtp-swap.md](llama-server-gemma4-qat-mtp-swap.md) | llama-server, gemma4, mtp, qat | 2026-06-24 |
 
 ### Troubleshooting
 
 | Doc | Tags | Last verified |
 |---|---|---|
-| [vpd-ssh-cloudflared-slow-connect.md](vpd-ssh-cloudflared-slow-connect.md) | ssh, cloudflared, cloudflare-access, pam, ssh-multiplexing | 2026-08-03 |
-| [mikrotik-pc-usb-tether-wan-failover.md](mikrotik-pc-usb-tether-wan-failover.md) | mikrotik, routeros, failover, wan-backup, usb-tethering, firewalld, nat, warp | 2026-08-12 |
-| [llama-server-rocm-mtp-tuning.md](llama-server-rocm-mtp-tuning.md) | llama-server, rocm, gpu, mtp | 2026-07-01 |
-| [arm-cluster-ssh-motd-slow.md](arm-cluster-ssh-motd-slow.md) | ssh, armbian, motd, arm-cluster, dns | 2026-07-22 |
-| [fedora-perf-audit-openrgb-i2c-dup-scan.md](fedora-perf-audit-openrgb-i2c-dup-scan.md) | fedora, performance, use-method, sysstat, openrgb, i2c, cosmic-de | 2026-07-26 |
-| [llama-server-qwen9b-crash-loop-cpu-heat.md](llama-server-qwen9b-crash-loop-cpu-heat.md) | llama-server, systemd, rocm, cpu-temp, crash-loop, fedora | 2026-07-31 |
-| [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | git, secrets, git-filter-repo, github, security, privacy | 2026-08-03 |
-| [homelab-lvm-thin-reclaim-fstrim.md](homelab-lvm-thin-reclaim-fstrim.md) | proxmox, lvm-thin, xfs, fstrim, storage, podman, homelab-vm | 2026-08-23 |
-| [immich-random-stops-automount-root-cause.md](immich-random-stops-automount-root-cause.md) | immich, systemd, automount, nfs, quadlet, podman, forensics, nextcloud, podman-auto-update | 2026-08-23 |
-| [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm | 2026-08-30 |
-| [suwayomi-k8s-deployment-fixes.md](suwayomi-k8s-deployment-fixes.md) | suwayomi, kubernetes, kubectl, rollout, rwo-pvc, flaresolverr, byparr, cloudflare, socks-proxy, warp-vm, vpz | 2026-08-30 |
-| [mikrotik-double-nat-dmz-isp-filtering-investigation.md](mikrotik-double-nat-dmz-isp-filtering-investigation.md) | mikrotik, routeros, nat, dmz, isp, firewall, digitalocean | 2026-08-28 |
-| [lan-wide-warp-failover-routing-outage.md](lan-wide-warp-failover-routing-outage.md) | mikrotik, routeros, cloudflare-warp, policy-routing, ip-rule, outage, postmortem | 2026-08-28 |
-| [homelab-cloudflared-tunnel-stopped.md](homelab-cloudflared-tunnel-stopped.md) | cloudflared, cloudflare-tunnel, systemd, homelab | 2026-08-28 |
-| [mikrotik-isolated-test-mangle-lockout.md](mikrotik-isolated-test-mangle-lockout.md) | mikrotik, routeros, firewall, mangle, policy-routing, lockout | 2026-08-30 |
+| [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | technitium, dns, zone-transfer, axfr, notify, secondary-zone, warp-vm, arm1, arm3, checkmk | 2026-09-09 |
+| [truenas-scst-arc-memory-backup-timeout.md](truenas-scst-arc-memory-backup-timeout.md) | truenas, zfs, arc, iscsi, scst, proxmox, vzdump, backup, warp-vm, px1 | 2026-09-08 |
+| [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm | 2026-09-07 |
+| [immich-bull-queue-leftover-cleanup.md](immich-bull-queue-leftover-cleanup.md) | immich, redis, bullmq, job-queue, kubernetes, homelab | 2026-09-06 |
+| [pihole-technitium-port53-conflict-warp.md](pihole-technitium-port53-conflict-warp.md) | dns, pihole, technitium, warp-vm, iptables, port-conflict | 2026-09-06 |
+| [netbird-reverse-proxy-k3s-forward-filter-drop.md](netbird-reverse-proxy-k3s-forward-filter-drop.md) | netbird, reverse-proxy, k3s, kube-router, nftables, cloudflare-tunnel, metallb, vpz, warp-vm | 2026-09-06 |
+| [proxmox-px1-px2-rename-cert-fix.md](proxmox-px1-px2-rename-cert-fix.md) | proxmox, hostname-rename, pmxcfs, tls, ssl-cert, dns, apt, storage-cfg, caddy, px1, px2 | 2026-09-05 |
+| [talos-etcd-kube-ovn-peer-url-disaster-recovery.md](talos-etcd-kube-ovn-peer-url-disaster-recovery.md) | talos, kubernetes, etcd, kube-ovn, disaster-recovery, reboot, proxmox, democratic-csi, registry-mirror, containerd, px1 | 2026-09-05 |
 | [mikrotik-doh-bypasses-local-dns-for-lan-domains.md](mikrotik-doh-bypasses-local-dns-for-lan-domains.md) | mikrotik, routeros, dns, doh, dns-over-https, lan, cloudflare | 2026-08-31 |
 | [homelab-stale-dns-hosts-ssh-config-sweep.md](homelab-stale-dns-hosts-ssh-config-sweep.md) | dns, hosts-file, ssh-config, nmcli, networkmanager, homelab, cleanup | 2026-08-31 |
 | [fedora-memory-audit-warp-svc-leak-daily-restart.md](fedora-memory-audit-warp-svc-leak-daily-restart.md) | fedora, memory, warp-svc, llama-server, systemd, memory-leak, cloudflare-warp, sudo | 2026-08-31 |
 | [rancher-startup-probe-cpu-throttle-restart-loop.md](rancher-startup-probe-cpu-throttle-restart-loop.md) | rancher, kubernetes, cpu-limits, startup-probe, helm, cattle-system, homelab | 2026-08-31 |
 | [talos-worker-memory-downsize-qemu-reboot-semantics.md](talos-worker-memory-downsize-qemu-reboot-semantics.md) | talos, proxmox, qemu, memory, reboot, talosctl, kexec, powercycle, homelab, warp-vm | 2026-08-31 |
-| [proxmox-px1-px2-rename-cert-fix.md](proxmox-px1-px2-rename-cert-fix.md) | proxmox, hostname-rename, pmxcfs, tls, ssl-cert, dns, apt, storage-cfg, caddy, px1, px2 | 2026-09-05 |
-| [talos-etcd-kube-ovn-peer-url-disaster-recovery.md](talos-etcd-kube-ovn-peer-url-disaster-recovery.md) | talos, kubernetes, etcd, kube-ovn, disaster-recovery, reboot, proxmox, democratic-csi, registry-mirror, containerd, px1 | 2026-09-05 |
-| [immich-bull-queue-leftover-cleanup.md](immich-bull-queue-leftover-cleanup.md) | immich, redis, bullmq, job-queue, kubernetes, homelab | 2026-09-06 |
-| [pihole-technitium-port53-conflict-warp.md](pihole-technitium-port53-conflict-warp.md) | dns, pihole, technitium, warp-vm, iptables, port-conflict | 2026-09-06 |
-| [netbird-reverse-proxy-k3s-forward-filter-drop.md](netbird-reverse-proxy-k3s-forward-filter-drop.md) | netbird, reverse-proxy, k3s, kube-router, nftables, cloudflare-tunnel, metallb, vpz, warp-vm | 2026-09-06 |
-| [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm | 2026-09-07 |
-| [truenas-scst-arc-memory-backup-timeout.md](truenas-scst-arc-memory-backup-timeout.md) | truenas, zfs, arc, iscsi, scst, proxmox, vzdump, backup, warp-vm, px1 | 2026-09-08 |
-| [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | technitium, dns, zone-transfer, axfr, notify, secondary-zone, warp-vm, arm1, arm3, checkmk | 2026-09-09 |
+| [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm | 2026-08-30 |
+| [suwayomi-k8s-deployment-fixes.md](suwayomi-k8s-deployment-fixes.md) | suwayomi, kubernetes, kubectl, rollout, rwo-pvc, flaresolverr, byparr, cloudflare, socks-proxy, warp-vm, vpz | 2026-08-30 |
+| [mikrotik-isolated-test-mangle-lockout.md](mikrotik-isolated-test-mangle-lockout.md) | mikrotik, routeros, firewall, mangle, policy-routing, lockout | 2026-08-30 |
+| [mikrotik-double-nat-dmz-isp-filtering-investigation.md](mikrotik-double-nat-dmz-isp-filtering-investigation.md) | mikrotik, routeros, nat, dmz, isp, firewall, digitalocean | 2026-08-28 |
+| [lan-wide-warp-failover-routing-outage.md](lan-wide-warp-failover-routing-outage.md) | mikrotik, routeros, cloudflare-warp, policy-routing, ip-rule, outage, postmortem | 2026-08-28 |
+| [homelab-cloudflared-tunnel-stopped.md](homelab-cloudflared-tunnel-stopped.md) | cloudflared, cloudflare-tunnel, systemd, homelab | 2026-08-28 |
+| [homelab-lvm-thin-reclaim-fstrim.md](homelab-lvm-thin-reclaim-fstrim.md) | proxmox, lvm-thin, xfs, fstrim, storage, podman, homelab-vm | 2026-08-23 |
+| [immich-random-stops-automount-root-cause.md](immich-random-stops-automount-root-cause.md) | immich, systemd, automount, nfs, quadlet, podman, forensics, nextcloud, podman-auto-update | 2026-08-23 |
+| [mikrotik-pc-usb-tether-wan-failover.md](mikrotik-pc-usb-tether-wan-failover.md) | mikrotik, routeros, failover, wan-backup, usb-tethering, firewalld, nat, warp | 2026-08-12 |
+| [vpd-ssh-cloudflared-slow-connect.md](vpd-ssh-cloudflared-slow-connect.md) | ssh, cloudflared, cloudflare-access, pam, ssh-multiplexing | 2026-08-03 |
+| [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | git, secrets, git-filter-repo, github, security, privacy | 2026-08-03 |
+| [llama-server-qwen9b-crash-loop-cpu-heat.md](llama-server-qwen9b-crash-loop-cpu-heat.md) | llama-server, systemd, rocm, cpu-temp, crash-loop, fedora | 2026-07-31 |
+| [fedora-perf-audit-openrgb-i2c-dup-scan.md](fedora-perf-audit-openrgb-i2c-dup-scan.md) | fedora, performance, use-method, sysstat, openrgb, i2c, cosmic-de | 2026-07-26 |
+| [arm-cluster-ssh-motd-slow.md](arm-cluster-ssh-motd-slow.md) | ssh, armbian, motd, arm-cluster, dns | 2026-07-22 |
+| [llama-server-rocm-mtp-tuning.md](llama-server-rocm-mtp-tuning.md) | llama-server, rocm, gpu, mtp | 2026-07-01 |
 
 ### Investigations
 
 | Doc | Tags | Status |
 |---|---|---|
-| [llama-server-dspark-gemma4-draft-investigation.md](llama-server-dspark-gemma4-draft-investigation.md) | llama-server, gemma4, dspark | blocked — upstream Qwen3-only, no Gemma4 support yet |
-| [arm-cluster-security-audit.md](arm-cluster-security-audit.md) | security, ssh, arm-cluster, armbian, cloudflared | current — clean, extra SSH keys confirmed legitimate |
-| [podman-to-kubernetes-migration-plan.md](podman-to-kubernetes-migration-plan.md) | kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi | current — migration complete (Waves 1-3 + homelab-vm decommission), now tracking post-decommission fixes |
-| [netbird-exit-node-throughput-isp-hop-loss.md](netbird-exit-node-throughput-isp-hop-loss.md) | netbird, wireguard, throughput, packet-loss, isp, mtr, iperf3, exit-node | current — root cause confirmed (ISP-internal hop loss), not pursued further |
 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1 | current — migration complete (T1-T20), `warp-vm` retained powered-off as a rollback point |
 | [warp-vm-nixos-migration-retrospective.md](warp-vm-nixos-migration-retrospective.md) | nixos, warp-vm, migration, retrospective, k3s, kubernetes, proxmox, cloudflare, metallb, hermes, technitium, caddy, evomem, lessons-learned | current — lessons learned across all 20 tickets, what to do differently next time |
+| [podman-to-kubernetes-migration-plan.md](podman-to-kubernetes-migration-plan.md) | kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi | current — migration complete (Waves 1-3 + homelab-vm decommission), now tracking post-decommission fixes |
+| [netbird-exit-node-throughput-isp-hop-loss.md](netbird-exit-node-throughput-isp-hop-loss.md) | netbird, wireguard, throughput, packet-loss, isp, mtr, iperf3, exit-node | current — root cause confirmed (ISP-internal hop loss), not pursued further |
+| [arm-cluster-security-audit.md](arm-cluster-security-audit.md) | security, ssh, arm-cluster, armbian, cloudflared | current — clean, extra SSH keys confirmed legitimate |
+| [llama-server-dspark-gemma4-draft-investigation.md](llama-server-dspark-gemma4-draft-investigation.md) | llama-server, gemma4, dspark | blocked — upstream Qwen3-only, no Gemma4 support yet |
 
 ## Secrets policy
 
