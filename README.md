@@ -67,6 +67,7 @@ When adding a new doc: same flat layout, same frontmatter block, descriptive keb
 | [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | checkmk, kubernetes, k3s, homelab, monitoring, caddy, technitium, truenas, firewalld | 2026-09-09 |
 | [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | checkmk, truenas, scale, docker, containers, monitoring, package-management-blocked | 2026-09-09 |
 | [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | evomem, mcp, pi, coding-agent, knowledge-base, homelab, nixos, memory | 2026-09-09 |
+| [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | nixos, uv, python, venv, home, hermes, proxmox-mcp-plus, mcp, migration, systemd | 2026-09-09 |
 
 ### Troubleshooting
 
