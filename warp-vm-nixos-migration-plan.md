@@ -3,7 +3,7 @@ type: investigation
 tags: [nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1, wayfinder]
 created: 2026-09-09
 status: current
-last_verified: 2026-09-09
+last_verified: 2026-09-10
 ---
 
 # warp-vm → NixOS migration plan
@@ -16,7 +16,7 @@ Goal (user's framing): make `warp-vm` declarative/reproducible by moving it to N
 
 Every app-redeploy ticket (T14-T18) has `warp-vm`'s old copies genuinely stopped, not deferred - RWO iSCSI storage makes that unavoidable, unlike the service-only tickets (T3-T8) where every deferral is still outstanding, tracked against T19. The temp MetalLB pool is `192.168.50.240-252` (started as `.240-249` in T13, expanded in T17 when it filled up) - check remaining capacity before assuming a `<pending>` LoadBalancer IP is a real bug. `home`'s own Caddy config (`hosts/home/proxy.nix`, from T4) still has the pre-migration `warp-vm` IPs for these apps - user explicitly said leave that for T19.
 
-Frontier as of this update: **T20 decommission (#28) is the only remaining ticket.**
+Frontier as of this update: **T20 decommission (#28) is the only remaining ticket, and it's deliberately left open** - its acceptance criteria include "`home` has run clean for a burn-in period (no regressions observed)," which can't be honestly claimed minutes after cutover. Its other criterion, `warp-vm` shut down (not deleted), is already true as of T19. Revisit T20 after a real burn-in period; don't close it just to clear the board.
 
 T19 (#27, cutover) done - the big one. Moved `192.168.50.200` from `warp-vm` to `home`, retired every hardcoded `warp`/`192.168.50.200` reference, and confirmed the whole LAN + public domain reachable through `home` alone. Naming decision (asked and confirmed with the user before touching anything): retire the `warp` name entirely once `warp-vm` is decommissioned - added a `home` entry to `~/.ssh/config` now, left the existing `warp-vm`/`warp` entries in place until T20.
 
