@@ -29,6 +29,28 @@ Each index table below has a **Last verified** column and is sorted by it, **new
 
 ## Index
 
+### Recent (last 15, newest first)
+
+One combined view across all three tables below, so the latest work is visible at a glance without checking each section separately. Full history lives in the categorized tables.
+
+| Date | Doc | Type |
+|---|---|---|
+| 2026-09-10 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | investigation |
+| 2026-09-10 | [warp-vm-nixos-migration-retrospective.md](warp-vm-nixos-migration-retrospective.md) | investigation |
+| 2026-09-09 | [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | how-to |
+| 2026-09-09 | [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | how-to |
+| 2026-09-09 | [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | how-to |
+| 2026-09-09 | [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | how-to |
+| 2026-09-09 | [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | troubleshooting |
+| 2026-09-08 | [wine-standalone-exe-steam-proton-shortcut.md](wine-standalone-exe-steam-proton-shortcut.md) | how-to |
+| 2026-09-08 | [truenas-scst-arc-memory-backup-timeout.md](truenas-scst-arc-memory-backup-timeout.md) | troubleshooting |
+| 2026-09-07 | [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | troubleshooting |
+| 2026-09-06 | [openrgb-rc3-update-fedora.md](openrgb-rc3-update-fedora.md) | how-to |
+| 2026-09-06 | [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | how-to |
+| 2026-09-06 | [rancher-talos-to-k3s-migration.md](rancher-talos-to-k3s-migration.md) | how-to |
+| 2026-09-06 | [vpz-netbird-update-podman-autoupdate-rollout.md](vpz-netbird-update-podman-autoupdate-rollout.md) | how-to |
+| 2026-09-06 | [immich-bull-queue-leftover-cleanup.md](immich-bull-queue-leftover-cleanup.md) | troubleshooting |
+
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
