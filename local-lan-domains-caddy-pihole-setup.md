@@ -342,3 +342,8 @@ All of this was executed **over SSH to the user's Fedora desktop** (`moo@fedora`
 ## 13. Notes on secrets
 
 Credentials referenced during this session (MikroTik SSH password, Cloudflare API token from `~/.hermes/skills/devops/homelab-mcp-setup/references/cloudflare-mcp.md`) are intentionally **not** reproduced here — see the relevant Hermes skill reference files for those, kept out of this repo. Placeholder convention used above: `<MIKROTIK_PASSWORD>`, `<CLOUDFLARE_API_TOKEN>`.
+
+## References
+
+- [Clean Local Domains with HTTPS for Your Homelab — dbtechreviews.com](https://dbtechreviews.com/2026/07/06/clean-local-domains-with-https-for-your-homelab-no-domain-purchase-required/)
+- [Trust CA Certificates in Brave on Linux using Policy — Brave Community](https://community.brave.app/t/solution-trust-ca-certificates-in-brave-on-linux-using-policy/535346)

@@ -118,3 +118,7 @@ but a fully trusted network.
 1. Confirm `3111/tcp` is reachable from the new host (`curl` test above).
 2. `claude mcp add agentmemory -s user -e AGENTMEMORY_URL=http://192.168.50.80:3111 -- npx -y @agentmemory/mcp`
 3. `claude mcp list` and check for ✔ Connected.
+
+## References
+
+- [rohitg00/agentmemory](https://github.com/rohitg00/agentmemory)

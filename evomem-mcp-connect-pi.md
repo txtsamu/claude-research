@@ -139,3 +139,7 @@ curl "http://192.168.50.202:7700/api/search?q=test&limit=2"
   `http://192.168.50.202:7700` there too.
 - No credentials/tokens are involved in this connection; the evomem API on `:7700`
   is unauthenticated on the LAN.
+
+## References
+
+- [pi coding agent](https://pi.dev)

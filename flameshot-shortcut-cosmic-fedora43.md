@@ -66,7 +66,7 @@ Walked through the officially supported path in **COSMIC Settings**:
 
 **User-side action, not yet verified from the shell.** Once confirmed working, the plan is to `cat $HOME/.config/cosmic/com.system76.CosmicSettings.Shortcuts/v1/custom` and record the actual generated RON syntax here — that closes the gap from section 4 and gives a copy-pasteable reference for adding future custom shortcuts (to this machine or others) without going through the GUI again.
 
-## Sources
+## References
 
 - [Pop!_OS 24.04 LTS COSMIC Keyboard Shortcuts — System76 Support](https://system76.com/support/articles/pop-cosmic-keyboard-shortcuts)
 - [Custom keyboard shortcuts don't work · Issue #2481 · pop-os/cosmic-epoch](https://github.com/pop-os/cosmic-epoch/issues/2481)

@@ -125,3 +125,9 @@ Used" memory gap (see the Reserved/Used investigation this same session —
 `rancher` alone had zero declared requests despite being the single
 biggest consumer) should now track real usage much more closely
 cluster-wide, not just for Rancher itself.
+
+## References
+
+- [cert-manager best-practice docs](https://cert-manager.io/docs/installation/best-practice/)
+- [Fleet resource-limits docs](https://fleet.rancher.io/how-tos-for-operators/resource-limits)
+- [kubernetes-csi.github.io — snapshot-controller](https://kubernetes-csi.github.io/docs/snapshot-controller.html)

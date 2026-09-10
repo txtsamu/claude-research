@@ -105,3 +105,8 @@ journalctl -k --since "1 minute ago" | grep -i i2c
 
 - If the i2c warning still appears *after* this fix, it's coming solely from `openrgb-server.service`'s own detection and is a benign upstream limitation (the `i2c-piix4` SMBus controller rejects the >32-byte block read OpenRGB's SPD reader requests) — not fixable short of patching OpenRGB or the kernel driver. Don't re-chase it as if it were new.
 - `openrgb-server.service` binds `0.0.0.0:6742` (all interfaces) rather than localhost-only. Not touched in this pass since it wasn't the reported problem, but worth tightening to `127.0.0.1` if external SDK clients aren't actually needed — flag to user before changing.
+
+## References
+
+- [Linux monitoring tools comparison, 2026 — betterstack.com](https://betterstack.com/community/comparisons/linux-monitoring-tools/)
+- [How to profile system bottlenecks with the USE method on Ubuntu — oneuptime.com](https://oneuptime.com/blog/post/2026-03-02-how-to-profile-system-bottlenecks-with-use-method-on-ubuntu/view)

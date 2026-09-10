@@ -198,7 +198,7 @@ podman exec openwebui-app curl -s -H "Authorization: Bearer <key>" "<base_url>/m
 
 ---
 
-## Sources
+## References
 
 - [OpenAI-Compatible / Open WebUI docs](https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-openai-compatible/)
 - [Connection Errors / Open WebUI troubleshooting](https://docs.openwebui.com/troubleshooting/connection-error/)
