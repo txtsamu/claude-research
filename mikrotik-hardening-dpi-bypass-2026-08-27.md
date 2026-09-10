@@ -180,3 +180,9 @@ this pass's fixes hadn't actually closed, plus a few smaller items:
   since it'd break the existing VPN client without coordinating.
 - Default-`admin`-account gap (see "deliberately NOT fixed" above) still
   open — same reasoning still applies, still flagged rather than force-changed.
+
+## References
+
+- [bebasid/bebasit](https://github.com/bebasid/bebasit)
+- [MikroTik hardening guide — jcutrer.com](https://jcutrer.com/howto/networking/mikrotik/routeros-l2tp-ipsec-vpn-firewall-rules)
+- [MikroTik hardening guide — layer-x.com](https://tech.layer-x.com/mikrotik-hardening-guide-complete-security-checklist/)

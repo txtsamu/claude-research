@@ -91,7 +91,7 @@ sudo systemctl enable cosmic-greeter
 
 This is a bigger blast-radius change (affects login for all users/sessions) and should get its own explicit confirmation before doing it.
 
-## Sources
+## References
 
 - [How to Install COSMIC Desktop in Fedora Linux (Workstation)](https://www.debugpoint.com/install-cosmic-desktop-fedora/)
 - [Changes/FedoraCOSMIC - Fedora Project Wiki](https://fedoraproject.org/wiki/Changes/FedoraCOSMIC)
@@ -216,7 +216,7 @@ sudo systemctl enable gdm.service
 
 **Status: awaiting user's manual test of the COSMIC login before the package-removal step is executed.** This doc will get a Part 3 (or an update to this section) once that happens.
 
-## Sources (Part 2)
+## References (Part 2)
 
 - [Remove Gnome DE from Workstation edition — Fedora Discussion](https://discussion.fedoraproject.org/t/remove-gnome-de-from-workstation-edition/146355)
 - [GNOME Keyring on COSMIC — Fedora Discussion](https://discussion.fedoraproject.org/t/gnome-keyring-on-cosmic/161243)

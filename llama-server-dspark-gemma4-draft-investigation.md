@@ -226,3 +226,7 @@ ssh moo@fedora "sudo rm -rf /root/models/dspark-gemma4-12b"              # 1.9G,
 Both removed. `/root/models/` on fedora now only has the active model directories (`hauhau-gemma4-12b-qat`, `huihui-gemma-4-12b-abliterated`, `mia-gemmable-4-12b-mtp`). Production `llama-server` was untouched by this cleanup — it was already back on its original MTP setup since §7.
 
 **If/when the PR watch fires:** re-clone `wjinxu/llama.cpp` (branch `dspark-upstream`, or `master` if merged) into `/root/llama.cpp-dspark`, rebuild with the same ROCm/HIP flags as §4, and re-download the Gemma4 draft GGUF from `ankk98/dspark-gemma4-12b-block7-Q4_0-GGUF` (or whatever repo the landed support actually targets) before repeating the standalone-load test in §5.
+
+## References
+
+- [ggml-org/llama.cpp PR #25173](https://github.com/ggml-org/llama.cpp/pull/25173) — the Gemma4 draft-model support PR being tracked

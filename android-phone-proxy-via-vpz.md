@@ -73,3 +73,8 @@ Real host IP and both proxies' passwords are not reproduced here — see
 `/etc/squid-k8s/passwd` and the `microsocks-vpz.service` unit file
 (`ExecStart` line) directly on `vpz`, or the credentials already shared
 out-of-band when each proxy was originally set up.
+
+## References
+
+- [FreeProxy — F-Droid](https://f-droid.org/packages/tech.xvanturing.freeproxy/)
+- [xVanTuring/free-proxy](https://github.com/xVanTuring/free-proxy)

@@ -265,3 +265,9 @@ rm -rf ~/.local/share/gnome-shell/extensions/user-theme@gnome-shell-extensions.g
 ```
 
 Same Wayland caveat as step 9, in reverse: the GTK/icon/cursor reset takes effect immediately, but the taskbar/Start-menu chrome from the shell extensions won't fully disappear from the *running* session until you log out and back in — the shell only re-reads `enabled-extensions` at load time.
+
+## References
+
+- [B00merang-Artwork/Windows-7](https://github.com/B00merang-Artwork/Windows-7)
+- [B00merang-Project/Windows-7](https://github.com/B00merang-Project/Windows-7)
+- [yeyushengfan258/Win7OS-cursors](https://github.com/yeyushengfan258/Win7OS-cursors)
