@@ -1,6 +1,6 @@
 ---
 type: investigation
-tags: [kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk]
+tags: [kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk, monitoring]
 created: 2026-09-10
 last_verified: 2026-09-13
 status: current
@@ -102,9 +102,21 @@ Applied via `kubectl set resources deployment/<name> -n homelab -c <container> -
 - `kubectl describe node home` → memory limits **145% → 116%** of node capacity (requests actually went *up*, 52% → 65%, since several containers — checkmk, immich-server, suwayomi — were under-requesting relative to real usage; the fix was never "shrink everything," it was "match reality")
 - Every `.lan` app route re-checked with a real HTTP request post-rollout, not just "pod is Running." Two (`nextcloud.lan`, `openwebui.lan`) briefly returned `000`/`502` during the rollout's pod-replacement window itself — both cleared on their own within a minute once the new pod became Ready, confirmed to not be a real regression by retesting.
 
+## Kept running long-term (2026-09-13)
+
+Decided to keep VictoriaMetrics rather than tear it down — the one-off measurement job is done, but ongoing visibility into real per-container usage is worth having. Two changes to go from "temporary 48h tool" to "standing fixture":
+
+- **Retention: `7d` → `60d`.** Sized off real observed growth (`du -sh` on the data dir showed ~171MB over the first ~3 days, so ~60MB/day → roughly 4-5GB over 60 days, comfortably inside the new PVC).
+- **PVC: `2Gi` → `10Gi`.** `local-path`'s StorageClass has `allowVolumeExpansion: false`, so this needed a full `helm uninstall` + delete the StatefulSet-managed PVC (which, unlike a Deployment's PVC, is **not** auto-deleted on uninstall - a real gotcha, caught before assuming a plain `helm upgrade` would resize it) + reinstall, rather than an in-place resize. Acceptable since only ~3 days/171MB of measurement-exercise data existed at that point.
+- Left the compute resource requests/limits (128Mi/384Mi... now 192Mi/384Mi after the right-sizing pass above) and the Helm-chart-not-Operator choice as-is — no functional reason to churn either just because retention got longer.
+
+`local-path` still means this data lives on the node's own root disk (72% used / ~26G free before this), not a separate volume — worth keeping an eye on if that fills up, since a 10Gi reservation on an already-tight disk is a real, if modest, tradeoff for the visibility.
+
+Re-verified post-reinstall: both scrape targets (`kubernetes-nodes-cadvisor`, `kubernetes-nodes`) came back healthy, `--retentionPeriod=60d` confirmed on the running process's actual args (not just the values file), and real per-container data confirmed flowing again.
+
 ## Open follow-up
 
-Decide whether to tear down the VictoriaMetrics instance now that its job is done (it was explicitly scoped as a temporary measurement tool, 7d retention, `local-path` storage) or keep it running longer-term for ongoing visibility — if keeping it, worth reconsidering the Operator-based install at that point (VMAgent/VMAlert/Grafana declaratively managed) since it'd no longer be a one-off job.
+If dashboards/alerting are ever wanted on top of this (not asked for yet - PromQL queried directly has been sufficient), that's the point to reconsider the Operator-based install (`victoria-metrics-k8s-stack`, VMAgent/VMAlert/Grafana declaratively managed) rather than bolting more pieces onto the plain Helm chart by hand.
 
 ## References
 
