@@ -106,7 +106,7 @@ Applied via `kubectl set resources deployment/<name> -n homelab -c <container> -
 
 Decided to keep VictoriaMetrics rather than tear it down — the one-off measurement job is done, but ongoing visibility into real per-container usage is worth having. Two changes to go from "temporary 48h tool" to "standing fixture":
 
-- **Retention: `7d` → `60d`.** Sized off real observed growth (`du -sh` on the data dir showed ~171MB over the first ~3 days, so ~60MB/day → roughly 4-5GB over 60 days, comfortably inside the new PVC).
+- **Retention: `7d` → `60d` → `62d`.** Sized off real observed growth (`du -sh` on the data dir showed ~171MB over the first ~3 days, so ~60MB/day → roughly 4-5GB over 60 days, comfortably inside the new PVC). The `60d` → `62d` bump was a plain `helm upgrade` - no PVC/storage change involved, so no uninstall/reinstall dance needed this time, and the existing data + PVC (`pvc-cc4e74cd-...`) survived untouched. Confirmed via the running pod's actual `--retentionPeriod=62d` arg, not just the values file.
 - **PVC: `2Gi` → `10Gi`.** `local-path`'s StorageClass has `allowVolumeExpansion: false`, so this needed a full `helm uninstall` + delete the StatefulSet-managed PVC (which, unlike a Deployment's PVC, is **not** auto-deleted on uninstall - a real gotcha, caught before assuming a plain `helm upgrade` would resize it) + reinstall, rather than an in-place resize. Acceptable since only ~3 days/171MB of measurement-exercise data existed at that point.
 - Left the compute resource requests/limits (128Mi/384Mi... now 192Mi/384Mi after the right-sizing pass above) and the Helm-chart-not-Operator choice as-is — no functional reason to churn either just because retention got longer.
 
