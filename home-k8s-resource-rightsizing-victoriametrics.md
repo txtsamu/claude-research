@@ -2,13 +2,13 @@
 type: investigation
 tags: [kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk]
 created: 2026-09-10
-last_verified: 2026-09-10
+last_verified: 2026-09-13
 status: current
 ---
 
-# Right-sizing `home`'s k8s resource requests/limits — in progress, 48h data collection running
+# Right-sizing `home`'s k8s resource requests/limits — done
 
-**Status: mid-flight.** Real usage data is being collected via a freshly-deployed VictoriaMetrics instance; final numbers and the actual `kubectl patch`/manifest changes haven't been applied yet. This doc will get a follow-up update once the 48h window closes. See [[warp-vm-nixos-migration-plan]] for the original memory-overcommit finding this stems from, and [[k3s-swap-nixos-correct-setup]] for the (already-applied) stopgap mitigation.
+**Status: complete.** 60 hours of real VictoriaMetrics data collected, request/limit changes applied to every deployment via `kubectl set resources`, all rollouts clean, node memory limit overcommit dropped from **145% → 116%**. See [[warp-vm-nixos-migration-plan]] for the original memory-overcommit finding this stems from, and [[k3s-swap-nixos-correct-setup]] for the (still-in-place) swap stopgap.
 
 ## Why
 
@@ -79,17 +79,32 @@ networking.firewall.allowedTCPPorts = [ 6443 10250 ];
 ```
 After the fix and a `nixos-rebuild switch`, the `cadvisor` target came up healthy; confirmed with a direct PromQL query showing real, correctly-labeled per-container data (`container_memory_working_set_bytes{namespace="homelab",pod=~"immich.*"}` returning `server 1235Mi / redis 17Mi / postgres 545Mi` — closely matching the earlier `kubectl top` snapshot, confirming the data is genuine).
 
-## Next steps (when picking this back up)
+## Final pass (2026-09-13, ~60h of real data)
 
-1. Let the 48h window complete (started 2026-09-10, ~16:02 local).
-2. Query real P95/P99 per container:
-   ```
-   quantile_over_time(0.95, container_memory_working_set_bytes{namespace="homelab",container!=""}[48h])
-   ```
-3. Recompute request/limit proposals from that (formula above), not the point-in-time snapshot.
-4. Present the before/after table for review before applying (same pattern as every other production change in this migration — confirm before batch `kubectl patch`/manifest changes across 13 deployments).
-5. After applying: re-check `kubectl describe node home`'s "Allocated resources" limit percentage dropped meaningfully, and that no app regressed (real HTTP checks on every `.lan` route, not just "pod is Running").
-6. Decide whether to tear down the VictoriaMetrics instance afterward (it was explicitly scoped as a temporary measurement tool, 7d retention) or keep it running longer-term — if keeping it, worth reconsidering the Operator-based install at that point since it'd no longer be a one-off job.
+`quantile_over_time(0.95, container_memory_working_set_bytes{namespace="homelab",container!=""}[60h])` plus a matching `max_over_time(...)` query (not just P95 — see below for why both mattered) against every container.
+
+**The headline finding, and the whole reason the point-in-time snapshot was worth discarding**: several apps have a much wider P95-to-real-max gap than an idle snapshot could ever show, and in more than one case the *point-in-time proposal from three days earlier would have been a real regression*:
+
+| Container | P95 (60h) | Real MAX (60h) | Old snapshot proposal (2026-09-10, not applied) | What actually shipped |
+|---|---|---|---|---|
+| immich `server` | 2462Mi | **3857Mi** | limit **2Gi** ← would have OOM-killed it | request 2560Mi, limit **4608Mi** (↑ from 4Gi) |
+| immich `redis` | 24Mi | **338Mi** (job-queue bursts) | request 64Mi / limit 128Mi ← would have OOM-killed it | request 128Mi, limit **512Mi** |
+| forgejo `app` | 358Mi | **904Mi** (git-gc-class spike) | request 160Mi / limit 320Mi ← would have OOM-killed it | request 384Mi, limit **1152Mi** |
+| checkmk | 1157Mi | 1307Mi | request 1280Mi (this one was already right) | request 1280Mi, limit 1664Mi |
+
+Every other container (suwayomi, flaresolverr, openwebui, uptime-kuma, crawl4ai, nextcloud's three containers, bookstack's two, couchdb, searxng, forgejo's postgres sidecar, plus the monitoring stack's own `vmsingle`) had a tight, stable P95≈MAX and got sized straightforwardly off P95+10-15% for the request and real-MAX+~25-30% for the limit. copyparty, cekping-agent, and nextcloud's redis sidecar were left unchanged — either already well-sized or too small in absolute terms to be worth the churn.
+
+Applied via `kubectl set resources deployment/<name> -n homelab -c <container> --requests=memory=Xi --limits=memory=Yi` (and `statefulset/...` for `vmsingle` itself) — one command per container needing a change, no manifests to hand-edit since these were originally deployed imperatively.
+
+**Verification, real not just "rollout succeeded"**:
+- `kubectl rollout status` clean on all 13 touched deployments
+- 0 pods in a bad state cluster-wide afterward
+- `kubectl describe node home` → memory limits **145% → 116%** of node capacity (requests actually went *up*, 52% → 65%, since several containers — checkmk, immich-server, suwayomi — were under-requesting relative to real usage; the fix was never "shrink everything," it was "match reality")
+- Every `.lan` app route re-checked with a real HTTP request post-rollout, not just "pod is Running." Two (`nextcloud.lan`, `openwebui.lan`) briefly returned `000`/`502` during the rollout's pod-replacement window itself — both cleared on their own within a minute once the new pod became Ready, confirmed to not be a real regression by retesting.
+
+## Open follow-up
+
+Decide whether to tear down the VictoriaMetrics instance now that its job is done (it was explicitly scoped as a temporary measurement tool, 7d retention, `local-path` storage) or keep it running longer-term for ongoing visibility — if keeping it, worth reconsidering the Operator-based install at that point (VMAgent/VMAlert/Grafana declaratively managed) since it'd no longer be a one-off job.
 
 ## References
 

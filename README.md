@@ -37,11 +37,11 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
-| 2026-09-10 | [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | investigation |
+| 2026-09-13 | [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | investigation |
+| 2026-09-13 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | investigation |
 | 2026-09-10 | [k3s-swap-nixos-correct-setup.md](k3s-swap-nixos-correct-setup.md) | how-to |
 | 2026-09-10 | [caddy-internal-ca-cert-mismatch-after-host-migration.md](caddy-internal-ca-cert-mismatch-after-host-migration.md) | troubleshooting |
 | 2026-09-10 | [netbird-stale-peer-blocked-by-reverse-proxy-reference.md](netbird-stale-peer-blocked-by-reverse-proxy-reference.md) | troubleshooting |
-| 2026-09-10 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | investigation |
 | 2026-09-10 | [warp-vm-nixos-migration-retrospective.md](warp-vm-nixos-migration-retrospective.md) | investigation |
 | 2026-09-09 | [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | how-to |
 | 2026-09-09 | [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | how-to |
@@ -135,7 +135,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk | current — mid-flight, 48h VictoriaMetrics data collection running before real request/limit changes are applied | 2026-09-10 |
+| [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk | current — done: 60h of real data collected, requests/limits applied to 13 deployments, node memory limit overcommit 145% → 116% | 2026-09-13 |
 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1 | current — migration complete (T1-T20), `warp-vm` retained powered-off as a rollback point | 2026-09-10 |
 | [warp-vm-nixos-migration-retrospective.md](warp-vm-nixos-migration-retrospective.md) | nixos, warp-vm, migration, retrospective, k3s, kubernetes, proxmox, cloudflare, metallb, hermes, technitium, caddy, evomem, lessons-learned | current — lessons learned across all 20 tickets, what to do differently next time | 2026-09-10 |
 | [podman-to-kubernetes-migration-plan.md](podman-to-kubernetes-migration-plan.md) | kubernetes, podman, migration, proxmox, talos, k3s, homelab-vm, democratic-csi | current — migration complete (Waves 1-3 + homelab-vm decommission), now tracking post-decommission fixes | 2026-09-06 |
