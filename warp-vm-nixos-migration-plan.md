@@ -3,7 +3,7 @@ type: investigation
 tags: [nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1, wayfinder]
 created: 2026-09-09
 status: current
-last_verified: 2026-09-10
+last_verified: 2026-09-13
 ---
 
 # warp-vm → NixOS migration
@@ -37,7 +37,7 @@ All 20 tickets (T1-T20, GitHub issues [#9-#28](https://github.com/txtsamu/claude
 **Not migrated, deliberately out of scope**: jellyfin, grafana, oneterm (bastion), syncyomi — all already non-functional on `warp-vm`'s original cluster before this migration started, or explicitly dropped (syncyomi, decided in T4). Their `.lan` and `.ssamu.id` DNS entries were deliberately left pointing at now-dead backends rather than either fixed or cleaned up, in case they're revived later.
 
 **Known, accepted tradeoffs** (not bugs, decisions):
-- `home`'s memory runs hot — Checkmk flags it CRIT (157% of physical RAM committed across all containers). Honest cost of consolidating everything onto one 16GB box. **Mitigated 2026-09-10** with an 8G swapfile as OOM headroom (see "Open items" below for the details) - still worth a real capacity look before adding more workloads, since swap is a safety net, not more RAM.
+- `home`'s memory runs hot — Checkmk flags it CRIT (157% of physical RAM committed across all containers). Honest cost of consolidating everything onto one 16GB box. **Mitigated 2026-09-10** with an 8G swapfile as OOM headroom, then **root-caused and corrected 2026-09-13** via [[home-k8s-resource-rightsizing-victoriametrics]] - 60h of real per-container usage data (VictoriaMetrics), pod memory *limits* brought from 145% down to 116% of node capacity, and several under-provisioned *requests* (checkmk, immich, suwayomi) actually raised to match real usage. Swap stays in place as a backstop; still worth a real capacity look before adding more workloads.
 - hermes-gateway uses a hand-rolled NixOS packaging instead of the project's own official module (Tier 2/best-effort per Hermes' own docs) — works, but more exposed to future FHS/dependency drift than the officially-supported path.
 - `warp-svc`, `warp-bypass-setup.sh`, `microsocks`, `socks-relay`, `ovpn-relay` (the whole WARP-egress relay stack) — confirmed dropped, not ported (T6). NetBird replaced it.
 
@@ -56,7 +56,7 @@ Full details, exact commands, and exact values for every one of the above are in
 ## Open items / flagged for the user's attention
 
 - **4 forgejo repos have no GitHub mirror** (`capstone_project_documents`, `novia-app`, `novia-model`, `novia-web-api`, found in T16) — worth a deliberate backup decision before `warp-vm` is ever deleted.
-- ~~**`home`'s memory overcommit** (157% CRIT per Checkmk)~~ — **addressed 2026-09-10**: added an 8G swapfile (`configuration.nix`) as host-level OOM headroom, paired with the mandatory `--kubelet-arg=fail-swap-on=false` on k3s (kubelet refuses to start on a swap-enabled node without it - real gotcha, same "one change, unexpected blast radius" class as the T19 node-IP incident, caught before applying this time). Deliberately did *not* enable the `NodeSwap` feature gate - still rough in current k3s (real upstream reports of pods ignoring configured swap limits), and per-pod swap accounting isn't what this needed. Verified clean post-change: k3s active, 0 bad pods, every app route still returning real HTTP responses. The underlying cause (13 apps + full platform stack on one 16GB box) is unchanged - this is headroom, not a capacity increase - so still worth a real capacity look before adding more workloads.
+- ~~**`home`'s memory overcommit** (157% CRIT per Checkmk)~~ — **addressed in two stages.** 2026-09-10: added an 8G swapfile (`configuration.nix`) as host-level OOM headroom, paired with the mandatory `--kubelet-arg=fail-swap-on=false` on k3s (kubelet refuses to start on a swap-enabled node without it - real gotcha, same "one change, unexpected blast radius" class as the T19 node-IP incident, caught before applying this time). Deliberately did *not* enable the `NodeSwap` feature gate - still rough in current k3s. 2026-09-13: the actual root cause (see [[home-k8s-resource-rightsizing-victoriametrics]]) - deployed a lightweight VictoriaMetrics instance, collected 60h of real per-container usage, and found the point-in-time snapshot originally proposed would have caused genuine OOM-kills (immich-server, immich-redis, and forgejo all have real usage spikes 2.5-14x their idle-snapshot values). Applied real-data-driven request/limit corrections to every deployment via `kubectl set resources` - node memory limit overcommit **145% → 116%**, requests actually raised (52% → 65%) for the apps that were genuinely under-provisioned. Verified clean: 0 bad pods, every app route returning real HTTP responses post-rollout (two apps briefly 000/502'd during the rollout's own pod-replacement window, both self-resolved within a minute, confirmed not a regression). Swap stays in place as a backstop.
 - **`hermes` CLI isn't on the interactive `moo` user's PATH on `home`** — works fine as root/via full path, minor convenience gap only.
 - A handful of pre-existing/out-of-scope apps stay broken by design: jellyfin, grafana, oneterm (bastion), syncyomi (`.lan` and `.ssamu.id` both) — not a byproduct of this migration, already non-functional before it started.
 
