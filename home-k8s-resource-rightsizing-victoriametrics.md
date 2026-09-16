@@ -2,7 +2,7 @@
 type: investigation
 tags: [kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk, monitoring]
 created: 2026-09-10
-last_verified: 2026-09-13
+last_verified: 2026-09-16
 status: current
 ---
 
@@ -114,9 +114,9 @@ Decided to keep VictoriaMetrics rather than tear it down — the one-off measure
 
 Re-verified post-reinstall: both scrape targets (`kubernetes-nodes-cadvisor`, `kubernetes-nodes`) came back healthy, `--retentionPeriod=60d` confirmed on the running process's actual args (not just the values file), and real per-container data confirmed flowing again.
 
-## Open follow-up
+## Visualization added (2026-09-16)
 
-If dashboards/alerting are ever wanted on top of this (not asked for yet - PromQL queried directly has been sufficient), that's the point to reconsider the Operator-based install (`victoria-metrics-k8s-stack`, VMAgent/VMAlert/Grafana declaratively managed) rather than bolting more pieces onto the plain Helm chart by hand.
+Dashboards were wanted after all — see [[perses-dashboard-victoriametrics-datasource]] for the full write-up: Perses (Deployment + MariaDB, user's call over the officially-recommended lighter `file`-backend/StatefulSet option), VictoriaMetrics wired up as its datasource, a "Node & k3s Cluster" dashboard with 6 real panels, exposed at `perses.lan`.
 
 ## References
 
