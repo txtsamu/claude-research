@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-09-18 | [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | troubleshooting |
 | 2026-09-17 | [rancher-full-decommission-k3s-home.md](rancher-full-decommission-k3s-home.md) | how-to |
 | 2026-09-17 | [kubewall-lighter-rancher-dashboard-deploy.md](kubewall-lighter-rancher-dashboard-deploy.md) | how-to |
 | 2026-09-17 | [perses-dashboard-victoriametrics-datasource.md](perses-dashboard-victoriametrics-datasource.md) | how-to |
@@ -51,7 +52,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-09-09 | [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | how-to |
 | 2026-09-09 | [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | how-to |
 | 2026-09-09 | [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | how-to |
-| 2026-09-09 | [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | troubleshooting |
 
 ### How-to / deployment
 
@@ -103,6 +103,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | agenix, nixos, technitium, secrets, home | 2026-09-18 |
 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | hermes, hermes-agent, nixos, uv, git, home, proxmox, migration, systemd | 2026-09-17 |
 | [caddy-internal-ca-cert-mismatch-after-host-migration.md](caddy-internal-ca-cert-mismatch-after-host-migration.md) | caddy, tls, pwa, android, certificate, home, warp-vm, migration | 2026-09-10 |
 | [netbird-stale-peer-blocked-by-reverse-proxy-reference.md](netbird-stale-peer-blocked-by-reverse-proxy-reference.md) | netbird, self-hosted, reverse-proxy, peer-management, vpz, home, warp-vm | 2026-09-10 |
