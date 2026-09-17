@@ -157,3 +157,25 @@ Verify MCP servers speak MCP (equivalent to a Claude Code session calling tools)
 - Excluding `.git` from the source tar breaks the app's own `<app> update` command
   if it self-updates via `git pull` (see hermes-agent case above) — copy `.git`
   separately, or don't exclude it, if the app has a git-based self-updater.
+- **An app's self-updater can carry its own bundled `uv`/binary that breaks on
+  NixOS, separately from the venv you built by hand.** Hit this 2026-09-17
+  running `hermes update` on `home`: the git pull succeeded, but the dependency-
+  install step shelled out to `/root/.hermes/bin/uv` (hermes's own vendored
+  generic-linux uv, downloaded fresh by the updater itself — not the Nix-packaged
+  `uv` used to build the venv in step 3) and failed with the same `Could not
+  start dynamically linked executable` / `NixOS cannot run dynamically linked
+  executables` error. Fix: finish the install manually with the Nix-packaged uv,
+  same as step 3:
+  ```bash
+  sudo env HOME=/root /nix/store/...-uv-*/bin/uv pip install \
+    --python /opt/hermes-venv/bin/python -e '/opt/hermes-source[all]'
+  ```
+  This can leave a stuck recovery marker (hermes-agent: `.update-incomplete` in
+  the source root) that re-attempts the broken-uv install — and reprints the
+  manual-recovery banner — on *every* subsequent launch once it maxes out its
+  retry count; delete the marker once the manual install above succeeds.
+  Separately, `hermes update` won't restart a systemd-supervised gateway itself
+  (it just warns "did not restart running gateways" / mixed `sys.modules`) — do
+  `systemctl restart hermes-gateway hermes-mcp` yourself; a stray
+  `~/.hermes/fleet_restart_pending` flag clears on its own once that restart
+  actually happens.
