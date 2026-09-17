@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks is required for pre-commit checks but isn't installed." >&2
+  echo "Install: sudo dnf install gitleaks   (or see https://github.com/gitleaks/gitleaks)" >&2
+  exit 1
+fi
+
+gitleaks protect --staged --redact
