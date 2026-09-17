@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-09-18 | [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | troubleshooting |
 | 2026-09-18 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | troubleshooting |
 | 2026-09-18 | [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | troubleshooting |
 | 2026-09-17 | [rancher-full-decommission-k3s-home.md](rancher-full-decommission-k3s-home.md) | how-to |
@@ -51,7 +52,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-09-09 | [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | how-to |
 | 2026-09-09 | [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | how-to |
 | 2026-09-09 | [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | how-to |
-| 2026-09-09 | [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | how-to |
 
 ### How-to / deployment
 
@@ -103,6 +103,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | git, secrets, git-filter-repo, github, security, privacy, gitleaks | 2026-09-18 |
 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | hermes, hermes-agent, nixos, uv, git, home, proxmox, migration, systemd | 2026-09-18 |
 | [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | agenix, nixos, technitium, secrets, home | 2026-09-18 |
 | [caddy-internal-ca-cert-mismatch-after-host-migration.md](caddy-internal-ca-cert-mismatch-after-host-migration.md) | caddy, tls, pwa, android, certificate, home, warp-vm, migration | 2026-09-10 |
@@ -130,7 +131,6 @@ One combined view across all three tables below, so the latest work is visible a
 | [immich-random-stops-automount-root-cause.md](immich-random-stops-automount-root-cause.md) | immich, systemd, automount, nfs, quadlet, podman, forensics, nextcloud, podman-auto-update | 2026-08-23 |
 | [mikrotik-pc-usb-tether-wan-failover.md](mikrotik-pc-usb-tether-wan-failover.md) | mikrotik, routeros, failover, wan-backup, usb-tethering, firewalld, nat, warp | 2026-08-12 |
 | [vpd-ssh-cloudflared-slow-connect.md](vpd-ssh-cloudflared-slow-connect.md) | ssh, cloudflared, cloudflare-access, pam, ssh-multiplexing | 2026-08-03 |
-| [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | git, secrets, git-filter-repo, github, security, privacy | 2026-08-03 |
 | [llama-server-qwen9b-crash-loop-cpu-heat.md](llama-server-qwen9b-crash-loop-cpu-heat.md) | llama-server, systemd, rocm, cpu-temp, crash-loop, fedora | 2026-07-31 |
 | [fedora-perf-audit-openrgb-i2c-dup-scan.md](fedora-perf-audit-openrgb-i2c-dup-scan.md) | fedora, performance, use-method, sysstat, openrgb, i2c, cosmic-de | 2026-07-26 |
 | [arm-cluster-ssh-motd-slow.md](arm-cluster-ssh-motd-slow.md) | ssh, armbian, motd, arm-cluster, dns | 2026-07-22 |
@@ -153,3 +153,10 @@ One combined view across all three tables below, so the latest work is visible a
 Never commit real credentials, tokens, or passwords — use placeholders (`<MIKROTIK_PASSWORD>`, `<CLOUDFLARE_API_TOKEN>`, etc.) and point to where the real value actually lives (usually a Hermes skill reference file kept out of this repo). See the "Notes on secrets" section in any doc that touches credentials for the established convention.
 
 This also covers anything that identifies the homelab itself, not just credentials: real hostnames/FQDNs (use a placeholder like `<HOST_HOSTNAME>`), the personal domain, VPS/box usernames, and public IPs. LAN-internal RFC1918 IPs (192.168.x.x) are lower risk and generally OK as-is since they are not internet-routable, but redact anything that resolves or is reachable from the public internet.
+
+**Enforced by a pre-commit hook** (2026-09-18, after a real password leaked and had to be scrubbed from history — see [[claude-research-secrets-history-rewrite]]): [gitleaks](https://github.com/gitleaks/gitleaks) runs on every commit via a hook checked into `.githooks/pre-commit` (not the usual `.git/hooks/`, since that directory isn't version-controlled and wouldn't survive a fresh clone). **One-time setup per clone**, since git doesn't auto-activate a repo's hooks path:
+```bash
+sudo dnf install gitleaks   # or see https://github.com/gitleaks/gitleaks for other platforms
+git config core.hooksPath .githooks
+```
+A commit containing something that looks like a real secret gets blocked outright (tested against the actual leaked password — correctly caught and blocked before this was added; a clean commit is unaffected). Placeholders like `<MIKROTIK_PASSWORD>` don't trigger it — only real-looking values do.

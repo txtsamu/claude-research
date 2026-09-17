@@ -1,8 +1,8 @@
 ---
 type: troubleshooting
-tags: [git, secrets, git-filter-repo, github, security, privacy]
+tags: [git, secrets, git-filter-repo, github, security, privacy, gitleaks]
 created: 2026-08-03
-last_verified: 2026-08-03
+last_verified: 2026-09-18
 status: current
 ---
 
@@ -126,3 +126,29 @@ This is exactly the kind of mistake a full-history audit catches (it re-scans ac
 Full history rewrite is genuinely destructive — every commit hash in the repo changes, which breaks any existing clones/forks — so it's only worth it when something is actually leaked and already pushed publicly. For a leak caught *before* pushing, a normal `git reset`/re-commit is enough. For anything after pushing, amending only the tip commit is not sufficient by itself unless you've also confirmed (via the full-history grep above) that the leak never appeared in any earlier commit.
 
 Pre-rewrite backups (tarball + renamed old repo directory) were kept locally on request rather than deleted immediately — worth doing by default until you're confident the rewritten history is what you wanted, since a rewrite can't be undone once the backups are gone.
+
+## Recurrence (2026-09-18) — this time with prevention
+
+Happened again: a real Technitium admin password landed in a doc committed
+straight to `master` (`agenix-technitium-admin-password-fix.md`) and got
+pushed to the public repo before anyone caught it. Same fix, same
+verification steps as above — full-history audit (`git log --all -p`,
+pickaxe search, and a per-commit `git show` scan, to be triple-sure it was
+really only the one commit this time), `git filter-repo --replace-text`,
+force-push, then an independent fresh clone straight from GitHub to
+confirm. Along the way, a `gitleaks` scan of the whole working tree also
+flagged a `talos-cluster-config/` directory full of what looked like
+private keys — false alarm, checked and confirmed those are deliberately
+fake placeholder keys the directory's own README documents as such (each
+file has a loud "EXAMPLE FILE... FAKE placeholders" header). Good reminder
+that a secret-scanner hit still needs a human check before assuming it's
+real.
+
+**This time, actually added prevention** instead of just fixing the
+instance: a `gitleaks`-based pre-commit hook, versioned at
+`.githooks/pre-commit` (see the Secrets policy section in
+[README.md](README.md) for the one-time `git config core.hooksPath
+.githooks` setup each clone needs). Tested against the exact leaked
+password before trusting it — correctly blocked. The previous rewrite
+(2026-08-03) didn't add anything like this, which is very likely why the
+same class of incident happened again 6 weeks later.
