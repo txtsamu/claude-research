@@ -62,7 +62,7 @@ One combined view across all three tables below, so the latest work is visible a
 | [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | checkmk, kubernetes, k3s, homelab, monitoring, caddy, technitium, truenas, firewalld | 2026-09-09 |
 | [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | checkmk, truenas, scale, docker, containers, monitoring, package-management-blocked | 2026-09-09 |
 | [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | evomem, mcp, pi, coding-agent, knowledge-base, homelab, nixos, memory | 2026-09-09 |
-| [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | nixos, uv, python, venv, home, hermes, proxmox-mcp-plus, mcp, migration, systemd | 2026-09-09 |
+| [nixos-home-python-venv-uv-port.md](nixos-home-python-venv-uv-port.md) | nixos, uv, python, venv, home, hermes, proxmox-mcp-plus, mcp, migration, systemd | 2026-09-17 |
 | [wine-standalone-exe-steam-proton-shortcut.md](wine-standalone-exe-steam-proton-shortcut.md) | wine, wine-wow64, fedora, proton, steam, non-steam-game, pulseaudio, alsa, mmdevapi, gaming, python-vdf | 2026-09-08 |
 | [openrgb-rc3-update-fedora.md](openrgb-rc3-update-fedora.md) | openrgb, fedora, rpm, versioning | 2026-09-06 |
 | [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-09-06 |

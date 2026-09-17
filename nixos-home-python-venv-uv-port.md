@@ -2,7 +2,7 @@
 type: how-to
 tags: [nixos, uv, python, venv, home, hermes, proxmox-mcp-plus, mcp, migration, systemd]
 created: 2026-09-09
-last_verified: 2026-09-09
+last_verified: 2026-09-17
 status: current
 ---
 
@@ -42,6 +42,39 @@ ssh warp 'sudo tar -C /root -cf - .hermes' | ssh home 'sudo tar -C /root -xf -'
 > Prefer rsync over a fresh `git clone` for the source when the running tree may
 > carry working-tree state (node_modules, built dist assets). A fresh checkout at
 > the pinned commit is equivalent only if the source is git-clean.
+
+> ⚠️ **`--exclude=.git` breaks the app's own self-updater.** For hermes-agent
+> specifically, `hermes update` shells out to `git pull` against `/opt/hermes-source`.
+> Excluding `.git` from the tar leaves a source tree with no git metadata at all, so
+> post-migration `hermes update --check` fails with `Not a git repository — cannot
+> check for updates` and `hermes update --plan` reports `Install: unknown`. Hit this
+> on `home` 2026-09-16, ~a week after the T8 migration, when trying to update hermes.
+> Either don't exclude `.git` (accept the size hit — it was excluded here mainly to
+> avoid carrying history bloat) or, if you do exclude it, tar `.git` over separately
+> in the same step: `ssh warp 'sudo tar -C /opt -cf - hermes-source/.git' | ssh home
+> 'sudo tar -C /opt -xf -'`. Recovery after the fact: the built venv/source tree
+> leaves a `.bytecode-fingerprint` file recording `git:refs/heads/<branch>:<sha>` —
+> use that to `git init && git remote add origin <upstream> && git fetch && git
+> reset --hard <sha>` if the source machine is gone, or just re-copy `.git` from the
+> still-live source VM if it's still around.
+>
+> **Recovered it this way 2026-09-17** (old `warp` VM, Proxmox VMID 101 on `px1`,
+> was still around, powered off). Gotcha: `warp`'s cloud-init `ipconfig0` is a
+> *static* `192.168.50.200/24` — the exact IP `home` inherited during the
+> migration — so booting `warp` as-is would clash with `home` live on the LAN.
+> Fix: reassign the IP before powering on, copy, then power off and revert:
+> ```bash
+> ssh px1 'sudo qm set 101 --ipconfig0 ip=192.168.50.201/24,gw=192.168.50.1'
+> ssh px1 'sudo qm start 101'
+> # wait for ssh on .201, then:
+> ssh moo@192.168.50.201 'sudo tar -C /opt/hermes-source -cf - .git' | \
+>   ssh home 'sudo tar -C /opt/hermes-source -xf -'
+> ssh px1 'sudo qm shutdown 101 --timeout 20'
+> ssh px1 'sudo qm set 101 --ipconfig0 ip=192.168.50.200/24,gw=192.168.50.1'  # revert
+> ```
+> Any decommissioned VM kept around with its original static IP baked into
+> cloud-init needs this same temp-IP dance before it's safe to power on while its
+> replacement is live — don't boot it on the shared bridge at its old address.
 
 ### 2. Get a working Nix `uv` + interpreter
 
@@ -121,3 +154,6 @@ Verify MCP servers speak MCP (equivalent to a Claude Code session calling tools)
   `--extra-experimental-features "nix-command flakes"`.
 - `sudo env HOME=/root nix ...` needed when running `nix` as root (HOME for the
   nix cache/profile).
+- Excluding `.git` from the source tar breaks the app's own `<app> update` command
+  if it self-updates via `git pull` (see hermes-agent case above) — copy `.git`
+  separately, or don't exclude it, if the app has a git-based self-updater.
