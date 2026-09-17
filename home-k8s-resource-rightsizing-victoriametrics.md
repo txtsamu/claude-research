@@ -2,7 +2,7 @@
 type: investigation
 tags: [kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk, monitoring]
 created: 2026-09-10
-last_verified: 2026-09-16
+last_verified: 2026-09-17
 status: current
 ---
 
@@ -114,9 +114,9 @@ Decided to keep VictoriaMetrics rather than tear it down — the one-off measure
 
 Re-verified post-reinstall: both scrape targets (`kubernetes-nodes-cadvisor`, `kubernetes-nodes`) came back healthy, `--retentionPeriod=60d` confirmed on the running process's actual args (not just the values file), and real per-container data confirmed flowing again.
 
-## Visualization added (2026-09-16)
+## Visualization added (2026-09-16, expanded 2026-09-17)
 
-Dashboards were wanted after all — see [[perses-dashboard-victoriametrics-datasource]] for the full write-up: Perses (Deployment + MariaDB, user's call over the officially-recommended lighter `file`-backend/StatefulSet option), VictoriaMetrics wired up as its datasource, a "Node & k3s Cluster" dashboard with 6 real panels, exposed at `perses.lan`.
+Dashboards were wanted after all — see [[perses-dashboard-victoriametrics-datasource]] for the full write-up: Perses (Deployment + MariaDB, user's call over the officially-recommended lighter `file`-backend/StatefulSet option), VictoriaMetrics wired up as its datasource, exposed at `perses.lan`. Grew from 6 to 11 panels on 2026-09-17 after adding `kube-state-metrics` (cAdvisor alone only sees resource usage, not Kubernetes object state - pod phase, restarts, deployment health, PVC status all needed the new source) plus fixing two real PromQL vector-matching bugs and a browser-vs-server datasource reachability bug found once someone actually opened the dashboard in a browser.
 
 ## References
 
