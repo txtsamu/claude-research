@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-09-17 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | troubleshooting |
 | 2026-09-16 | [perses-dashboard-victoriametrics-datasource.md](perses-dashboard-victoriametrics-datasource.md) | how-to |
 | 2026-09-16 | [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | investigation |
 | 2026-09-13 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | investigation |
@@ -51,7 +52,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-09-09 | [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | troubleshooting |
 | 2026-09-08 | [wine-standalone-exe-steam-proton-shortcut.md](wine-standalone-exe-steam-proton-shortcut.md) | how-to |
 | 2026-09-08 | [truenas-scst-arc-memory-backup-timeout.md](truenas-scst-arc-memory-backup-timeout.md) | troubleshooting |
-| 2026-09-07 | [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | troubleshooting |
 
 ### How-to / deployment
 
@@ -101,6 +101,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | hermes, hermes-agent, nixos, uv, git, home, proxmox, migration, systemd | 2026-09-17 |
 | [caddy-internal-ca-cert-mismatch-after-host-migration.md](caddy-internal-ca-cert-mismatch-after-host-migration.md) | caddy, tls, pwa, android, certificate, home, warp-vm, migration | 2026-09-10 |
 | [netbird-stale-peer-blocked-by-reverse-proxy-reference.md](netbird-stale-peer-blocked-by-reverse-proxy-reference.md) | netbird, self-hosted, reverse-proxy, peer-management, vpz, home, warp-vm | 2026-09-10 |
 | [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | technitium, dns, zone-transfer, axfr, notify, secondary-zone, warp-vm, arm1, arm3, checkmk | 2026-09-09 |
