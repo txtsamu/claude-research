@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm]
 created: 2026-08-24
-last_verified: 2026-08-30
+last_verified: 2026-09-19
 status: current
 ---
 
@@ -204,3 +204,49 @@ The mark-connection rule must run *before* the `change-ttl` rule (same `chain=pr
 This also explains an earlier same-session observation that never got its own write-up: pods reaching an external HTTP proxy consistently showed several seconds of latency on new connections, provisionally chalked up in conversation to "pod network egress is just inherently slow for new connections." That provisional explanation was never verified against packet captures and should be treated as superseded by this finding, not as an independently-confirmed separate characteristic.
 
 Note this is a different phenomenon from the [netbird-exit-node-throughput-isp-hop-loss.md](netbird-exit-node-throughput-isp-hop-loss.md) investigation (real, independently-confirmed ~20% packet loss at a specific ISP backbone hop on the `wg-bypass` VM ↔ `vpz` NetBird tunnel) — that one is unrelated to this FastTrack/TTL bug and its conclusion stands as-is.
+
+## Update 2026-09-19: the WAN-exempt mark rule silently broke FastTrack for LAN traffic too
+
+The fix above ("exempt WAN-inbound connections from FastTrack") had an unnoticed side effect that undid FastTrack's own benefit for most ordinary traffic — for about three weeks, undetected.
+
+### Symptom
+
+Unrelated investigation (Cloudflare Tunnel on `home`/`192.168.50.200` going down during an OOM event) led to checking the router's health. `/ip firewall filter print stats` showed the `FastTrack LAN traffic` rule's counter frozen at exactly `8,006,414,296` bytes / `51,667,984` packets across every sample taken, while the sibling `Accept established/related` rule kept climbing normally in the same window. `/ip firewall connection print count-only where fasttrack` returned `0` of ~420-429 active connections — FastTrack wasn't firing for *anything*, not just WAN-inbound traffic.
+
+### Root cause
+
+The mark-connection rule added in the fix above:
+
+```
+/ip firewall mangle add chain=prerouting in-interface=ether1 \
+    action=mark-connection new-connection-mark=wan-inbound-no-fasttrack \
+    passthrough=yes comment="Mark WAN-inbound conns to exempt from FastTrack (preserves TTL fix)"
+```
+
+...had no `connection-state` filter. It matched *every* packet arriving on `ether1`, not just the first packet of a genuinely new WAN-inbound connection. Connection tracking state is per-connection, not per-interface: a LAN-initiated connection's reply traffic (e.g. a LAN client's TLS session with a remote server) also arrives on `ether1`, but registers as `established`, not `new` — RouterOS/conntrack sets this the moment the first reply packet is seen, regardless of which interface it crosses. Since the rule as written didn't check for that, it marked the reply leg of practically every LAN-initiated connection with `wan-inbound-no-fasttrack` too, and the FastTrack rule's `connection-mark=!wan-inbound-no-fasttrack` exclusion then filtered nearly everything out. Measured: 387 of 420 connections (92%) carried the mark at the time of diagnosis, none of which had any legitimate reason to be exempt.
+
+This was always the documented intent — "every WAN-inbound connection is tagged *from its very first packet*" — the rule just never enforced that with `connection-state=new`, and the original verification (above) only checked that the TTL fix worked and that FastTrack still fired for LAN-to-LAN traffic; it never re-checked that FastTrack still fired for ordinary LAN-to-WAN traffic, which is exactly what regressed.
+
+### Fix
+
+```
+/ip firewall mangle set [find comment="Mark WAN-inbound conns to exempt from FastTrack (preserves TTL fix)"] \
+    connection-state=new
+```
+
+One parameter. Restricts the mark to the first packet of a genuinely new connection; a LAN-initiated connection's reply traffic is `established` and no longer matches, so it stops getting wrongly exempted. A truly new WAN-inbound connection (e.g. a port-forwarded service) is still `new` on its first packet and still gets marked/excluded as originally intended, so the TTL fix above remains unaffected.
+
+### Verification
+
+- `/ip firewall connection print count-only where fasttrack`: `0` → `264` of `457` connections within 20 seconds of applying the fix.
+- FastTrack rule counter, frozen for the entire investigation, advanced immediately: `8,006,414,296` → `8,009,349,239` bytes (+2.9MB), `51,667,984` → `51,670,805` packets (+2,821) in the same 20 seconds.
+- Connections still carrying `wan-inbound-no-fasttrack`: `387/420` (92%) before the fix → `116/457` (25%) after. Not fully zero immediately — expected, since connection marks are sticky for a connection's lifetime and pre-fix connections don't retroactively lose the mark (same caveat noted in the original Verification section above); this drops further as old connections age out of the conntrack table.
+- Router uptime/reachability unaffected by the change (single mangle-rule parameter edit, no routing-table or destination changes involved — a different, lower-risk change category than the lockout in [mikrotik-isolated-test-mangle-lockout.md](mikrotik-isolated-test-mangle-lockout.md)).
+
+### Considered but not applied: `connection-mark=no-mark` on the FastTrack rule instead
+
+An alternative fix was to change the FastTrack rule's exclusion from `connection-mark=!wan-inbound-no-fasttrack` to `connection-mark=no-mark` (match only completely unmarked connections). Verified this would have been a no-op on its own — with the mark rule's original over-matching bug still in place, virtually every connection carried *some* mark, so `=no-mark` would have excluded them just as the `!=wan-inbound-no-fasttrack` comparison did. It only has real effect when combined with the `connection-state=new` fix above, and even then produces identical results *today* — its actual value is future-proofing: if a `mark-connection` rule for something else (e.g. QoS/queue-tree shaping) gets added later, `no-mark` would automatically keep those connections out of FastTrack too (since FastTrack skips all further mangle/queue processing on a connection once active), where `!=wan-inbound-no-fasttrack` would let them through and silently defeat that future rule. Not applied since there's no such rule today — worth revisiting if/when one is added.
+
+### Key lesson
+
+Same underlying lesson as the original fix above, one layer deeper: a fix that scopes *itself* correctly in intent can still fail to scope correctly in the actual rule syntax, and the failure is silent — no errors, traffic still flows (via the non-fasttracked path), and it can sit undetected for weeks until something unrelated prompts a health check. The concrete tell here was the same kind of signal as the original bug: a counter that should be climbing and isn't, discovered by comparing it against a sibling rule that was.
