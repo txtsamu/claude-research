@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-09-21 | [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | how-to |
 | 2026-09-21 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | troubleshooting |
 | 2026-09-21 | [home-oom-cascade-cloudflared-outage.md](home-oom-cascade-cloudflared-outage.md) | troubleshooting |
 | 2026-09-21 | [llama-server-lan-unreachable-firewalld-port.md](llama-server-lan-unreachable-firewalld-port.md) | troubleshooting |
@@ -51,12 +52,12 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-09-17 | [rancher-full-decommission-k3s-home.md](rancher-full-decommission-k3s-home.md) | how-to |
 | 2026-09-17 | [kubewall-lighter-rancher-dashboard-deploy.md](kubewall-lighter-rancher-dashboard-deploy.md) | how-to |
 | 2026-09-17 | [perses-dashboard-victoriametrics-datasource.md](perses-dashboard-victoriametrics-datasource.md) | how-to |
-| 2026-09-17 | [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | investigation |
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | comfyui, qwen-image, gguf, rocm, gfx1101, fedora, caddy, technitium, nixos, openwebui, image-generation | 2026-09-21 |
 | [mikrotik-config-backup-private-github.md](mikrotik-config-backup-private-github.md) | mikrotik, routeros, backup, github, git, security | 2026-09-21 |
 | [bonsai-27b-prismml-ternary-gguf-deploy.md](bonsai-27b-prismml-ternary-gguf-deploy.md) | llama-server, llama.cpp, prismml, gguf, ternary, quantization, rocm, hip, gfx1101, openwebui, qwen, huggingface | 2026-09-21 |
 | [amdgpu-power-cap-floor-compute-profile.md](amdgpu-power-cap-floor-compute-profile.md) | rocm, rocm-smi, amdgpu, gpu, power, gfx1101, fedora | 2026-09-21 |
