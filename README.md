@@ -37,6 +37,13 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-09-21 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | troubleshooting |
+| 2026-09-21 | [home-oom-cascade-cloudflared-outage.md](home-oom-cascade-cloudflared-outage.md) | troubleshooting |
+| 2026-09-21 | [llama-server-lan-unreachable-firewalld-port.md](llama-server-lan-unreachable-firewalld-port.md) | troubleshooting |
+| 2026-09-21 | [mikrotik-config-backup-private-github.md](mikrotik-config-backup-private-github.md) | how-to |
+| 2026-09-21 | [bonsai-27b-prismml-ternary-gguf-deploy.md](bonsai-27b-prismml-ternary-gguf-deploy.md) | how-to |
+| 2026-09-21 | [amdgpu-power-cap-floor-compute-profile.md](amdgpu-power-cap-floor-compute-profile.md) | how-to |
+| 2026-09-21 | [home-directory-cleanup-evomem-bridge-hook-coupling.md](home-directory-cleanup-evomem-bridge-hook-coupling.md) | how-to |
 | 2026-09-20 | [tiny11core-windows-vm-proxmox-px1.md](tiny11core-windows-vm-proxmox-px1.md) | how-to |
 | 2026-09-18 | [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | troubleshooting |
 | 2026-09-18 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | troubleshooting |
@@ -45,18 +52,15 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-09-17 | [kubewall-lighter-rancher-dashboard-deploy.md](kubewall-lighter-rancher-dashboard-deploy.md) | how-to |
 | 2026-09-17 | [perses-dashboard-victoriametrics-datasource.md](perses-dashboard-victoriametrics-datasource.md) | how-to |
 | 2026-09-17 | [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | investigation |
-| 2026-09-13 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | investigation |
-| 2026-09-10 | [k3s-swap-nixos-correct-setup.md](k3s-swap-nixos-correct-setup.md) | how-to |
-| 2026-09-10 | [caddy-internal-ca-cert-mismatch-after-host-migration.md](caddy-internal-ca-cert-mismatch-after-host-migration.md) | troubleshooting |
-| 2026-09-10 | [netbird-stale-peer-blocked-by-reverse-proxy-reference.md](netbird-stale-peer-blocked-by-reverse-proxy-reference.md) | troubleshooting |
-| 2026-09-10 | [warp-vm-nixos-migration-retrospective.md](warp-vm-nixos-migration-retrospective.md) | investigation |
-| 2026-09-09 | [checkmk-k8s-deployment-monitor-lan.md](checkmk-k8s-deployment-monitor-lan.md) | how-to |
-| 2026-09-09 | [checkmk-agent-containerized-truenas-host-metrics.md](checkmk-agent-containerized-truenas-host-metrics.md) | how-to |
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [mikrotik-config-backup-private-github.md](mikrotik-config-backup-private-github.md) | mikrotik, routeros, backup, github, git, security | 2026-09-21 |
+| [bonsai-27b-prismml-ternary-gguf-deploy.md](bonsai-27b-prismml-ternary-gguf-deploy.md) | llama-server, llama.cpp, prismml, gguf, ternary, quantization, rocm, hip, gfx1101, openwebui, qwen, huggingface | 2026-09-21 |
+| [amdgpu-power-cap-floor-compute-profile.md](amdgpu-power-cap-floor-compute-profile.md) | rocm, rocm-smi, amdgpu, gpu, power, gfx1101, fedora | 2026-09-21 |
+| [home-directory-cleanup-evomem-bridge-hook-coupling.md](home-directory-cleanup-evomem-bridge-hook-coupling.md) | fedora, home, cleanup, evomem, claude-code, hooks | 2026-09-21 |
 | [tiny11core-windows-vm-proxmox-px1.md](tiny11core-windows-vm-proxmox-px1.md) | proxmox, px1, windows, tiny11, iso, sourceforge, aria2, ovmf, tpm, nas-lvm-thin, rtk | 2026-09-20 |
 | [rancher-full-decommission-k3s-home.md](rancher-full-decommission-k3s-home.md) | rancher, fleet, rancher-turtles, capi, k3s, kubernetes, cleanup, home, caddy, technitium | 2026-09-17 |
 | [kubewall-lighter-rancher-dashboard-deploy.md](kubewall-lighter-rancher-dashboard-deploy.md) | kubewall, kubernetes, k3s, dashboard, helm, caddy, technitium, dns, home, rancher-alternative | 2026-09-17 |
@@ -104,7 +108,9 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
-| [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm | 2026-09-19 |
+| [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm | 2026-09-21 |
+| [home-oom-cascade-cloudflared-outage.md](home-oom-cascade-cloudflared-outage.md) | home, k3s, oom, cloudflared, cloudflare-tunnel, kubernetes, memory, fedora | 2026-09-21 |
+| [llama-server-lan-unreachable-firewalld-port.md](llama-server-lan-unreachable-firewalld-port.md) | llama-server, openwebui, firewalld, fedora, networking, k3s | 2026-09-21 |
 | [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | git, secrets, git-filter-repo, github, security, privacy, gitleaks | 2026-09-18 |
 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | hermes, hermes-agent, nixos, uv, git, home, proxmox, migration, systemd | 2026-09-18 |
 | [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | agenix, nixos, technitium, secrets, home | 2026-09-18 |

@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm]
 created: 2026-08-24
-last_verified: 2026-09-19
+last_verified: 2026-09-21
 status: current
 ---
 
@@ -243,10 +243,32 @@ One parameter. Restricts the mark to the first packet of a genuinely new connect
 - Connections still carrying `wan-inbound-no-fasttrack`: `387/420` (92%) before the fix → `116/457` (25%) after. Not fully zero immediately — expected, since connection marks are sticky for a connection's lifetime and pre-fix connections don't retroactively lose the mark (same caveat noted in the original Verification section above); this drops further as old connections age out of the conntrack table.
 - Router uptime/reachability unaffected by the change (single mangle-rule parameter edit, no routing-table or destination changes involved — a different, lower-risk change category than the lockout in [mikrotik-isolated-test-mangle-lockout.md](mikrotik-isolated-test-mangle-lockout.md)).
 
-### Considered but not applied: `connection-mark=no-mark` on the FastTrack rule instead
+### Also applied: `connection-mark=no-mark` on the FastTrack rule (future-proofing)
 
-An alternative fix was to change the FastTrack rule's exclusion from `connection-mark=!wan-inbound-no-fasttrack` to `connection-mark=no-mark` (match only completely unmarked connections). Verified this would have been a no-op on its own — with the mark rule's original over-matching bug still in place, virtually every connection carried *some* mark, so `=no-mark` would have excluded them just as the `!=wan-inbound-no-fasttrack` comparison did. It only has real effect when combined with the `connection-state=new` fix above, and even then produces identical results *today* — its actual value is future-proofing: if a `mark-connection` rule for something else (e.g. QoS/queue-tree shaping) gets added later, `no-mark` would automatically keep those connections out of FastTrack too (since FastTrack skips all further mangle/queue processing on a connection once active), where `!=wan-inbound-no-fasttrack` would let them through and silently defeat that future rule. Not applied since there's no such rule today — worth revisiting if/when one is added.
+A second, independent change to the FastTrack rule's exclusion, from `connection-mark=!wan-inbound-no-fasttrack` to `connection-mark=no-mark` (match only completely *unmarked* connections):
+
+```
+/ip firewall filter set [find comment="FastTrack LAN traffic"] connection-mark=no-mark
+```
+
+This is a no-op relative to the `connection-state=new` fix above **on its own** — with only one `mark-connection` rule existing in this router's config, "not marked wan-inbound-no-fasttrack" and "has no mark at all" describe the exact same set of connections, so it changes nothing observable today (confirmed: `407/487` connections still `fasttrack=yes` after applying it, no regression). Its value is purely future-proofing: if a `mark-connection` rule for something else (e.g. QoS/queue-tree shaping) gets added later, `no-mark` automatically keeps those connections out of FastTrack too — since FastTrack skips all further mangle/queue processing on a connection once active, a newly-marked connection that *isn't* excluded would silently have that future rule's intent bypassed. Applied anyway since it's harmless today and closes that gap in advance.
+
+### Stale-config audit (same session)
+
+Prompted by this investigation, did a broader pass over the router's firewall/routing config looking for other dead/orphaned rules. Findings, cross-checked against every other MikroTik doc in this repo before concluding anything was actually stale:
+
+- **No leftover routing tables or rules** from the [mikrotik-isolated-test-mangle-lockout.md](mikrotik-isolated-test-mangle-lockout.md) incident — that cleanup held. `/routing table print` shows only `main` and `to-vpn`.
+- **No disabled scheduler entries, no scripts.**
+- **3 disabled default routes** (`WARP bypass .200`, a direct-ISP backup via a public resolver IP as gateway, a `vpz`-via-`wg-bypass` tier1 route) — all flagged `X` (disabled), all tagged `PC-backup-wan-setup`. Initially looked like leftovers; actually the router's documented multi-WAN failover scheme, toggled on/off externally. Not stale.
+- **2 `BebasIT | Bypass DPI` rules, 0 packets matched** — looked suspicious (enabled, zero traffic across 5+ weeks of uptime) until checked against [mikrotik-hardening-dpi-bypass-2026-08-27.md](mikrotik-hardening-dpi-bypass-2026-08-27.md): added only 3 weeks prior as deliberate DPI-circumvention hardening. Zero hits just means nothing's tripped them yet, not that they're dead. Not stale.
+- **3 L2TP/IPsec rules, 0 packets matched** — same doc confirms this is an existing, already-audited remote-access VPN ("reasonably scoped... working VPN config"). Zero use ≠ abandoned for a rarely-used remote-access path. Not stale.
+- **One real finding:** `/ip dns static` had a `.lan` forward rule commented `"forward .lan to pihole, bypass DoH"`, forwarding to `192.168.50.200`. Per [pihole-technitium-port53-conflict-warp.md](pihole-technitium-port53-conflict-warp.md), Pi-hole was permanently disabled on that host and Technitium took over the same IP — so the rule was **functionally correct** (verified live: `:resolve "openwebui.lan"` → `192.168.50.200`), just carrying a misleading comment from before the DNS migration. Fixed:
+  ```
+  /ip dns static set [find comment="forward .lan to pihole, bypass DoH"] comment="forward .lan to technitium, bypass DoH"
+  ```
+
+Net result of the audit: the router's config is in good shape. What looks like dead config on a quick zero-counter scan is frequently intentional (standby failover, recently-added defenses, low-traffic-by-design services) — cross-referencing against this repo's own history before flagging anything as stale avoided several false positives.
 
 ### Key lesson
 
-Same underlying lesson as the original fix above, one layer deeper: a fix that scopes *itself* correctly in intent can still fail to scope correctly in the actual rule syntax, and the failure is silent — no errors, traffic still flows (via the non-fasttracked path), and it can sit undetected for weeks until something unrelated prompts a health check. The concrete tell here was the same kind of signal as the original bug: a counter that should be climbing and isn't, discovered by comparing it against a sibling rule that was.
+Same underlying lesson as the original fix above, one layer deeper: a fix that scopes *itself* correctly in intent can still fail to scope correctly in the actual rule syntax, and the failure is silent — no errors, traffic still flows (via the non-fasttracked path), and it can sit undetected for weeks until something unrelated prompts a health check. The concrete tell here was the same kind of signal as the original bug: a counter that should be climbing and isn't, discovered by comparing it against a sibling rule that was. Separately: a "stale config" audit is only as good as the cross-referencing behind it — a zero-traffic counter alone isn't evidence of dead config on a router with intentional standby/low-frequency rules.
