@@ -44,7 +44,7 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-09-21 | [bonsai-27b-prismml-ternary-gguf-deploy.md](bonsai-27b-prismml-ternary-gguf-deploy.md) | how-to |
 | 2026-09-21 | [amdgpu-power-cap-floor-compute-profile.md](amdgpu-power-cap-floor-compute-profile.md) | how-to |
 | 2026-09-21 | [home-directory-cleanup-evomem-bridge-hook-coupling.md](home-directory-cleanup-evomem-bridge-hook-coupling.md) | how-to |
-| 2026-09-20 | [tiny11core-windows-vm-proxmox-px1.md](tiny11core-windows-vm-proxmox-px1.md) | how-to |
+| 2026-09-21 | [tiny11core-windows-vm-proxmox-px1.md](tiny11core-windows-vm-proxmox-px1.md) | how-to |
 | 2026-09-18 | [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | troubleshooting |
 | 2026-09-18 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | troubleshooting |
 | 2026-09-18 | [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | troubleshooting |
@@ -61,7 +61,7 @@ One combined view across all three tables below, so the latest work is visible a
 | [bonsai-27b-prismml-ternary-gguf-deploy.md](bonsai-27b-prismml-ternary-gguf-deploy.md) | llama-server, llama.cpp, prismml, gguf, ternary, quantization, rocm, hip, gfx1101, openwebui, qwen, huggingface | 2026-09-21 |
 | [amdgpu-power-cap-floor-compute-profile.md](amdgpu-power-cap-floor-compute-profile.md) | rocm, rocm-smi, amdgpu, gpu, power, gfx1101, fedora | 2026-09-21 |
 | [home-directory-cleanup-evomem-bridge-hook-coupling.md](home-directory-cleanup-evomem-bridge-hook-coupling.md) | fedora, home, cleanup, evomem, claude-code, hooks | 2026-09-21 |
-| [tiny11core-windows-vm-proxmox-px1.md](tiny11core-windows-vm-proxmox-px1.md) | proxmox, px1, windows, tiny11, iso, sourceforge, aria2, ovmf, tpm, nas-lvm-thin, rtk | 2026-09-20 |
+| [tiny11core-windows-vm-proxmox-px1.md](tiny11core-windows-vm-proxmox-px1.md) | proxmox, px1, windows, tiny11, iso, sourceforge, aria2, ovmf, tpm, nas-lvm-thin, rtk, static-ip, technitium, dns, control-panel | 2026-09-21 |
 | [rancher-full-decommission-k3s-home.md](rancher-full-decommission-k3s-home.md) | rancher, fleet, rancher-turtles, capi, k3s, kubernetes, cleanup, home, caddy, technitium | 2026-09-17 |
 | [kubewall-lighter-rancher-dashboard-deploy.md](kubewall-lighter-rancher-dashboard-deploy.md) | kubewall, kubernetes, k3s, dashboard, helm, caddy, technitium, dns, home, rancher-alternative | 2026-09-17 |
 | [perses-dashboard-victoriametrics-datasource.md](perses-dashboard-victoriametrics-datasource.md) | perses, victoriametrics, dashboard, kubernetes, k3s, mariadb, home, monitoring, caddy, technitium, kube-state-metrics, promql | 2026-09-17 |

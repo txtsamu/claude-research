@@ -1,16 +1,16 @@
 ---
 type: how-to
-tags: [proxmox, px1, windows, tiny11, iso, sourceforge, aria2, ovmf, tpm, nas-lvm-thin, rtk]
+tags: [proxmox, px1, windows, tiny11, iso, sourceforge, aria2, ovmf, tpm, nas-lvm-thin, rtk, static-ip, technitium, dns, control-panel]
 created: 2026-09-20
-last_verified: 2026-09-20
+last_verified: 2026-09-21
 status: current
 ---
 
-# Tiny11Core Windows 11 VM on Proxmox (px1) — download, verify, create
+# Tiny11Core Windows 11 VM on Proxmox (px1) — download, verify, create, static IP + Technitium DNS
 
 Goal: get the `Tiny11Core-25H2-English-Pro-2026-07-05.iso` from SourceForge and run it as a VM (4 GB RAM, 8 vCPU). Started as a local KVM/libvirt install on the Fedora desktop, redirected mid-session to Proxmox `px1`. The ISO was downloaded once locally and uploaded to px1.
 
-**End state:** VM `100` (`tiny11`) created on `px1`, **not started** (see "Next step"). Disk on `nas-lvm-thin`.
+**End state at creation (2026-09-20):** VM `100` (`tiny11`) created on `px1`, **stopped**. Disk on `nas-lvm-thin`. Later state (VM started, static IP `192.168.50.15`, config drift) is in sections 6–7.
 
 ## 1. Preflight (local KVM — abandoned, kept for context)
 
@@ -117,9 +117,9 @@ Why these choices:
 
 Verify: `ssh px1 'qm config 100'`.
 
-## Next step (not done yet)
+## 5b. Start the VM and install Windows
 
-The VM is **not started** on purpose: the Windows installer shows *"Press any key to boot from CD or DVD…"* for only a few seconds, so it needs someone at the console. To install:
+The VM was created **stopped** on purpose: the Windows installer shows *"Press any key to boot from CD or DVD…"* for only a few seconds, so it needs someone at the console. To install:
 
 ```bash
 ssh px1 'qm start 100'      # then open the Proxmox web console for VM 100 and press a key immediately
@@ -128,6 +128,71 @@ ssh px1 'qm start 100'      # then open the Proxmox web console for VM 100 and p
 If the prompt is missed the VM falls through to the UEFI shell — just `qm reset 100` and try again. After install, the ISO can be detached: `qm set 100 --ide2 none,media=cdrom`.
 
 Caveats worth knowing: Tiny11Core is a stripped, non-serviceable image (no Windows Update/component servicing by design) and is a third-party modified Windows build — treat it as a disposable test/lab VM. Windows licensing/activation is separate and was not handled here.
+
+## 6. Static IP `192.168.50.15` from Control Panel, using Technitium DNS
+
+After install the guest gets a DHCP lease from the MikroTik (px1's ARP table had seen this VM's MAC on `192.168.50.6`). To pin it to `192.168.50.15` and point it at the Technitium DNS nodes:
+
+**Values** (from [[technitium-dns-3node-cluster-deployment]] and the MikroTik notes; LAN is `192.168.50.0/24`):
+
+| Field | Value |
+|---|---|
+| IP address | `192.168.50.15` |
+| Subnet mask | `255.255.255.0` |
+| Default gateway | `192.168.50.1` (MikroTik) |
+| Preferred DNS | `192.168.50.200` (Technitium on `warp-vm`, primary reference node) |
+| Alternate DNS | `192.168.50.42` (Technitium on `arm3`) |
+| Extra DNS (Advanced) | `192.168.50.40` (Technitium on `arm1`) |
+
+**GUI (Control Panel) steps, inside the VM:**
+
+1. Open the adapter list: **Control Panel → Network and Internet → Network and Sharing Center → Change adapter settings**. Shortcut that works even when the Control Panel tree is stripped down: press **Win+R**, run `ncpa.cpl`.
+2. Right-click the Ethernet adapter (the e1000e NIC, `BC:24:11:C4:45:0A`) → **Properties**.
+3. Select **Internet Protocol Version 4 (TCP/IPv4)** → **Properties**.
+4. Choose **Use the following IP address** and enter IP `192.168.50.15`, mask `255.255.255.0`, gateway `192.168.50.1`.
+5. Choose **Use the following DNS server addresses**: Preferred `192.168.50.200`, Alternate `192.168.50.42`.
+6. Click **Advanced… → DNS** tab → **Add…** `192.168.50.40` so all three Technitium nodes are used (the simple dialog only has two fields). Leave "Register this connection's addresses in DNS" as-is.
+7. **OK** on every dialog (closing without OK discards the change). A brief network blip is normal.
+
+**Command-line equivalent** (elevated PowerShell/cmd; get the real adapter name first — it may be `Ethernet` or `Ethernet0`):
+
+```
+netsh interface show interface
+netsh interface ip set address name="Ethernet" static 192.168.50.15 255.255.255.0 192.168.50.1
+netsh interface ip set dns name="Ethernet" static 192.168.50.200
+netsh interface ip add dns name="Ethernet" 192.168.50.42 index=2
+netsh interface ip add dns name="Ethernet" 192.168.50.40 index=3
+```
+
+**Design notes:**
+- **Technitium only, no public resolver in the list.** `.lan` names exist only in Technitium; Windows will fall over to the next server on a slow answer, and a public resolver (1.1.1.1) would return NXDOMAIN for `.lan` names. The MikroTik DHCP hands out `.200,.42,.40` followed by `1.1.1.1,1.0.0.1` — for a static config, leave the public ones off unless you want internet resolution to survive all three Technitium nodes being down.
+- **Don't use `192.168.50.80`.** That was the old Pi-hole; px1 itself still had it as a stale nameserver at one point (see the Technitium doc).
+- **Pick an address outside the MikroTik DHCP pool** (or create a matching reservation), otherwise the router can lease `.15` to another device. **Not checked here** — that needs router credentials; verify with `/ip pool print` and `/ip dhcp-server lease print` on the MikroTik.
+
+**Verify inside the VM:**
+
+```
+ipconfig /all                       :: IPv4 192.168.50.15, DNS servers .200/.42/.40, DHCP Enabled: No
+ping 192.168.50.1
+nslookup nas.lan 192.168.50.200     :: any .lan name should resolve via Technitium
+nslookup nas.lan                    :: same answer using the configured resolver
+```
+
+**What was verified from outside (2026-09-21, from the Fedora desktop):**
+- Desktop neighbour table: `192.168.50.15 lladdr bc:24:11:c4:45:0a` — the VM's MAC, so `.15` is live on this VM.
+- TCP `3389` (RDP) at `192.168.50.15` is **open**; `135` and `445` are closed/filtered.
+- ICMP to `.15` got 100% loss — expected: Windows Firewall blocks echo requests on the default (Public) profile. Don't read "ping fails" as "IP not set".
+- **Not verified:** the DNS server list inside the guest and the DHCP-pool overlap — the steps above are the standard Windows procedure, not a recording of the keystrokes used.
+
+## 7. State check after creation (2026-09-21)
+
+```bash
+ssh px1 'qm status 100; qm config 100; qm pending 100'
+```
+
+- `status: running` — the VM was started after this session created it (process uptime ~17 h at check time); Windows is up (RDP answers on `.15`).
+- **Config drift — memory:** `qm config` shows `memory: 8192`, but `qm pending` shows the running value is still `cur memory: 4096`. Someone ran `qm set 100 --memory 8192` while the VM was running, so it only takes effect after a **full stop and start** (a guest reboot does not apply it). That was not set by the `qm create` in section 5 (which used 4096). If 4 GB was the intent, revert with `ssh px1 'qm set 100 --memory 4096'`.
+- Everything else matches section 5 (8 cores, `cpu host`, SATA + e1000e, `ide2` still holds the ISO).
 
 ## Cleanup left on the desktop
 
