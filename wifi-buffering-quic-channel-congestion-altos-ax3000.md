@@ -106,37 +106,99 @@ neighbor SSIDs" observation, air congestion was the clear lead.
 
 On the Altos AX3000 web UI (`http://192.168.50.253`, `admin`/`admin`):
 set the **5 GHz radio to a clean non-DFS channel**. User picked **channel 48**
-and buffering stopped immediately.
+and buffering stopped immediately. Later, both radios were **locked down via
+the API** (see recipe below) to stop the AP re-selecting on its own:
 
-Channel-selection rules used (dense-neighbor environment):
+| Band | Channel | Width | Note |
+|---|---|---|---|
+| 2.4 GHz | 1 | **20 MHz** (fixed) | channel still needs a real neighbor scan to optimize (1/6/11) |
+| 5 GHz | **48** | **80 MHz** (fixed) | non-DFS; width pinned so it can't auto-widen into DFS |
+
+**Important finding — the 5 GHz channel DRIFTS on its own.** When re-reading the
+config later, 5 GHz had moved from 48 back to **36** by itself (Auto width/Auto
+re-selection). So "just set channel 48 once in the UI" was not durable — it has
+to be *pinned* (explicit channel + explicit width), otherwise the AP wanders and
+the buffering can return. This is the main reason to script/lock it rather than
+click it once.
+
+### This AP's actual 5 GHz channel list (from `get/wireless/wlanChannelList`)
+
+```json
+[{"band":"2.4G","channels":[1..13],"radarChannels":[]},
+ {"band":"5G","channels":[36,40,44,48,52,56,60,64,149,153,157,161,165],
+  "radarChannels":[52,56,60,64]}]
+```
+- Non-DFS 5 GHz here = **36/40/44/48** and **149/153/157/161/165**.
+- DFS (radar, must-vacate) = **52/56/60/64** only. The upper **100–144** DFS
+  block that other APs use for a clean 160 MHz is **not offered** on this model.
+- **160 MHz consequence**: a 160 MHz channel needs 8 contiguous 20 MHz slots.
+  On this AP that only fits in the **36–64** block, which *forces DFS* (52–64).
+  So 160 MHz here re-introduces radar-vacate freezes — **use 80 MHz**. Streaming
+  needs <25 Mbps anyway; 80 MHz (~600–1200 Mbps) is never the bottleneck.
+
+Channel-selection rules (dense-neighbor environment):
 
 - **2.4 GHz**: only **1 / 6 / 11** are non-overlapping — pick the emptiest,
-  and use **20 MHz** width (40 MHz in a crowded band just collides more).
-- **5 GHz non-DFS** = **36/40/44/48** and **149/153/157/161**: rock-solid,
-  never interrupted. Prefer these.
-- **5 GHz DFS** = **52–144**: usually emptier (good for dodging neighbors) BUT
-  the AP must vacate for up to **60 s** if it detects radar — that vacate looks
-  *exactly* like a mid-video freeze. Only use DFS if non-DFS is congested and
-  you don't then get random dropouts.
-- Width **80 MHz** if the band is fairly clean, drop to **40 MHz** if busy.
-- Keep streaming devices on the **5 GHz** SSID.
-- Use the AP's own Wi-Fi scan/survey (Altos: Basic → WiFi → Advance) to see
-  which channels neighbors occupy instead of guessing.
+  **always 20 MHz** (40 MHz eats 2 of the only 3 lanes → more collisions).
+- **5 GHz**: prefer non-DFS (36–48 / 149–161), **80 MHz**, pinned.
+- Keep streaming devices on the **5 GHz** SSID. SSIDs are split here
+  (`multiBandSyncEnable:false`), so a phone can get stuck on 2.4 GHz — forget
+  + rejoin the 5 GHz SSID on that device.
+- **Neighbor scan is unavailable in bridge mode**: `get/wireless/scanList`
+  returns code **10005** persistently (the radio won't leave its operating
+  channel while serving clients). Use a phone **WiFi Analyzer** app on-site to
+  pick the 2.4 GHz channel instead.
 
-## Altos AX3000 web API notes (for future automation)
+## Altos AX3000 (MT602A) web API — VERIFIED working recipe
 
-Did NOT end up needing to script the AP login (user read/changed settings in
-the UI), but for next time — the Altos web app is a React SPA calling:
-- Endpoint: `POST /wjob/web?r=<lastPathSegment>`, JSON body
-  `[{"method":"<m>","from":"web","data":{...}}]`.
-- Login is **challenge/response**, not plaintext: first
-  `get/system/loginChallenge` (`data:{userName}`) returns a `challenge`, then
-  the password is HMAC'd with it and sent to `act/system/login`. Bundle
-  references HmacSHA256 (also SHA1/MD5/SHA512 present).
-- Useful read methods: `get/wireless/scanList` (neighbor APs),
-  `get/wireless/wlanChannelList`, `get/wireless/wlanRadioConfig`,
-  `get/wireless/wlanRadioInfo`, `get/network/staList` (associated clients +
-  signal). Write: `set/wireless/wlanRadioConfig` (channel/width).
+Device: `deviceModel MT602A`, `softwareVersion V1.0.0`, `workMode: bridge`.
+The web app is a React SPA; API structure was reverse-engineered from its JS
+bundle (`/static/js/main.<hash>.js`, served **without auth** — that's how the
+protocol was mapped) and then confirmed live end-to-end.
+
+**Transport & auth (confirmed):**
+- Endpoint: `POST http://<ip>/wjob/web?r=<lastPathSegment>`, body is an **array**
+  `[{"method":"<m>","from":"web","data":<obj-or-array>}]`. The `?r=` is just the
+  method's last path segment (cosmetic); real routing is the `method` field.
+- Login is **challenge/response**:
+  1. `get/system/loginChallenge` with `data:{"userName":"admin"}` → returns
+     `data.challenge`.
+  2. hash = **`HMAC-SHA256(message=<password>, key=<challenge>)`** as lowercase
+     hex. (Confirmed: bundle module exports `HmacSHA256`; crypto-js arg order is
+     `HmacSHA256(message, key)`, and the call site is `Hmac(password, challenge)`.)
+  3. `act/system/login` with `data:{"userName","password":<hash>,"challenge"}` →
+     returns `data.token`.
+- Authenticated calls send header **`Authorization: <token>`** (raw token, no
+  `Bearer` prefix).
+
+**Per-band payloads (gotcha):** the wireless radio methods need a band array or
+they return code **10001** (empty). Correct payload:
+`data = [{"freqBand":"2.4G"},{"freqBand":"5G"}]` (enum values are the literal
+strings `"2.4G"` / `"5G"`). Width enum: `"AUTO"|"20"|"40"|"80"|"160"`.
+
+**Read the current radio config** → returns array of
+`{freqBand,bandwidth,wlanMode,channel,powerLevel}` (channel `0` = Auto).
+
+**Set channel/width** — `set/wireless/wlanRadioConfig`, `data` = the **two full
+radio objects** (read them first, modify, send back both):
+```json
+[{"freqBand":"2.4G","bandwidth":"20","wlanMode":"b/g/n/ax","channel":1,"powerLevel":2},
+ {"freqBand":"5G","bandwidth":"80","wlanMode":"a/n/ac/ax","channel":48,"powerLevel":2}]
+```
+code `0` = ok. Radios re-init (a few seconds, briefly drops Wi-Fi clients);
+re-read `get/wireless/wlanRadioConfig` (saved) **and**
+`get/wireless/wlanRadioInfo` (on-air operating channel) to confirm it stuck.
+
+**91 methods total** (`get/`×44, `set/`, `act/`). Handy reads:
+`get/system/devInfo`, `get/network/workMode`, `get/network/staList`
+(clients with `linkType` = `2.4G`/`5G`/`WIRED` — **no RSSI field** on this
+firmware), `get/wireless/wlanChannelList`, `get/wireless/wlanRadioInfo`.
+`get/wireless/scanList` (neighbor scan) returns **10005 in bridge mode** — not
+usable here. `get/wireless/wlanSsidConfig` returns 10001 in bridge mode too.
+
+**Reusable client** (built this session, kept in the homelab, not committed to
+this repo): a small `altos.py` `Altos` class — `.login()` then `.call(method,
+data)`. Re-derivable from this doc if lost.
 
 ## Key takeaways
 
@@ -148,6 +210,11 @@ the UI), but for next time — the Altos web app is a React SPA calling:
   150–510 ms** — that isolates the problem to the air in one comparison.
 - On a bridge-mode AP in a dense area, **channel choice is the fix**: non-DFS
   5 GHz (36–48 / 149–161), 2.4 GHz only on 1/6/11.
+- **Pin it, don't click it once.** This AP silently re-selected 5 GHz from 48
+  back to 36 on its own — the fix only holds if channel *and* width are set
+  explicitly (Auto width/channel lets it wander back into congestion/DFS).
+- **80 MHz over 160 MHz** on this model: 160 forces DFS (only fits in 36–64),
+  and streaming never needs the extra width anyway.
 
 ## References
 
