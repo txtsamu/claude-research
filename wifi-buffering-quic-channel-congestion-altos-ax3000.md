@@ -135,6 +135,13 @@ click it once.
   On this AP that only fits in the **36–64** block, which *forces DFS* (52–64).
   So 160 MHz here re-introduces radar-vacate freezes — **use 80 MHz**. Streaming
   needs <25 Mbps anyway; 80 MHz (~600–1200 Mbps) is never the bottleneck.
+- **At 80 MHz, channel 36 and 48 are the SAME spectrum.** An 80 MHz channel in
+  the low band always occupies slots **36+40+44+48** (center 42) regardless of
+  which number you pick — the number only sets the *primary/control* 20 MHz
+  subchannel. So 36 vs 48 makes no interference difference at 80 MHz; it only
+  matters if a neighbor runs a narrow (20/40 MHz) net parked exactly on your
+  primary, or if you later drop to 40/20 MHz width (then they're genuinely
+  different halves). Settled on **48**.
 
 Channel-selection rules (dense-neighbor environment):
 
