@@ -109,6 +109,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [wifi-buffering-quic-channel-congestion-altos-ax3000.md](wifi-buffering-quic-channel-congestion-altos-ax3000.md) | wifi, altos-ax3000, mikrotik, quic, buffering, streaming, channel, dfs, 5ghz, isp, mtu, bufferbloat, nethome | 2026-09-24 |
 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm | 2026-09-21 |
 | [home-oom-cascade-cloudflared-outage.md](home-oom-cascade-cloudflared-outage.md) | home, k3s, oom, cloudflared, cloudflare-tunnel, kubernetes, memory, fedora | 2026-09-21 |
 | [llama-server-lan-unreachable-firewalld-port.md](llama-server-lan-unreachable-firewalld-port.md) | llama-server, openwebui, firewalld, fedora, networking, k3s | 2026-09-21 |
