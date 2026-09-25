@@ -2,7 +2,7 @@
 type: how-to
 tags: [technitium, dns, doh, dns-over-https, cloudflare, google, quad9, home, privacy, forwarder]
 created: 2026-09-24
-last_verified: 2026-09-24
+last_verified: 2026-09-26
 status: current
 ---
 
@@ -91,14 +91,36 @@ break outright — so working resolution + the two persistent `:443` sessions
 together confirm the DoH path is genuinely in use. No forwarder/DoH errors in the
 day's log.
 
-## Not done (offer): the backup resolvers still use UDP
+## All four nodes done (2026-09-26)
 
-Only `home` (`.200`) was switched. The other Technitium instances that clients
-fail over to per the MikroTik DHCP list — `arm3` (`192.168.50.42`), `arm1`
-(`192.168.50.40`), and `vpz` — are independent resolvers still forwarding over
-plain UDP. For consistent privacy, apply the same `settings/set` call to each
-(each has its own admin login). Their `.lan` **zone** replication is unaffected
-either way (that's AXFR/NOTIFY, separate from the recursive forwarder).
+The same three-provider DoH config was applied to every Technitium instance
+clients fail over to (per the MikroTik DHCP list `.200,.42,.40,...`):
+
+| Node | Address | DoH | Verified |
+|---|---|---|---|
+| `home` | 192.168.50.200 | ✓ | 6× `:443` sessions, resolves ext + `.lan` |
+| `arm3` | 192.168.50.42 | ✓ | 6× `:443` sessions, resolves ext + `.lan` |
+| `arm1` | 192.168.50.40 | ✓ | 6× `:443` sessions, resolves ext + `.lan` |
+| `vpz`  | (NetBird/LAN 10.150.161.254) | ✓ | Cloudflare+Google sessions up, real `:53` queries RCODE=0 |
+
+**Same admin password across all four** — logging into each local `:5380`
+(`arm1`/`arm3` reachable on LAN, `vpz` over SSH to `127.0.0.1`) with `home`'s
+agenix-sourced password worked everywhere, so the same `settings/set` call
+applied cleanly to each. `.lan` **zone** replication is unaffected (AXFR/NOTIFY,
+separate from the recursive forwarder).
+
+**vpz gotchas (both benign):**
+- Technitium's built-in *DNS Client tool* (`/api/dnsClient/resolve?server=this-server`)
+  and its self-reference name server `dns-vpz (10.150.161.254)` **time out** in
+  the log — but real client queries to `127.0.0.1:53` return `RCODE=0` with
+  answers, i.e. the *forwarder* path works fine. Don't mistake the DNS-Client-tool
+  timeout for a resolution failure.
+- Quad9's `:443` session wasn't open immediately (Technitium races forwarders and
+  Cloudflare/Google answered first). Quad9 **is** reachable from vpz
+  (`https://dns.quad9.net/dns-query` → HTTP 400 without a query = endpoint alive),
+  it just may rarely win the race. No action needed.
+- No `dig`/`nslookup` on the vpz host — use a tiny raw-UDP Python query to
+  `127.0.0.1:53`, or Technitium's API, to test.
 
 ## References
 
