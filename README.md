@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-09-27 | [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | investigation |
 | 2026-09-21 | [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | how-to |
 | 2026-09-21 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | troubleshooting |
 | 2026-09-21 | [home-oom-cascade-cloudflared-outage.md](home-oom-cascade-cloudflared-outage.md) | troubleshooting |
@@ -51,7 +52,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-09-18 | [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | troubleshooting |
 | 2026-09-17 | [rancher-full-decommission-k3s-home.md](rancher-full-decommission-k3s-home.md) | how-to |
 | 2026-09-17 | [kubewall-lighter-rancher-dashboard-deploy.md](kubewall-lighter-rancher-dashboard-deploy.md) | how-to |
-| 2026-09-17 | [perses-dashboard-victoriametrics-datasource.md](perses-dashboard-victoriametrics-datasource.md) | how-to |
 
 ### How-to / deployment
 
@@ -152,6 +152,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | nixos, home, flake, audit, agenix, caddy, security, systemd, nix-gc | current — 13 findings (3 high: unauthenticated Proxmox MCP on :8811, un-versioned live config drifted from GitHub, no nix gc with / at 81%); none of the 2026-09-23 audit fixed yet | 2026-09-27 |
 | [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk, monitoring | current — done: 60h of real data collected, requests/limits applied to 13 deployments, node memory limit overcommit 145% → 116%; Perses dashboard added 2026-09-16, expanded to 11 panels w/ kube-state-metrics 2026-09-17 | 2026-09-17 |
 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1 | current — migration complete (T1-T20), `warp-vm` retained powered-off as a rollback point | 2026-09-10 |
 | [warp-vm-nixos-migration-retrospective.md](warp-vm-nixos-migration-retrospective.md) | nixos, warp-vm, migration, retrospective, k3s, kubernetes, proxmox, cloudflare, metallb, hermes, technitium, caddy, evomem, lessons-learned | current — lessons learned across all 20 tickets, what to do differently next time | 2026-09-10 |
