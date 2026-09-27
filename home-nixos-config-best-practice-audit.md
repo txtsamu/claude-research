@@ -74,6 +74,42 @@ The eval also prints: `evaluation warning: camofox-browser.service is ordered af
 12. **No LAN short names in `/etc/hosts`.** `networking.extraHosts` is unset, so `getent hosts nas fedora px1` returns nothing. It's cheap to add.
 13. **Minor style.** The single-host flake hardcodes `system = "x86_64-linux"`, which is fine for now. `configuration.nix` could set `nixpkgs.hostPlatform` instead (the modern idiom). Admin access uses one RSA key from a Windows box; consider adding an ed25519 key.
 
+## Resolution (same day)
+
+User's calls: #1 is intentional (homelab-only network), fix #2-#8. I only found the 09-23 session's two open PRs **after** pushing to main (`txtsamu/home-nixos` #1 audit fixes, #2 sandboxing, never merged). The user chose to fold #1 into main and keep #2 open, rebased.
+
+What landed on `main` (`6cab89c`, `93380da`, merge `5b95bee`; CI green):
+
+- **#2 drift:** committed `comfy.lan`. Deploys now build straight from GitHub, with no checkout on the host. `system.configurationRevision` stamps each generation with its commit.
+  ```bash
+  sudo nixos-rebuild switch --flake github:txtsamu/home-nixos#home --refresh
+  ```
+- **#3 housekeeping:** `nix.settings` (flakes, `auto-optimise-store`, `trusted-users`), `nix.gc` weekly `--delete-older-than 14d`, `systemd-boot.configurationLimit = 10`.
+- **#4 agenix:** there's a recovery recipient `age1ttah86…` from PR #1, and all 5 secrets are rekeyed. Verified that every `.age` decrypts with the host key *and* the recovery key to the same sha256 as `/run/agenix/*`:
+  ```bash
+  A=$(nix build --no-link --print-out-paths github:ryantm/agenix)/bin/agenix
+  sudo $A -d secrets/<name>.age -i /etc/ssh/ssh_host_ed25519_key | sha256sum
+  sudo $A -d secrets/<name>.age -i /root/age-recovery-key.txt | sha256sum
+  sudo sha256sum < /run/agenix/<name>
+  ```
+  **Open:** the recovery private key sits at `/root/age-recovery-key.txt` *on the host*, which defeats its purpose. Move it off-host (password manager) and delete it there.
+- **#5 reproducibility:** new `hosts/home/provision.nix`.
+  - `provision-src-*` clones hermes (upstream as `origin` + `fork` remote), camofox (+ `patches/camofox-browser-local.patch`) and tiktok-bot (+ `patches/tiktok-bot-local.patch`) when the directory is missing. It's a no-op on existing trees.
+  - `provision-venv-*`: a uv venv on `pkgs.python313`. When the venv is healthy, it snapshots `uv pip freeze` to `/var/lib/provision-venvs/<name>.lock`. When the venv is missing or its base python changed, it rebuilds with `--no-deps` from that snapshot (fallback: `venvs/*.txt`), rolling back on failure.
+  - evomem is packaged from upstream's `v0.4.2` musl release. It's byte-identical (sha256 `577377ca…`) to the old `/usr/local/bin/evomem`.
+  - Tested by running the generated scripts against `/tmp` paths. proxmox and tiktok-bot venvs rebuilt and imported fine, and the rollback path fired on a failure. Clean clone + patch reproduced live `server.js`, `lib/config.js` and `tiktok_bot.py` byte-for-byte.
+  - Gotcha: tiktok-bot's `f2` fix can't be applied with `patch`, because f2's `utils.py` ships with CRLF line endings ("Hunk #1 FAILED ... different line endings"). It uses a targeted `sed` on the line after `except Exception as e:` instead, and the result matched the live file byte-for-byte.
+- **#6 CI:** `.github/workflows/ci.yml` (`nix flake check` = nixfmt + eval, then `nix build --dry-run` of the toplevel; a real build can't fetch the checkmk agent from `monitor.lan`). There's also a weekly `update-flake-lock.yml` PR. `formatter = nixfmt-tree`. Gotcha: `nix fmt` (treefmt) outside a git checkout walks up and tries to format a read-only nixpkgs source; run it in a real clone.
+- **#7:** tiktok-bot uses `config.age.secrets.camofox-api-key.path`, and camofox gets `wants = network-online.target`.
+- **#8:** removed `jellyfin/grafana/bastion.lan` (all 502), `rancher.lan`, and the T5 tunnel test ingress. The rendered Caddyfile differs from live by exactly those 4 routes.
+
+Blocked by the session's permission guard, so left for the user:
+- the `nixos-rebuild switch` itself;
+- enabling *Allow GitHub Actions to create pull requests* (repo Settings → Actions → General), which the lock-update workflow needs;
+- removing the unused write deploy key "moo@home (home-nixos push)" from the repo.
+
+Forgejo ↔ GitHub (checked the same day): 44 GitHub→Forgejo pull mirrors (8h interval) are healthy. `home-nixos` and `mikrotik-backups` have no mirror yet, and `hermes-config` is a normal repo that is only synced by hand.
+
 ## Suggested order
 
 1 (MCP auth/firewall) → 2 (git + push comfy.lan) → 3 (gc/flakes, disk at 81%) → 4 (agenix recovery key) → 6 (CI + lock updates) → the rest opportunistically.
