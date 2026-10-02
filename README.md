@@ -59,8 +59,8 @@ One combined view across all three tables below, so the latest work is visible a
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
-| [immich-upgrade-k8s-home.md](immich-upgrade-k8s-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, valkey, deployment, homelab | 2026-10-03 |
 |---|---|---|
+| [immich-upgrade-k8s-home.md](immich-upgrade-k8s-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, valkey, deployment, homelab | 2026-10-03 |
 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | nixos, home, flake, github, rebase, systemd-hardening, flake-lock, deploy, ci | 2026-10-02 |
 | [technitium-cloudflare-doh-forwarder.md](technitium-cloudflare-doh-forwarder.md) | technitium, dns, doh, dns-over-https, cloudflare, google, quad9, home, privacy, forwarder | 2026-09-26 |
 | [mikrotik-hardening-round2-2026-09-24.md](mikrotik-hardening-round2-2026-09-24.md) | mikrotik, routeros, hardening, security, firewall, ssh, mac-server, services, hex-s | 2026-09-24 |
