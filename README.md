@@ -37,7 +37,9 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
-| 2026-10-02 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | how-to |
+| 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | how-to |
+| 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, kubectl | 2026-10-02 |
+| [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | how-to |
 | 2026-09-27 | [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | investigation |
 | 2026-09-21 | [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | how-to |
 | 2026-09-21 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | troubleshooting |
