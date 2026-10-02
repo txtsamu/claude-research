@@ -2,14 +2,14 @@
 type: how-to
 tags: [immich, kubernetes, k3s, home, upgrade, postgres, valkey, deployment, homelab]
 created: 2026-09-27
-last_verified: 2026-09-27
+last_verified: 2026-10-03
 status: current
 ---
 
 # Upgrading Immich (k8s deployment on `home`)
 
 Reusable recipe for bumping the Immich image on the `home` k3s cluster. Last run
-**2026-09-25: v3.2.0 → v3.2.2** (clean patch bump, no issues). See also
+**2026-10-02: v3.2.2 → v3.2.4** (clean patch bump; recipe unchanged, see [[immich-upgrade-v3-2-4-home.md]]). Before that, 2026-09-25: v3.2.0 → v3.2.2. See also
 [[immich-pgdata-iscsi-lun-resize.md]] and [[immich-bull-queue-leftover-cleanup.md]].
 
 ## How this deployment is shaped (matters for the upgrade)
