@@ -2,7 +2,7 @@
 type: investigation
 tags: [nixos, home, flake, audit, best-practice, agenix, caddy, security, systemd, nix-gc]
 created: 2026-09-27
-last_verified: 2026-09-27
+last_verified: 2026-10-03
 status: current
 ---
 
@@ -103,12 +103,22 @@ What landed on `main` (`6cab89c`, `93380da`, merge `5b95bee`; CI green):
 - **#7:** tiktok-bot uses `config.age.secrets.camofox-api-key.path`, and camofox gets `wants = network-online.target`.
 - **#8:** removed `jellyfin/grafana/bastion.lan` (all 502), `rancher.lan`, and the T5 tunnel test ingress. The rendered Caddyfile differs from live by exactly those 4 routes.
 
-Blocked by the session's permission guard, so left for the user:
+Blocked by the session's permission guard, so left for the user (**update 2026-10-02: the switch and the sandboxing are now done, see below**):
 - the `nixos-rebuild switch` itself;
 - enabling *Allow GitHub Actions to create pull requests* (repo Settings → Actions → General), which the lock-update workflow needs;
 - removing the unused write deploy key "moo@home (home-nixos push)" from the repo.
 
 Forgejo ↔ GitHub (checked the same day): 44 GitHub→Forgejo pull mirrors (8h interval) are healthy. `home-nixos` and `mikrotik-backups` have no mirror yet, and `hermes-config` is a normal repo that is only synced by hand.
+
+## Follow-up (2026-10-02)
+
+- **Switch done.** `home` now runs the merged config via `sudo nixos-rebuild switch --flake github:txtsamu/home-nixos#home --refresh`.
+- **#9 systemd hardening: done.** PR #2 was rebased (the Checkmk agent file was deleted on main, so its hardening hunk was dropped), merged as `e34c178` and deployed. `systemd-analyze security`: evomem 9.4 → 7.4 MEDIUM, headroom-proxy 9.0 → 7.1 MEDIUM; the other root units got a conservative subset. Deliberately not sandboxed: hermes-gateway, hermes-mcp, camofox-browser, check-mk-agent units. Follow-up still open: proxmox-mcp-plus writes `/proxmox-jobs.sqlite3` and `/proxmox_mcp.log` into `/` (cwd=`/`); needs `WorkingDirectory` + `StateDirectory`.
+- **Lock update:** the bot's PR #4 was merged as `5460c58` after closing/reopening it to trigger CI, and deployed (nixpkgs `cf5e765`, NixOS 26.05.20260927).
+- **Actions PR setting:** `update-flake-lock` is evidently working, since it opened PR #4.
+- **Still open:** recovery key still on the host (`/root/age-recovery-key.txt`), stray state in `/root`, unbacked-up k3s/DNS/evomem state, and checking `disko.nix` against the live disk.
+
+Full recipe: [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md).
 
 ## Suggested order
 

@@ -59,9 +59,9 @@ One combined view across all three tables below, so the latest work is visible a
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
+| [immich-upgrade-k8s-home.md](immich-upgrade-k8s-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, valkey, deployment, homelab | 2026-10-03 |
 |---|---|---|
 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | nixos, home, flake, github, rebase, systemd-hardening, flake-lock, deploy, ci | 2026-10-02 |
-| [immich-upgrade-k8s-home.md](immich-upgrade-k8s-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, valkey, deployment, homelab | 2026-09-27 |
 | [technitium-cloudflare-doh-forwarder.md](technitium-cloudflare-doh-forwarder.md) | technitium, dns, doh, dns-over-https, cloudflare, google, quad9, home, privacy, forwarder | 2026-09-26 |
 | [mikrotik-hardening-round2-2026-09-24.md](mikrotik-hardening-round2-2026-09-24.md) | mikrotik, routeros, hardening, security, firewall, ssh, mac-server, services, hex-s | 2026-09-24 |
 | [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | comfyui, qwen-image, gguf, rocm, gfx1101, fedora, caddy, technitium, nixos, openwebui, image-generation | 2026-09-21 |
@@ -156,7 +156,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | nixos, home, flake, audit, agenix, caddy, security, systemd, nix-gc | current — 13 findings; #2-#8 fixed on main same day (merged with the 09-23 audit PR #1, CI green); switch + recovery-key move + Actions PR setting left for the user | 2026-09-27 |
+| [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | nixos, home, flake, audit, agenix, caddy, security, systemd, nix-gc | current — 13 findings; #2-#8 fixed on main 09-27, sandboxing (#9) merged + switch deployed 10-02; recovery-key move and `/root` stray state still open | 2026-10-03 |
 | [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) | kubernetes, k3s, resource-limits, victoriametrics, right-sizing, home, memory, checkmk, monitoring | current — done: 60h of real data collected, requests/limits applied to 13 deployments, node memory limit overcommit 145% → 116%; Perses dashboard added 2026-09-16, expanded to 11 panels w/ kube-state-metrics 2026-09-17 | 2026-09-17 |
 | [warp-vm-nixos-migration-plan.md](warp-vm-nixos-migration-plan.md) | nixos, warp-vm, migration, k3s, kubernetes, proxmox, mcp, tiktok-bot, technitium, caddy, cloudflared, netbird, democratic-csi, plan, px1 | current — migration complete (T1-T20), `warp-vm` retained powered-off as a rollback point | 2026-09-10 |
 | [warp-vm-nixos-migration-retrospective.md](warp-vm-nixos-migration-retrospective.md) | nixos, warp-vm, migration, retrospective, k3s, kubernetes, proxmox, cloudflare, metallb, hermes, technitium, caddy, evomem, lessons-learned | current — lessons learned across all 20 tickets, what to do differently next time | 2026-09-10 |
