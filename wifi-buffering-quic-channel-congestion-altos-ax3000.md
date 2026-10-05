@@ -214,6 +214,17 @@ data)`. Re-derivable from this doc if lost.
 - Clients (19 total): 11 wired, 5 on 2.4 GHz, 3 on 5 GHz. On 2.4 GHz: two Xiaomi air-conditioner controllers and a Google Nest Mini (2.4 GHz-only devices, expected), plus a POCO C75 phone and one private-MAC device that could use 5 GHz (forget and rejoin the 5 GHz SSID; SSIDs are split). The phone previously buffering (Redmi Note 12 Pro 5G) is on 5 GHz.
 - Client list has no RSSI on this firmware, so signal quality was not assessed.
 
+## Update 2026-10-05 (later): router-mode detour, SSID rename to one shared name
+- **Router-mode detour:** the user switched the Altos to router mode (to try to change its DNS). In router mode it left the LAN (own subnet `192.168.10.1`, firewall blocks ping/web/API from the WAN side; it kept a DHCP lease on `192.168.50.253` but nothing on the LAN could reach it). After switching back to bridge it was reachable again, its uplink `wanConf` was `{"proto":"dhcp"}` (the stale static `192.168.50.2` / DNS `192.168.50.16` block was gone), and **the radio pins were reset to Auto** (2.4 GHz channel 0 / 20 MHz, 5 GHz channel 0 / width AUTO; on-air it re-picked 2.4 GHz channel 6 and 5 GHz 36). `set/network/wanConf` is rejected (`10004`) in bridge mode, and the work-mode form has no IP/DNS fields, so the AP's own DNS cannot be edited over the API while bridged.
+- **SSID rename (done via API):** both bands renamed to the same name. Two calls, in this order:
+```
+set/wireless/wlanBasicConfig  {"backupWifiEnable":false,"multiBandSyncEnable":true}
+set/wireless/wlanSsidConfig   [ {2.4G idx1 object, "ssid":"<NEW>"}, {5G idx1 object, same fields copied from 2.4G} ]
+```
+  The firmware refuses an identical 5 GHz and 2.4 GHz name unless **`multiBandSyncEnable` is on** (the UI shows `5GNameSameWith24GTip`), so enable band sync first. Each SSID object keeps `ssidIdx`, `freqBand`, `enable`, `ssid`, `wpaAuthMode`, `wpaEncMode`, `wpaPreSharedKey`, `ssidType`, and uses `ssidHide` (= not `broadcast`) on write. **The PSK is returned encrypted with the current login session's key (AES-CBC, key = first 16 chars of the token) and is accepted back unchanged within the same session**, so the password can be preserved without decoding it; never save that value to a file. The reply `{"loadingTime":20}` means ~20 s while the radios re-init; clients drop and must rejoin the new name.
+- Result: 2.4 GHz and 5 GHz both `ASUS`, WPA/WPA2-PSK TKIP/AES, broadcast on, band sync on, bridge mode, AP back at `192.168.50.253`. Rollback values (names, no password): `~/nethome`-side scratch file `altos_ssid_before.json`: names were `Router_B057` (2.4 GHz) and `Router_5G_B057` (5 GHz) with band sync off.
+- **Still open:** the radios are on Auto; the earlier pin (2.4 GHz channel 1 / 20 MHz, 5 GHz channel 36 / 80 MHz) was not restored (user declined changes to the radios). Auto may wander back into crowded/DFS channels.
+
 ## Key takeaways
 
 - **Mid-stream buffering on a known-flaky ISP is not automatically the ISP.**
