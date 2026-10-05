@@ -38,7 +38,7 @@ Those probe routes belonged to an old backup-WAN design that pinged Quad9 throug
 /ip route disable [find comment~"probe-hop-2"]
 /ip route disable [find comment~"real-wan-default-1"]
 ```
-Verified: 9.9.9.9 and 149.112.112.112 answer over `pppoe-out1` (~2.4 ms), `home` reaches 9.9.9.9:443, every previously failing name returned NOERROR on two rounds, and the `api.fast.com` speed-test API resolves through the normal resolver. The routes are disabled, not deleted. Export after the fix: `~/nethome/backup/post-dnsfix-<ts>.rsc` (secrets, chmod 600).
+Verified: 9.9.9.9 and 149.112.112.112 answer over `pppoe-out1` (~2.4 ms), `home` reaches 9.9.9.9:443, every previously failing name returned NOERROR on two rounds, and the `api.fast.com` speed-test API resolves through the normal resolver. The three routes were first disabled, then deleted once everything was confirmed working (`/ip route remove [find comment~"probe-hop-1" disabled=yes]`, same for `probe-hop-2` and `real-wan-default-1`); re-check health afterwards (pings, default route via `pppoe-out1`, `dig netflix.com @192.168.50.200`). Export after the fix: `~/nethome/backup/post-dnsfix-<ts>.rsc` (secrets, chmod 600).
 
 ## Lessons
 - After changing the WAN topology, grep the old router config for the old gateway address (`192.168.1.1`) and for `/32` probe routes.
@@ -46,7 +46,7 @@ Verified: 9.9.9.9 and 149.112.112.112 answer over `pppoe-out1` (~2.4 ms), `home`
 - `+cd` working is not proof of a DNSSEC problem: smaller/cached answers can hide a forwarder timeout.
 
 ## Open items
-- Delete the disabled probe routes permanently (kept disabled for now).
+- `real-wan-default-2` (disabled, recursive via 149.112.112.112) and the PC-USB-tether backup default route (distance 10, via 192.168.50.20) are still present; the first is dead weight, the second is the intentional safety net.
 - Remove or fix `192.168.50.42` in the DHCP DNS list.
 - Consider dropping Quad9 from Technitium's forwarder list if it is unreliable on this ISP.
 

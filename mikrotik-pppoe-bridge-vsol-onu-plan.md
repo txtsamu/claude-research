@@ -96,7 +96,7 @@ After that 9.9.9.9 and 149.112.112.112 answer over `pppoe-out1` and every name r
 - Leave the PC-tether backup default route (distance 10) in place as a safety net.
 
 ## Open items
-- Decide whether to delete the disabled `PC-backup-wan-setup` probe routes for good (kept disabled, not removed).
+- The `probe-hop-1/2` and `real-wan-default-1` routes are deleted (2026-10-05). `real-wan-default-2` (disabled) is still left; delete it if no longer wanted.
 - `192.168.50.42` (arm3) listed in the DHCP DNS servers does not answer DNS.
 - Power-cycle test of ONU and MikroTik to prove the bridge survives a reboot.
 - If the ISP's TR-069 management re-pushes the routed config, the bridge reverts itself; re-run `onu.sh bridge`.
