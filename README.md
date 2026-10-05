@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-05 | [mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md](mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md) | investigation |
 | 2026-10-05 | [tplink-wr840n-ap-web-api-wifi-channel.md](tplink-wr840n-ap-web-api-wifi-channel.md) | how-to |
 | 2026-10-05 | [technitium-servfail-quad9-forwarder-dead-route-after-bridge.md](technitium-servfail-quad9-forwarder-dead-route-after-bridge.md) | troubleshooting |
 | 2026-10-05 | [vsol-onu-web-login-scripting.md](vsol-onu-web-login-scripting.md) | how-to |

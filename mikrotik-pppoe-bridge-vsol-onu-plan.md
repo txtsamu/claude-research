@@ -8,7 +8,7 @@ status: current
 
 # MikroTik hEX S behind a V-SOL GPON ONU: remove double NAT (PPPoE on the MikroTik)
 
-**Result: working.** The ONU's VLAN 2000 channel is a bridge (`2_INTERNET_B_VID_2000`, protocol `br1483`, MTU 1480). The MikroTik dials PPPoE **untagged on ether1** and is the only NAT. Verified: PPPoE `connected`, default route via `pppoe-out1`, LAN pings/HTTPS fine. Observed for only a few minutes; the first power-cycle test is still outstanding. Companion docs: [vsol-onu-web-login-scripting.md](vsol-onu-web-login-scripting.md), [technitium-servfail-quad9-forwarder-dead-route-after-bridge.md](technitium-servfail-quad9-forwarder-dead-route-after-bridge.md).
+**Result: working.** The ONU's VLAN 2000 channel is a bridge (`2_INTERNET_B_VID_2000`, protocol `br1483`, MTU 1480). The MikroTik dials PPPoE **untagged on ether1** and is the only NAT. Verified: PPPoE `connected`, default route via `pppoe-out1`, LAN pings/HTTPS fine. Observed for only a few minutes; the first power-cycle test is still outstanding. Companion docs: [mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md](mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md) (setup review, DHCP cleanup, subnet options), [vsol-onu-web-login-scripting.md](vsol-onu-web-login-scripting.md), [technitium-servfail-quad9-forwarder-dead-route-after-bridge.md](technitium-servfail-quad9-forwarder-dead-route-after-bridge.md).
 
 ## Notes on secrets
 No credentials in this repo. Placeholders used below:
