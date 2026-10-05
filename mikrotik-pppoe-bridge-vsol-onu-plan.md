@@ -95,6 +95,12 @@ After that 9.9.9.9 and 149.112.112.112 answer over `pppoe-out1` and every name r
 - MikroTik: `/system backup load name=pre-bridge-<ts>.backup` (or re-import the `.rsc`), then remove nothing else. Backups: `~/nethome/backup/` (`pre-bridge-*` original, `post-bridge-*` working), chmod 600.
 - Leave the PC-tether backup default route (distance 10) in place as a safety net.
 
+## Can the ISP remote into the MikroTik? (audit 2026-10-05)
+No path found. Input chain accepts only established/related, rate-limited ICMP and `bridgeLocal`; everything else (including `pppoe-out1` and `ether1`) hits "Drop other input". ssh/winbox/www/api-ssl are limited to `192.168.50.0/24` (the old `192.168.89.0/24` VPN range was removed from the allow-lists); ftp/telnet/www-ssl/api disabled; SNMP, UPnP, socks, proxy, RoMON disabled; MAC-server and neighbor discovery on the LAN list only. The WAN address is CGNAT (100.64/10), reachable only inside the ISP network, and only ICMP passes. What the ISP *can* do: manage the **ONU** over TR-069 (VLAN 88 channel, ISP-managed firmware upgrades enabled) and see unencrypted traffic/DNS as the carrier (they do DPI/redirect injection; see the "BebasIT bypass DPI" rules). Hardening applied:
+- Service allow-lists reduced to `192.168.50.0/24` (`/ip service set <svc> available-from=192.168.50.0/24` for ssh, www, winbox, api-ssl).
+- MikroTik Cloud DDNS: `/ip cloud set ddns-enabled=no` is rejected on ROS 7.24 (`syntax error` / "must be either yes or auto"); `ddns-enabled=auto` works and the serial-derived `*.sn.mynetname.net` name disappears from `/ip cloud print` (the old `public-address` line can stay stale). One command per ssh call; a `;`-chained line aborted on the first error.
+- Still advisable: replace the short admin password.
+
 ## Open items
 - The `probe-hop-1/2` and `real-wan-default-1` routes are deleted (2026-10-05). `real-wan-default-2` (disabled) is still left; delete it if no longer wanted.
 - `192.168.50.42` (arm3) listed in the DHCP DNS servers does not answer DNS.
