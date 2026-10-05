@@ -61,6 +61,8 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [immich-pgdata-iscsi-lun-resize.md](immich-pgdata-iscsi-lun-resize.md) | truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm | 2026-10-05 |
+| [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-10-05 |
 | [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md) | truenas, nas, zfs, iscsi, democratic-csi, k3s, cleanup, talos | 2026-10-03 |
 | [immich-upgrade-k8s-home.md](immich-upgrade-k8s-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, valkey, deployment, homelab | 2026-10-03 |
 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | nixos, home, flake, github, rebase, systemd-hardening, flake-lock, deploy, ci | 2026-10-02 |
@@ -82,7 +84,6 @@ One combined view across all three tables below, so the latest work is visible a
 | [evomem-mcp-connect-pi.md](evomem-mcp-connect-pi.md) | evomem, mcp, pi, coding-agent, knowledge-base, homelab, nixos, memory | 2026-09-09 |
 | [wine-standalone-exe-steam-proton-shortcut.md](wine-standalone-exe-steam-proton-shortcut.md) | wine, wine-wow64, fedora, proton, steam, non-steam-game, pulseaudio, alsa, mmdevapi, gaming, python-vdf | 2026-09-08 |
 | [openrgb-rc3-update-fedora.md](openrgb-rc3-update-fedora.md) | openrgb, fedora, rpm, versioning | 2026-09-06 |
-| [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-09-06 |
 | [rancher-talos-to-k3s-migration.md](rancher-talos-to-k3s-migration.md) | rancher, kubernetes, talos, k3s, migration, cert-manager, metallb, caddy, cattle-system | 2026-09-06 |
 | [vpz-netbird-update-podman-autoupdate-rollout.md](vpz-netbird-update-podman-autoupdate-rollout.md) | netbird, podman, quadlet, auto-update, vpz, pangolin, technitium | 2026-09-06 |
 | [technitium-dns-3node-cluster-deployment.md](technitium-dns-3node-cluster-deployment.md) | technitium, dns, podman, quadlet, mikrotik, caddy, talos, pihole-migration, ad-blocking, ha, vpz | 2026-08-31 |
@@ -103,7 +104,6 @@ One combined view across all three tables below, so the latest work is visible a
 | [android-phone-proxy-via-vpz.md](android-phone-proxy-via-vpz.md) | android, proxy, socks5, http-proxy, freeproxy, vpz, squid, microsocks | 2026-08-30 |
 | [talos-kubernetes-cluster-buildout.md](talos-kubernetes-cluster-buildout.md) | kubernetes, talos, proxmox, terraform, bpg-proxmox, metallb, democratic-csi, truenas, iscsi, rancher, cert-manager, ha, homelab-vm, warp-vm, kube-ovn | 2026-08-28 |
 | [mikrotik-hardening-dpi-bypass-2026-08-27.md](mikrotik-hardening-dpi-bypass-2026-08-27.md) | mikrotik, routeros, firewall, security, dpi-bypass, hardening | 2026-08-28 |
-| [immich-pgdata-iscsi-lun-resize.md](immich-pgdata-iscsi-lun-resize.md) | truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm | 2026-08-23 |
 | [agentmemory-shared-mcp-multi-host-setup.md](agentmemory-shared-mcp-multi-host-setup.md) | agentmemory, mcp, claude-code, firewalld, homelab, multi-host | 2026-07-31 |
 | [cosmic-de-install-fedora43.md](cosmic-de-install-fedora43.md) | cosmic, cosmic-de, fedora, gdm, desktop-environment | 2026-07-23 |
 | [flameshot-shortcut-cosmic-fedora43.md](flameshot-shortcut-cosmic-fedora43.md) | flameshot, screenshot, cosmic, keyboard-shortcuts, fedora | 2026-07-23 |
@@ -118,6 +118,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm | 2026-10-05 |
 | [wifi-buffering-quic-channel-congestion-altos-ax3000.md](wifi-buffering-quic-channel-congestion-altos-ax3000.md) | wifi, altos-ax3000, mikrotik, quic, buffering, streaming, channel, dfs, 5ghz, isp, mtu, bufferbloat, nethome | 2026-09-24 |
 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | talos, kubernetes, kube-ovn, flannel, cni, mikrotik, routeros, ttl, networking, homelab-vm, fasttrack, tls, warp-vm | 2026-09-21 |
 | [home-oom-cascade-cloudflared-outage.md](home-oom-cascade-cloudflared-outage.md) | home, k3s, oom, cloudflared, cloudflare-tunnel, kubernetes, memory, fedora | 2026-09-21 |
@@ -129,7 +130,6 @@ One combined view across all three tables below, so the latest work is visible a
 | [netbird-stale-peer-blocked-by-reverse-proxy-reference.md](netbird-stale-peer-blocked-by-reverse-proxy-reference.md) | netbird, self-hosted, reverse-proxy, peer-management, vpz, home, warp-vm | 2026-09-10 |
 | [technitium-lan-secondary-zone-real-replication.md](technitium-lan-secondary-zone-real-replication.md) | technitium, dns, zone-transfer, axfr, notify, secondary-zone, warp-vm, arm1, arm3, checkmk | 2026-09-09 |
 | [truenas-scst-arc-memory-backup-timeout.md](truenas-scst-arc-memory-backup-timeout.md) | truenas, zfs, arc, iscsi, scst, proxmox, vzdump, backup, warp-vm, px1 | 2026-09-08 |
-| [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm | 2026-09-07 |
 | [immich-bull-queue-leftover-cleanup.md](immich-bull-queue-leftover-cleanup.md) | immich, redis, bullmq, job-queue, kubernetes, homelab | 2026-09-06 |
 | [pihole-technitium-port53-conflict-warp.md](pihole-technitium-port53-conflict-warp.md) | dns, pihole, technitium, warp-vm, iptables, port-conflict | 2026-09-06 |
 | [netbird-reverse-proxy-k3s-forward-filter-drop.md](netbird-reverse-proxy-k3s-forward-filter-drop.md) | netbird, reverse-proxy, k3s, kube-router, nftables, cloudflare-tunnel, metallb, vpz, warp-vm | 2026-09-06 |
