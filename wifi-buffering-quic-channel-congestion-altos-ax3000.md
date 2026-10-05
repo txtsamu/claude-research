@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [wifi, altos-ax3000, mikrotik, quic, buffering, streaming, channel, dfs, 5ghz, isp, mtu, bufferbloat, nethome]
 created: 2026-09-24
-last_verified: 2026-09-24
+last_verified: 2026-10-05
 status: current
 ---
 
@@ -206,6 +206,13 @@ usable here. `get/wireless/wlanSsidConfig` returns 10001 in bridge mode too.
 **Reusable client** (built this session, kept in the homelab, not committed to
 this repo): a small `altos.py` `Altos` class — `.login()` then `.call(method,
 data)`. Re-derivable from this doc if lost.
+
+## Re-check 2026-10-05 (read-only, via the API recipe above)
+- Reachable at `192.168.50.253`, login OK, `workMode: bridge`, firmware `V1.0.0`, uptime ~7.3 days. (Note: the MikroTik is now the only NAT; the ISP ONU is bridged, see [mikrotik-pppoe-bridge-vsol-onu-plan.md](mikrotik-pppoe-bridge-vsol-onu-plan.md). The "double-NAT / private WAN IP" line in the topology section above is out of date.)
+- Radios as saved and on-air: **2.4 GHz channel 1 / 20 MHz**, **5 GHz channel 36 / 80 MHz** (non-DFS). The doc's earlier pin was 48; the saved value is now 36. At 80 MHz both occupy the same 36-48 block, so no action needed.
+- 2.4 GHz plan with the second AP ([tplink-wr840n-ap-web-api-wifi-channel.md](tplink-wr840n-ap-web-api-wifi-channel.md), channel 11): channels 1 and 11 do not overlap.
+- Clients (19 total): 11 wired, 5 on 2.4 GHz, 3 on 5 GHz. On 2.4 GHz: two Xiaomi air-conditioner controllers and a Google Nest Mini (2.4 GHz-only devices, expected), plus a POCO C75 phone and one private-MAC device that could use 5 GHz (forget and rejoin the 5 GHz SSID; SSIDs are split). The phone previously buffering (Redmi Note 12 Pro 5G) is on 5 GHz.
+- Client list has no RSSI on this firmware, so signal quality was not assessed.
 
 ## Key takeaways
 
