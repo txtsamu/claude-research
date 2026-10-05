@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-05 | [mikrotik-pppoe-bridge-vsol-onu-plan.md](mikrotik-pppoe-bridge-vsol-onu-plan.md) | how-to |
 | 2026-10-03 | [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md) | how-to |
 | 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | how-to |
 | 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, kubectl | 2026-10-02 |
