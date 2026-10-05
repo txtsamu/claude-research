@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm]
 created: 2026-09-07
-last_verified: 2026-09-07
+last_verified: 2026-10-05
 status: current
 ---
 
@@ -76,3 +76,7 @@ iscsiadm -m session
 - **After any `qm destroy`, check `lvs <vg>` on every storage backing that node for leftover LVs matching the destroyed VMID** — destroy is not guaranteed to find disks that exist outside the VM's current config (e.g. left behind by a prior storage migration for that VM).
 - **`content none` on an `iscsi` storage entry usually means it's a dependency, not dead config** — check whether another storage (typically `lvmthin`) is built on the same underlying PV/device before assuming it's unused.
 - Trivial in this case (4MB × 3 = 12MB), but worth doing as routine hygiene after any VM deletion, especially bigger ones.
+
+## Follow-up (2026-10-03)
+
+The NAS side of the Talos cluster (`data/k8s-talos-iscsi` and its snapshots dataset) was deleted on 2026-10-03, along with its iSCSI extents and targets. See [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md).

@@ -2,8 +2,8 @@
 type: how-to
 tags: [kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox]
 created: 2026-09-06
-last_verified: 2026-09-06
-status: current — homelab namespace fully cut over; Talos VMs powered off (not deleted) same day as final rollback
+last_verified: 2026-10-05
+status: current — homelab namespace fully cut over; Talos VMs deleted 2026-09-07, Talos NAS storage deleted 2026-10-03 (no rollback left)
 ---
 
 # Migrating the `homelab` namespace from Talos to k3s on warp
@@ -228,3 +228,8 @@ Frees ~30GB RAM (3× control-plane at 4GB + 3× worker at 6GB) and ~190GB disk o
 - Talos VMs are stopped but not deleted/unregistered from px1 — a further cleanup
   step (actually removing them) would be a separate, more deliberate decision later
   once confident nothing needs the rollback.
+
+## Cleanup status (updated 2026-10-05)
+
+- The Talos VMs were removed on 2026-09-07 (see [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md)); the "stopped but not deleted" note above is historical.
+- On 2026-10-03 the Talos cluster's TrueNAS storage was deleted too: `data/k8s-talos-iscsi` (24 zvols, 2 snapshots, ~14.7G) and `data/k8s-talos-iscsi-snapshots`. **There is no Talos rollback path any more**; k3s on `warp`/`home` is the only copy. Recipe: [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md).

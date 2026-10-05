@@ -2,7 +2,7 @@
 type: how-to
 tags: [truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm]
 created: 2026-08-23
-last_verified: 2026-08-23
+last_verified: 2026-10-05
 status: current
 ---
 
@@ -132,3 +132,7 @@ sudo zfs destroy data/immich-pgdata
 - **`x-systemd.requires-mounts-for=/dev/sdX` in fstab is fragile** — `/dev/sdX` device letters depend on iSCSI login/enumeration order, which can change after you remove a LUN (a device that was `/dev/sdb` today may become `/dev/sda` after a reboot once the original LUN is gone). Use the stable `/dev/disk/by-uuid/<uuid>` path instead.
 - **`midclt call iscsi.extent.delete` takes positional args, not a JSON array** — `sudo midclt call iscsi.extent.delete 1 false false` works; `sudo midclt call iscsi.extent.delete "[1, false]"` fails with `[EINVAL] id: Input should be a valid integer`.
 - **TrueNAS can't repoint an extent to a different zvol** — a "resize" of an iSCSI-backed zvol via new-LUN-cutover always means a new IQN/target name, unless you're willing to do a second cutover just to rename it back.
+
+## Later status (2026-10-03)
+
+The `data/immich-pgdata-new` zvol and its `immich-pgdata-new` extent/target created by this recipe were deleted from the NAS on 2026-10-03. By then they had no iSCSI session: Immich runs on k3s with PVC `immich-db-data` (a `k8s-warp-iscsi` zvol). The commands above remain valid as a generic new-LUN-and-rsync recipe. See [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md).
