@@ -82,7 +82,13 @@ The ONU has no host table. Compare byte counters over ~10 s: `status_ethernet_in
 6. **Stale `10.10.10.2/24` address.** The backup config had `10.10.10.2/24` on interface `*9` (a deleted WireGuard interface, shown invalid). RouterOS reused id `*9` for `pppoe-out1`, so the address attached to it. The router's own pings and the masquerade then used 10.10.10.2 as source and the ISP dropped them: PPPoE up, LAN no internet, while pings with `src-address=<pppoe ip>` worked. Fix: `/ip address remove [find address="10.10.10.2/24"]`.
 7. **RouterOS scripting quirks**: `find src-address=...` returned nothing inside scripts, so match rules by `comment~"..."`. Clear a field with `!out-interface`, not `out-interface=""` (ambiguous-value error). `/tool pppoe-scan` and `/tool torch ... protocol=` do not exist/accept those args on ROS 7. A script aborts at the first error; check what already applied before re-running.
 8. **Tooling**: the `rtk diff` wrapper printed "identical" for differing files; use `rtk proxy diff`. A hand-edited `nethome-bridge.xml` (ChannelMode 0, NAPT 0, MTU 1480) was produced but never uploaded; the web-form post was used instead.
-9. After bridging, Quad9 (9.9.9.9) no longer answers from the MikroTik; the old recursive default route probed it through the ONU. 1.1.1.1 is fine.
+9. **Old probe routes broke Quad9, which broke Technitium (fast.com would not start its speed test).** The MikroTik still had `9.9.9.9/32` and `149.112.112.112/32` static routes via `192.168.1.1` (comment `probe-hop-1/2 ... PC-backup-wan-setup`, plus the recursive `real-wan-default-1` via 9.9.9.9). Harmless while the ONU routed; once the ONU bridged they sent all Quad9 traffic into a dead end. Technitium (`192.168.50.200`, native `DnsServerApp`, forwarders = DoH to Cloudflare, Google **and Quad9**) then timed out whenever it picked a Quad9 forwarder, so some names returned SERVFAIL at random (netflix.com, wikipedia.org, openai.com; `api.fast.com` is a CNAME chain so the speed test failed while the fast.com page itself loaded). Symptoms: `dig <name> @192.168.50.200` SERVFAIL for some names but NOERROR from `.40`/`1.1.1.1`; `+cd` (no DNSSEC) worked; Technitium log `/var/log/technitium/dns/<date>.log` showed `request timed out for name servers [https://dns.quad9.net/dns-query (9.9.9.9), ...]` (1331 lines that day vs 14 the day before); `/tool traceroute 9.9.9.9` on the MikroTik went to 192.168.1.1. Fix (reversible):
+```
+/ip route disable [find comment~"probe-hop-1"]
+/ip route disable [find comment~"probe-hop-2"]
+/ip route disable [find comment~"real-wan-default-1"]
+```
+After that 9.9.9.9 and 149.112.112.112 answer over `pppoe-out1` and every name resolved. Lesson: after bridging, grep the old config for anything pointing at `192.168.1.1` and any `/32` probe routes. Ruled out first: PPPoE MTU (1480-byte DF pings pass; 1.4 KB DNS replies arrive), DNSSEC data itself, ISP DNS.
 
 ## Rollback
 - ONU: `~/nethome/onu.sh revert` (VLAN 2000 back to routed PPPoE, MTU 1492). Needs the ONU reachable (give it ~5 minutes after any change).
@@ -90,6 +96,8 @@ The ONU has no host table. Compare byte counters over ~10 s: `status_ethernet_in
 - Leave the PC-tether backup default route (distance 10) in place as a safety net.
 
 ## Open items
+- Decide whether to delete the disabled `PC-backup-wan-setup` probe routes for good (kept disabled, not removed).
+- `192.168.50.42` (arm3) listed in the DHCP DNS servers does not answer DNS.
 - Power-cycle test of ONU and MikroTik to prove the bridge survives a reboot.
 - If the ISP's TR-069 management re-pushes the routed config, the bridge reverts itself; re-run `onu.sh bridge`.
 - IPv6 was not configured on the MikroTik (the channel is dual stack).
