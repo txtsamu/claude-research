@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-09 | [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | how-to |
 | 2026-10-09 | [telegram-bot-proxmox-windows-vm-power.md](telegram-bot-proxmox-windows-vm-power.md) | how-to |
 | 2026-10-09 | [route-manager-effect-v4-caddy-lan-routes.md](route-manager-effect-v4-caddy-lan-routes.md) | how-to |
 | 2026-10-09 | [kubewall-caddy-kwall-lan-route.md](kubewall-caddy-kwall-lan-route.md) | troubleshooting |
@@ -69,6 +70,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | k3s, home, upgrade, helm, democratic-csi, truenas, nextcloud, immich, forgejo, snapshotter, api-key-rotation, version-pinning, subagents | 2026-10-09 |
 | [telegram-bot-proxmox-windows-vm-power.md](telegram-bot-proxmox-windows-vm-power.md) | telegram, bot, proxmox, px1, windows, vm, effect-v4, k3s, home, api-token, pveum, tls-pinning | 2026-10-09 |
 | [route-manager-effect-v4-caddy-lan-routes.md](route-manager-effect-v4-caddy-lan-routes.md) | effect-ts, effect-v4, caddy, nixos, home, k3s, technitium, dns, route-manager, systemd-path | 2026-10-09 |
 | [immich-pgdata-iscsi-lun-resize.md](immich-pgdata-iscsi-lun-resize.md) | truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm | 2026-10-05 |
