@@ -10,7 +10,7 @@ status: current
 
 Goal: a web app at `route.lan` where a new `name.lan` -> `host:port` route can be added in one form, instead of editing `home-nixos` `proxy.nix`, opening a PR, and adding a Technitium record by hand.
 
-Code: private repo `txtsamu/route-manager` (local `~/route-manager`). NixOS side: `txtsamu/home-nixos` PR #7. Runs as a Deployment on home's k3s (namespace `homelab`).
+Code: private repo `txtsamu/route-manager` (local `~/route-manager`). Also pushed to the private Forgejo repo `samu/route-manager` (http://192.168.50.249:3500, public at git.ssamu.id) as remote `forgejo`; there is no automatic sync, so push both by hand (`git push origin main && git push forgejo main`). NixOS side: `txtsamu/home-nixos` PR #7. Runs as a Deployment on home's k3s (namespace `homelab`).
 
 ## Design decision: how routes reach Caddy
 
@@ -89,6 +89,8 @@ curl -sk -X DELETE https://route.lan/api/routes/rmtest     # dns: "removed"; rec
 ```
 
 ## Gotchas
+
+- Forgejo repo creation: the token needed `write:user` as well as `write:repository` (`POST /api/v1/user/repos` returned 403 with `write:repository,read:user`). Push-to-create is disabled on this instance. Tokens were minted inside the pod with `su git -c "forgejo admin user generate-access-token --username samu --token-name <n> --scopes ... --raw"` (must run as `git`, not root) and used for a single push via `git -c http.extraHeader="Authorization: Basic ..."` so nothing was stored on disk. Two leftover tokens (`route-manager-sync`, `route-manager-sync2`) can be deleted in Forgejo under Settings > Applications.
 
 - First `curl https://route.lan` failed with exit 6 even after the record existed: the local resolver had a cached NXDOMAIN. `resolvectl flush-caches` fixed it; `dig @192.168.50.200` and `curl --resolve` isolate Technitium/Caddy from the local cache.
 - No authentication: anyone on the LAN can add routes. Fine for a home LAN, but remember it if the service is ever exposed through the Cloudflare tunnel.
