@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-09 | [telegram-bot-proxmox-windows-vm-power.md](telegram-bot-proxmox-windows-vm-power.md) | how-to |
 | 2026-10-09 | [route-manager-effect-v4-caddy-lan-routes.md](route-manager-effect-v4-caddy-lan-routes.md) | how-to |
 | 2026-10-09 | [kubewall-caddy-kwall-lan-route.md](kubewall-caddy-kwall-lan-route.md) | troubleshooting |
 | 2026-10-05 | [mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md](mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md) | investigation |
@@ -68,6 +69,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [telegram-bot-proxmox-windows-vm-power.md](telegram-bot-proxmox-windows-vm-power.md) | telegram, bot, proxmox, px1, windows, vm, effect-v4, k3s, home, api-token, pveum, tls-pinning | 2026-10-09 |
 | [route-manager-effect-v4-caddy-lan-routes.md](route-manager-effect-v4-caddy-lan-routes.md) | effect-ts, effect-v4, caddy, nixos, home, k3s, technitium, dns, route-manager, systemd-path | 2026-10-09 |
 | [immich-pgdata-iscsi-lun-resize.md](immich-pgdata-iscsi-lun-resize.md) | truenas, iscsi, zfs, zvol, thin-provisioning, podman, quadlet, immich, postgres, homelab-vm | 2026-10-05 |
 | [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-10-05 |
