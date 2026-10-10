@@ -174,14 +174,62 @@ avc: denied { getattr } for path="/sys/devices/virtual/vusb/usb0/host_mode"
   scontext=u:r:shell:s0 tcontext=u:object_r:sysfs_otg:s0 tclass=file permissive=0
 ```
 
+### 9. Watching the cutoff live over wireless ADB
+
+The phone's only USB-C port is taken by the IEM, so ADB was moved to Wi-Fi first (while still cabled):
+
+```sh
+adb shell ip -4 -o addr show wlan0          # phone LAN IP
+adb tcpip 5555 && adb connect <PHONE_IP>:5555   # accept the new authorization prompt on the phone
+```
+
+A poll loop logged `dumpsys usb` every 5 s while the user unplugged the PC cable, turned OTG on by
+hand and plugged in the IEM (a Moondrop USB-C DAC cable, Conexant chip):
+
+```sh
+A="adb -s <PHONE_IP>:5555"
+while :; do $A shell 'dumpsys usb | grep -E "host_connected=|current_mode="' | tr -s ' \n' ' '; date +%T; sleep 5; done
+$A shell 'logcat -d -v time -b all' | grep -E '^10-11 03:09:3'      # afterwards, around the cutoff
+```
+
+Timeline (one trial):
+
+| Time | Event |
+|---|---|
+| 03:04:26 | `USB_DEVICE_ATTACHED`; `host_connected=true`, `current_mode=dfp` |
+| 03:09:31.044 | music app's `AudioTrack` paused, `prior state:STATE_ACTIVE` (audio was playing) |
+| 03:09:31.116 | `ACTION_USB_DETACHED`; audio route falls back to SPEAKER |
+| after | `dumpsys usb` still reports `host_connected=true`, `current_mode=dfp` |
+
+So the device was dropped **5 min 5 s after attach, during active playback**. On this phone and
+this IEM the timer is not idle-based, contrary to the wording of vivo's FAQ ("if it is not used in
+5 minutes"). No userspace log line precedes the detach, which points at the kernel `vusb` driver;
+the kernel log is not readable from `shell`, so that part is inferred.
+
+Ruled out: `com.vivo.devicepower` (it has a `UsbDeviceReceiver` that starts on attach) contains no
+OTG / `host_mode` code. The "OTG help" page in Settings (`VivoOtgHelpSettings`, shown because
+`persist.vivo.phone.otg_param` has bit 0 set) only cycles signal-compatibility modes 0-4 through
+`UsbManager.setEysParameter(int)`; it has nothing to do with the timeout.
+
+Gotchas: do not run two loops that both call `adb connect` (the connection flapped to
+`unauthorized`), and `pkill -f` with a pattern that also appears in the new command line kills the
+new recorder too.
+
+### 10. User-reported workaround (not instrumented)
+
+Rebooting the phone with the IEM already plugged in keeps it working with no cutoff. Hypothesis:
+the port enters host mode by itself during boot, so the manual-switch path that arms the 5-minute
+timer never runs. Unverified: wireless ADB does not survive a reboot (`adb tcpip` resets), so this
+could not be recorded the same way.
+
 ## What would work
 
 - **Root** (needs an unlocked bootloader, which this phone does not have): `echo enabled >
   /sys/devices/virtual/vusb/usb0/host_mode` on a timer.
 - **UI automation on the phone** (an accessibility-based automation app that opens Settings and
   taps the switch). Not built or tested here.
-- **Avoiding OTG entirely:** a 3.5 mm or Bluetooth output. The switch only times out while nothing
-  is plugged in; with the earphones connected it stays on.
+- **Boot with the IEM attached** (step 10), and leave it plugged in.
+- **Avoiding OTG entirely:** a 3.5 mm or Bluetooth output.
 
 ## Patching OTG_Link_App
 
