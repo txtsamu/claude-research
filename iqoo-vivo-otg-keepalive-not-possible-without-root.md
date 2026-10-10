@@ -246,6 +246,33 @@ Looked into it on 2026-10-11. Short version: no clean path, and nothing that hel
   the right answer. Rooting is only worth pursuing for broader goals (custom ROM, full control),
   and there the un-unlockable bootloader is the real blocker.
 
+## Same issue reported on the official iQOO forum (not just this phone)
+
+This is a known, unresolved OriginOS behaviour, not something specific to this unit. The closest
+match is an iQOO India community thread, **"USB-C Earphones Not Recognized on iQOO 15 – OTG
+Dependency and Auto Disconnect"** ([community.iqoo.com/in/thread/137185](https://community.iqoo.com/in/thread/137185)):
+
+- Device: iQOO 15, Android 16, build `PD2505CF_EX_A16.0.20.1.W30` (same family, newer model than
+  this I2512).
+- Symptom, almost identical to ours: Samsung AKG Type-C earphones are not recognised when plugged
+  in normally (no USB-detected notification, no audio). They work **only when OTG is manually
+  enabled**, and then **"OTG automatically turns off after approximately 5 minutes"** and the
+  audio stops. USB pendrives and the same earphones on other phones work fine.
+- The poster's reading matches what the decompiled code shows: the firmware treats USB-C audio as
+  an OTG accessory, and the auto power-off looks hard-coded and non-disableable.
+- Their three asks: confirm USB Audio Class support, ship firmware that keeps USB-C audio detected
+  without OTG, and add an option to disable OTG auto-off while an audio device is connected.
+- **Status: unresolved.** No iQOO staff or user reply, ~1.7k views at time of reading.
+
+Related reports: iQOO 12 users describe dongle DACs breaking (static then silence) after the
+stable OriginOS 6 / Android 16 update ([gsmarena newscomm-70653](https://m.gsmarena.com/newscomm-70653.php)
+comments). Older cross-vendor threads describe the same 10-minute timeout on other phones and an
+ADB/Shizuku `otg_timeout=0` edit via a settings-DB editor — not applicable here, since OriginOS
+keeps the switch in a kernel node, not the settings DB (see step 8).
+
+Takeaway: the realistic "fix" is to report it to iQOO support with the exact model/build and add
+weight to the existing thread; there is no user-side software fix on current firmware.
+
 ## What would work
 
 - **Root** (needs an unlocked bootloader, which this phone does not have): `echo enabled >
@@ -263,6 +290,8 @@ that `vivo_otg_status` (`Settings.System`) exists only on `Have_otg_ccopen` mode
 unverified.
 
 ## References
+- [iQOO community: USB-C Earphones Not Recognized on iQOO 15 – OTG Dependency and Auto Disconnect](https://community.iqoo.com/in/thread/137185) — near-identical symptom, unresolved
+- [GSMArena: iQOO 12 OriginOS 6 stable update](https://m.gsmarena.com/newscomm-70653.php) — comments report dongle DAC regressions after the Android 16 update
 
 - [Mishra-coder/OTG_Link_App](https://github.com/Mishra-coder/OTG_Link_App) — README "Adding a new vendor", `scripts/find-otg-key.sh`, `docs/research-notes.md`
 - [vivo OTG FAQ](https://www.vivoglobal.ph/questionlist/otg/) — official statement of the 5-minute auto-off, no always-on option
