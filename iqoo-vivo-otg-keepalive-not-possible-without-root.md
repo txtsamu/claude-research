@@ -273,6 +273,37 @@ keeps the switch in a kernel node, not the settings DB (see step 8).
 Takeaway: the realistic "fix" is to report it to iQOO support with the exact model/build and add
 weight to the existing thread; there is no user-side software fix on current firmware.
 
+## Tested: the ADB `otg_timeout=0` settings-DB edit does nothing here (confirmed empirically)
+
+The cross-vendor workaround (set `otg_timeout=0` / `otg state=true` via a settings-DB editor over
+ADB/Shizuku) was tested directly on 2026-10-11, not just ruled out from the decompile.
+
+1. No such key exists. Searching every namespace returns only unrelated timeouts (screen, backup,
+   battery):
+   ```sh
+   for ns in global system secure; do adb shell settings list $ns | grep -iE 'otg|timeout|host_mode'; done
+   # -> screen_off_timeout, backup_agent_timeout_parameters, verifier_timeout, ... no otg* anywhere
+   ```
+2. Writing the candidate keys "succeeds" but is inert — `settings put` accepts any key name and
+   just creates a row the system ignores. None changed OTG state:
+   ```sh
+   adb shell dumpsys usb | grep -E 'host_connected=|current_mode='   # host_connected=true current_mode=dfp
+   for kv in 'global otg_timeout 0' 'global otg_switch 1' 'system vivo_otg_status 1'              'global persist.sys.oplus.otg_support 1' 'secure otg_enabled 1'; do
+       adb shell settings put $kv            # all readback fine
+   done
+   adb shell dumpsys usb | grep -E 'host_connected=|current_mode='   # unchanged: host_connected=true current_mode=dfp
+   ```
+   (The five inert rows were deleted afterwards with `settings delete`.)
+3. The real node is still unreachable, read and write, from `shell`:
+   ```
+   cat /sys/devices/virtual/vusb/usb0/host_mode   -> Permission denied
+   echo enabled > .../host_mode                   -> Permission denied (SELinux sysfs_otg)
+   ```
+
+So the settings-DB workaround is confirmed inapplicable to OriginOS: the switch and its timer are
+not in the settings DB at all. `settings put` is the wrong layer; the write has to reach the
+kernel node, which needs root.
+
 ## What would work
 
 - **Root** (needs an unlocked bootloader, which this phone does not have): `echo enabled >
