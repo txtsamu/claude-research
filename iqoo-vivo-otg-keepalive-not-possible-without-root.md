@@ -304,6 +304,35 @@ So the settings-DB workaround is confirmed inapplicable to OriginOS: the switch 
 not in the settings DB at all. `settings put` is the wrong layer; the write has to reach the
 kernel node, which needs root.
 
+## Mechanism confirmed: fixed ~5-min timer from each attach; replug restarts it
+
+A second instrumented trial (replug, not manual toggle) pinned down the timer. adb was on Wi-Fi so
+the USB-C port was free for the IEM; events read from the device's own `logcat -b all` buffer
+(the Wi-Fi poller dropped mid-session, but the on-device log is authoritative):
+
+| Session | Trigger | Attach | Detach | Duration |
+|---|---|---|---|---|
+| 1 | manual OTG switch | 03:04:26 | 03:09:31 | 5 min 5 s |
+| 2 | physical replug | 03:20:42 | 03:25:48 | 5 min 6 s |
+
+Findings:
+
+- **Fixed timer from attach, not idle-based.** In session 2 the track was `STATE_ACTIVE` right up
+  to the detach, and a pause/resume at 03:23:31 did not move the deadline. The cut lands ~5 min
+  after *attach* regardless of playback. This directly contradicts vivo's FAQ wording ("turned off
+  automatically if it is not used in 5 minutes").
+- **Replug re-enters host mode with no settings change.** `ACTION_USB_ATTACHED` →
+  `host_connected=true`, `current_mode=dfp`, `onAudioDevicesAdded` — purely from the cable's
+  physical attach (CC detection). So the switch sits below the settings layer, and a fresh attach
+  starts a fresh ~5-min session. The practical consequence: when it cuts out, a quick unplug/replug
+  of the IEM restores audio for another ~5 min, faster than reopening Settings > OTG.
+- `current_mode` is USB-C port-role state (dfp = Downstream Facing Port = host; ufp = device;
+  none = detached), reported by the USB HAL — not a writable key. It mirrors `host_connected`.
+
+This is consistent with the boot-with-IEM workaround (step 10) behaving differently: a cold attach
+at boot brings the port up in host mode via the same hardware path, apparently without arming the
+timer that the in-session attach does.
+
 ## What would work
 
 - **Root** (needs an unlocked bootloader, which this phone does not have): `echo enabled >
