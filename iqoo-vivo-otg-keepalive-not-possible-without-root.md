@@ -27,10 +27,8 @@ phone is unrooted with a locked bootloader, so status is `blocked`.
 This matches step 4 of the repo's own guide: "If no key changes, the vendor keeps the switch
 outside Settings, and this approach won't work."
 
-Not done: the live before/after diff with the switch physically flipped
-(`scripts/find-otg-key.sh`). The conclusion comes from reading the decompiled code plus the
-permission check on the device, not from that diff. A `before` snapshot was taken but never
-compared.
+Confirmed by the live before/after diff (step 8): with the OTG switch flipped by hand, all 3,570
+settings rows and system properties were byte-identical.
 
 ## Device
 
@@ -153,6 +151,28 @@ domain than `shell`, so it cannot either; this also rules out Shizuku-style help
 - `dumpsys package com.android.settings | grep -i otg` shows only the storage-format activity; the
   OTG fragment has no exported entry point of its own.
 - `service list` has no vivo USB/OTG binder service.
+
+### 8. Live before/after diff with the switch flipped: nothing changes
+
+Same method as the repo's `scripts/find-otg-key.sh`, extended to include `getprop`:
+
+```sh
+snap(){ { for ns in global system secure; do adb shell settings list $ns | sed "s/^/$ns: /"; done
+          adb shell getprop | sed 's/^/prop: /'; } | sort > $1; }
+snap before      # then flip Settings > OTG on the phone by hand
+snap after
+diff before after; echo $?      # no output, exit 0
+```
+
+Both files have 3,570 lines and are identical. The flip itself could not be observed from ADB
+(`host_mode` is unreadable, and the phone stays in device role while cabled to the PC), so this
+relies on the switch having been flipped as reported. The SELinux denial logged by step 6 names
+the label on the node:
+
+```
+avc: denied { getattr } for path="/sys/devices/virtual/vusb/usb0/host_mode"
+  scontext=u:r:shell:s0 tcontext=u:object_r:sysfs_otg:s0 tclass=file permissive=0
+```
 
 ## What would work
 
