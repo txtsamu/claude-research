@@ -222,6 +222,30 @@ the port enters host mode by itself during boot, so the manual-switch path that 
 timer never runs. Unverified: wireless ADB does not survive a reboot (`adb tcpip` resets), so this
 could not be recorded the same way.
 
+## Can this phone be rooted? (so the sysfs write becomes possible)
+
+Looked into it on 2026-10-11. Short version: no clean path, and nothing that helps this problem.
+
+- **Official bootloader unlock: none.** vivo/iQOO has never run an unlock program; the "OEM
+  unlocking" developer toggle is cosmetic on retail firmware. The standard Magisk / KernelSU route
+  needs an unlocked bootloader (KernelSU's own FAQ states this), so it does not apply.
+- **Exploit-based temporary root exists but is a dead end here.**
+  [RootMyVivo](https://github.com/zenyxx-xd/RootMyVivo) uses GhostLock (CVE-2026-43499, a futex PI
+  use-after-free) to load KernelSU in memory on a locked bootloader. Problems for this device:
+  - Root is **lost on every reboot** — and the working OTG fix (step 10) *is* a reboot, so this
+    root can never be present at the moment it would be needed. You would be re-running a flaky
+    kernel exploit after each restart just to write one sysfs value.
+  - The exploit only works on **kernels up to 6.6.139 (or 6.1.144)**; 6.6.140+ is patched. This
+    phone is on a recent (Oct 2026) security patch, so its kernel may already be out of range. The
+    exact `uname -r` was **not captured** — adb-over-Wi-Fi dropped to `unauthorized` before it
+    could be read; re-accept the prompt and run `adb shell uname -r` to settle it.
+  - Only iQOO Neo 11 and Z10 Turbo Pro are author-confirmed. The I2512 is not on the list. The
+    author calls panics a "timing lottery" and ships a prebuilt exploit payload you must trust.
+- **Conclusion:** even successful exploit-root buys nothing for the OTG timeout, because it does
+  not persist across the reboot the fix relies on. The reboot-with-IEM-attached workaround remains
+  the right answer. Rooting is only worth pursuing for broader goals (custom ROM, full control),
+  and there the un-unlockable bootloader is the real blocker.
+
 ## What would work
 
 - **Root** (needs an unlocked bootloader, which this phone does not have): `echo enabled >
