@@ -50,8 +50,7 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-05 | [mikrotik-pppoe-bridge-vsol-onu-plan.md](mikrotik-pppoe-bridge-vsol-onu-plan.md) | how-to |
 | 2026-10-03 | [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md) | how-to |
 | 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | how-to |
-| 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, kubectl | 2026-10-02 |
-| [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | how-to |
+| 2026-10-02 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | how-to |
 | 2026-09-27 | [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | investigation |
 | 2026-09-21 | [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | how-to |
 | 2026-09-21 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | troubleshooting |
@@ -79,6 +78,7 @@ One combined view across all three tables below, so the latest work is visible a
 | [talos-to-k3s-migration-warp.md](talos-to-k3s-migration-warp.md) | kubernetes, talos, k3s, migration, metallb, democratic-csi, cloudflare-tunnel, warp-vm, proxmox | 2026-10-05 |
 | [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md) | truenas, nas, zfs, iscsi, democratic-csi, k3s, cleanup, talos | 2026-10-03 |
 | [immich-upgrade-k8s-home.md](immich-upgrade-k8s-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, valkey, deployment, homelab | 2026-10-03 |
+| [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | immich, kubernetes, k3s, home, upgrade, postgres, kubectl | 2026-10-02 |
 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | nixos, home, flake, github, rebase, systemd-hardening, flake-lock, deploy, ci | 2026-10-02 |
 | [technitium-cloudflare-doh-forwarder.md](technitium-cloudflare-doh-forwarder.md) | technitium, dns, doh, dns-over-https, cloudflare, google, quad9, home, privacy, forwarder | 2026-09-26 |
 | [mikrotik-hardening-round2-2026-09-24.md](mikrotik-hardening-round2-2026-09-24.md) | mikrotik, routeros, hardening, security, firewall, ssh, mac-server, services, hex-s | 2026-09-24 |
