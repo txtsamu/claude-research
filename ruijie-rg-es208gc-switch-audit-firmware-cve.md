@@ -159,6 +159,30 @@ Open points before flashing:
 - The download is behind a "Continue Downloading" click, so it has to be fetched in a browser. No MD5 is published on the page.
 - Flash via the web UI's Local Upgrade with "Keep Old Config" ticked. The switch reboots, so ports 1-8 drop for a minute or two.
 
+### Pending: upgrade recipe (not run yet)
+
+1. In a browser, open the B1P48 firmware page (see References), click through "Continue Downloading", and also download the release notes PDF.
+2. Check the release notes' applicable-products table lists RG-ES208GC hardware 1.2x. Stop if it does not.
+3. Unpack the archive and pick the `.bin` file. The web UI only accepts `.bin`; a `.tar.gz` in the package is for cloud upgrade.
+4. Open `http://192.168.50.254/` by IP (the UI refuses to upgrade when opened by domain name), go to System Settings > Upgrade > Local Upgrade, leave "Keep Old Config" ticked, select the `.bin`.
+5. Do not power off during the upgrade. The switch reboots on its own; ports 1-8 are down for a minute or two.
+6. Afterwards: confirm the version on `info.cgi`, confirm the settings in the table above survived, then change the admin password (16 characters maximum, the login field's limit).
+
+Ruijie advises unticking "Keep Old Config" only when jumping across a large version gap; B1P39 to B1P48 is not one. Downgrading may be blocked (noted in the B1P20 release notes for that version onward).
+
+### Newer builds that are not for this model
+
+Seen on Ruijie's site but not tied to the ES208GC (V1 hardware), so not candidates:
+
+- B1P43 release note (2025-09-19), titled "RG-ES2 Series".
+- B1P52 "R52" (2026-10-10) and B11P65 (2026-09-24), published under "new ES2" pages for ES207/ES205 and ES211GS-LP/ES220G-V2.
+
+B1P48 is the latest build confirmed for the ES205GC/ES208GC group as of 2026-10-12.
+
+### If storm control is ever wanted
+
+Optional, since loop prevention is already on. If added: broadcast only, roughly 10-50 Mbit/s, on edge ports (not the uplink). Leave unknown multicast unlimited (see table above) and leave unknown unicast unlimited on the uplink, where VM MAC churn from the homelab shows up. Excess traffic is dropped; the port is not shut down.
+
 ## Other observations
 
 - The web UI embeds the admin password in clear text in the JavaScript of the logged-in pages (a `'<password>'=='admin'` comparison), served over plain HTTP. Treat the password as exposed to anything that can sniff the LAN.
@@ -191,6 +215,9 @@ The switch password is not recorded here (`<SWITCH_PASSWORD>`). The serial numbe
 - [RG-ES200 Series Web-based Configuration Guide (B1P20 mirror)](https://storage.googleapis.com/guides.broadbandbuyer.com/Ruijie%20Reyee/RG-ES200%20Series%20Switches-Web-based%20Configuration%20Guide.pdf)
 - [RG-ES200 Series Cloud Managed Switch Datasheet](https://aacgroup.com.my/uploads/product_pdf/RG-ES200%20Series%20Cloud%20Managed%20Switch%20Datasheet.pdf)
 - [ES_1.0(1)B1P20 release notes (hardware versions, upgrade procedure)](https://reyee.ruijie.com/en-global/support/documents/slide_77152)
+- [B1P43 release note (title/date only)](https://reyee.ruijie.com/en-global/resources/preview/es220gs-lp-releasenote)
+- [B1P52 / B11P65 "new ES2" firmware page](https://reyee.ruijie.com/en-global/resources/software/new-es2-switch-firmware-2/new-es2-switch-r52-firmware/)
+- [RG-ES208GC-V2 datasheet (different product)](https://eo-sgp-cos.ruijie.com/Document/pdf/2026/9/28/RG-ES208GC-V2_Datasheet_Official_2026-09-28.pdf)
 - [RG-ES208GC product page](https://reyee.ruijie.com/en-global/products/reyee-switch/smart-cctv-switch/es208gc/)
 - [Ruijie community: ES switches do not support IGMP snooping](https://community.ruijie.com/forum.php?mod=viewthread&tid=5214)
 - [Ruijie community: ES200 has no SSH](https://community.ruijie.com/forum.php?mod=viewthread&tid=8356)
