@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
 | 2026-10-12 | [ruijie-rg-es208gc-switch-audit-firmware-cve.md](ruijie-rg-es208gc-switch-audit-firmware-cve.md) | investigation |
 | 2026-10-11 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | investigation |
 | 2026-10-09 | [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | how-to |
@@ -51,26 +52,12 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-03 | [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md) | how-to |
 | 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | how-to |
 | 2026-10-02 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | how-to |
-| 2026-09-27 | [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | investigation |
-| 2026-09-21 | [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | how-to |
-| 2026-09-21 | [pod-internet-egress-isp-ttl-bug.md](pod-internet-egress-isp-ttl-bug.md) | troubleshooting |
-| 2026-09-21 | [home-oom-cascade-cloudflared-outage.md](home-oom-cascade-cloudflared-outage.md) | troubleshooting |
-| 2026-09-21 | [llama-server-lan-unreachable-firewalld-port.md](llama-server-lan-unreachable-firewalld-port.md) | troubleshooting |
-| 2026-09-21 | [mikrotik-config-backup-private-github.md](mikrotik-config-backup-private-github.md) | how-to |
-| 2026-09-21 | [bonsai-27b-prismml-ternary-gguf-deploy.md](bonsai-27b-prismml-ternary-gguf-deploy.md) | how-to |
-| 2026-09-21 | [amdgpu-power-cap-floor-compute-profile.md](amdgpu-power-cap-floor-compute-profile.md) | how-to |
-| 2026-09-21 | [home-directory-cleanup-evomem-bridge-hook-coupling.md](home-directory-cleanup-evomem-bridge-hook-coupling.md) | how-to |
-| 2026-09-21 | [tiny11core-windows-vm-proxmox-px1.md](tiny11core-windows-vm-proxmox-px1.md) | how-to |
-| 2026-09-18 | [claude-research-secrets-history-rewrite.md](claude-research-secrets-history-rewrite.md) | troubleshooting |
-| 2026-09-18 | [hermes-update-broken-git-and-nixos-uv.md](hermes-update-broken-git-and-nixos-uv.md) | troubleshooting |
-| 2026-09-18 | [agenix-technitium-admin-password-fix.md](agenix-technitium-admin-password-fix.md) | troubleshooting |
-| 2026-09-17 | [rancher-full-decommission-k3s-home.md](rancher-full-decommission-k3s-home.md) | how-to |
-| 2026-09-17 | [kubewall-lighter-rancher-dashboard-deploy.md](kubewall-lighter-rancher-dashboard-deploy.md) | how-to |
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | android, bitchord, usb-dac, bit-perfect, uac, usbfs, media3, redmi, mediatek, android-sdk | 2026-10-14 |
 | [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | k3s, home, upgrade, helm, democratic-csi, truenas, nextcloud, immich, forgejo, snapshotter, api-key-rotation, version-pinning, subagents | 2026-10-09 |
 | [telegram-bot-proxmox-windows-vm-power.md](telegram-bot-proxmox-windows-vm-power.md) | telegram, bot, proxmox, px1, windows, vm, effect-v4, k3s, home, api-token, pveum, tls-pinning | 2026-10-09 |
 | [route-manager-effect-v4-caddy-lan-routes.md](route-manager-effect-v4-caddy-lan-routes.md) | effect-ts, effect-v4, caddy, nixos, home, k3s, technitium, dns, route-manager, systemd-path | 2026-10-09 |
