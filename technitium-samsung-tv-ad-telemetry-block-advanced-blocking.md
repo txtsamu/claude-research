@@ -190,23 +190,54 @@ After reverting: non-TV clients resolve `acr-eu-prd.samsungcloud.tv` normally,
 `lcprd1` is still 0.0.0.0 for them, and the global `blockListUrls` counts are
 unchanged (5 on .200, 4 on .40 and .42).
 
+## 9. Static lease + forced DNS redirect on the MikroTik (applied 2026-10-18)
+
+Config backup taken first: `/export file=pre-tv-dns-2026-10-18` (on the router, `pre-tv-dns-2026-10-18.rsc`).
+
+```routeros
+# fixed IP so the Technitium mapping keeps matching
+/ip dhcp-server lease make-static [find mac-address=64:E7:D8:EC:38:EE]
+/ip dhcp-server lease set [find mac-address=64:E7:D8:EC:38:EE] comment="Samsung TV UA43T6500 (static, DNS redirect + TV-only blocking)"
+
+/ip firewall address-list add list=lan-dns address=192.168.50.200
+/ip firewall address-list add list=lan-dns address=192.168.50.40
+/ip firewall address-list add list=lan-dns address=192.168.50.42
+
+# mark only the connections being redirected (TV -> any non-LAN DNS)
+/ip firewall mangle add chain=prerouting src-address=192.168.50.31 dst-address-list=!lan-dns protocol=udp dst-port=53 connection-state=new action=mark-connection new-connection-mark=tv-dns-redirect passthrough=yes comment="TV DNS redirect mark udp"
+/ip firewall mangle add chain=prerouting src-address=192.168.50.31 dst-address-list=!lan-dns protocol=tcp dst-port=53 connection-state=new action=mark-connection new-connection-mark=tv-dns-redirect passthrough=yes comment="TV DNS redirect mark tcp"
+
+/ip firewall nat add chain=dstnat src-address=192.168.50.31 dst-address-list=!lan-dns protocol=udp dst-port=53 action=dst-nat to-addresses=192.168.50.200 comment="TV DNS redirect udp -> Technitium"
+/ip firewall nat add chain=dstnat src-address=192.168.50.31 dst-address-list=!lan-dns protocol=tcp dst-port=53 action=dst-nat to-addresses=192.168.50.200 comment="TV DNS redirect tcp -> Technitium"
+# hairpin: the TV and .200 share the LAN, so without this .200 replies directly from its own IP and the TV drops the reply
+/ip firewall nat add chain=srcnat connection-mark=tv-dns-redirect action=masquerade comment="TV DNS redirect hairpin"
+```
+
+Why it's built this way:
+- **Hairpin masquerade is required** (TV and Technitium are on the same /24). Plain `src=.31 dst=.200 port 53` masquerade would also rewrite the TV's *direct* queries to .200 and hide its IP, so only connection-marked (redirected) flows are masqueraded. `connection-nat-state=dstnat` is **not** a valid matcher in RouterOS 7.24 NAT (`bad parameter connection-nat-state`), hence the mangle mark.
+- Redirected queries reach Technitium from `192.168.50.1` (the router), so on **.200 only** the Advanced Blocking config gained `"192.168.50.1": "samsung-tv"`. This is safe because the router resolves its own lookups over Cloudflare DoH (`/ip dns` `use-doh-server`) and has `allow-remote-requests=no`, so no other client's queries arrive from .1.
+- Queries the TV sends straight to .200/.40/.42 aren't touched and keep the TV's real IP.
+- Marked connections skip FastTrack (its rule needs `connection-mark=no-mark`), which is fine for DNS.
+- A `place-before=1` on the second NAT add failed with `no such item`, because item numbers come from the last `print`. Add without `place-before`, since dstnat vs srcnat order doesn't matter.
+- New rules showed the `I` (invalid) flag for a few seconds right after `add`; it cleared by itself.
+
+Verification (the TV can't be used as a test client, so this PC got temporary copies of the mangle+dstnat rules with comment `TEMP test`, removed right after):
+```
+dig @1.1.1.1 acr-eu-prd.samsungcloud.tv      -> NXDOMAIN   (answered by Technitium, samsung-tv group)
+dig @1.1.1.1 osb.samsungqbe.com              -> NXDOMAIN
+dig @1.1.1.1 netflix.com                     -> NOERROR
+dig @1.1.1.1 lcprd1.samsungcloudsolution.net -> NOERROR (allowlisted)
+# after removing TEMP rules + their conntrack entries: real 1.1.1.1 answer again
+```
+The production rules' counters stay at 0 while the TV uses .200 directly, which is normal. They only count when it falls back to 1.1.1.1/1.0.0.1 or a hardcoded resolver.
+
 ## Risks / open items
 
-- **The TV can bypass Technitium.** DHCP gives it `1.1.1.1` and `1.0.0.1` as the
-  4th and 5th DNS servers, and nothing redirects or blocks outbound port 53/853.
-  Samsung TVs are also reported to fall back to hardcoded public resolvers.
-  Possible fixes, **not applied** because they need explicit approval:
-  - Remove the public resolvers from DHCP. This is LAN-wide, but `.40` and `.42`
-    already give redundancy. Or give the TV its own DHCP option 6 through a
-    static lease.
-  - Add a MikroTik `dstnat` rule for `src-address=192.168.50.31 protocol=udp/tcp
-    dst-port=53` to `192.168.50.200`, and/or drop TCP/853 from the TV.
-- `lcprd1/2` were blocked globally before this change. If the TV's app store or
-  Smart Hub test was failing, it should start working now.
-- Undo: uninstall "Advanced Blocking" on each node (`/api/apps/uninstall?name=Advanced%20Blocking`),
-  or remove the `192.168.50.31` mapping.
-- If the TV gets a different IP, the mapping stops applying. Consider a static
-  DHCP lease for `64:E7:D8:EC:38:EE`.
+- Not blocked: DNS-over-TLS (TCP/853) or DoH from the TV. Nothing suggests this firmware uses them, but if it does, add a forward drop for `src-address=192.168.50.31 protocol=tcp dst-port=853`.
+- `lcprd1/2` were blocked globally before this change. If the TV's app store or Smart Hub test was failing, it should start working now.
+- Undo:
+  - Technitium: uninstall "Advanced Blocking" on each node (`/api/apps/uninstall?name=Advanced%20Blocking`), or remove the `192.168.50.31` mapping (and the `192.168.50.1` one on .200).
+  - MikroTik: `/ip firewall nat remove [find comment~"TV DNS"]`, `/ip firewall mangle remove [find comment~"TV DNS"]`, `/ip firewall address-list remove [find list=lan-dns]`.
 
 ## References
 
