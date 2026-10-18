@@ -37,7 +37,9 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
-| 2026-10-18 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | how-to |
+| 2026-10-19 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | how-to |
+| 2026-10-18 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | android, iqoo, vivo, originos, adb, debloat, uad-ng | 2026-10-19 |
+| [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | how-to |
 | 2026-10-18 | [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | how-to |
 | 2026-10-18 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
 | 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
@@ -51,7 +53,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-05 | [tplink-wr840n-ap-web-api-wifi-channel.md](tplink-wr840n-ap-web-api-wifi-channel.md) | how-to |
 | 2026-10-05 | [technitium-servfail-quad9-forwarder-dead-route-after-bridge.md](technitium-servfail-quad9-forwarder-dead-route-after-bridge.md) | troubleshooting |
 | 2026-10-05 | [vsol-onu-web-login-scripting.md](vsol-onu-web-login-scripting.md) | how-to |
-| 2026-10-05 | [mikrotik-pppoe-bridge-vsol-onu-plan.md](mikrotik-pppoe-bridge-vsol-onu-plan.md) | how-to |
 
 ### How-to / deployment
 
