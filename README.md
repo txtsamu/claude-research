@@ -37,9 +37,9 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-18 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | how-to |
 | 2026-10-18 | [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | how-to |
-| 2026-10-18 | [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | samsung, smart-tv, tizen, sdb, developer-mode, debloat | 2026-10-18 |
-| [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
+| 2026-10-18 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
 | 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
 | 2026-10-12 | [ruijie-rg-es208gc-switch-audit-firmware-cve.md](ruijie-rg-es208gc-switch-audit-firmware-cve.md) | investigation |
 | 2026-10-11 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | investigation |
@@ -52,13 +52,13 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-05 | [technitium-servfail-quad9-forwarder-dead-route-after-bridge.md](technitium-servfail-quad9-forwarder-dead-route-after-bridge.md) | troubleshooting |
 | 2026-10-05 | [vsol-onu-web-login-scripting.md](vsol-onu-web-login-scripting.md) | how-to |
 | 2026-10-05 | [mikrotik-pppoe-bridge-vsol-onu-plan.md](mikrotik-pppoe-bridge-vsol-onu-plan.md) | how-to |
-| 2026-10-03 | [truenas-nas-unused-zvol-cleanup.md](truenas-nas-unused-zvol-cleanup.md) | how-to |
-| 2026-10-02 | [immich-upgrade-v3-2-4-home.md](immich-upgrade-v3-2-4-home.md) | how-to |
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | tiktok-bot, home, anoa, camofox, scraping, cdp, gallery-dl | 2026-10-18 |
+| [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | samsung, smart-tv, tizen, sdb, developer-mode, debloat | 2026-10-18 |
 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | technitium, dns, blocklist, samsung, smart-tv, advanced-blocking, hagezi | 2026-10-18 |
 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | android, bitchord, usb-dac, bit-perfect, uac, usbfs, media3, redmi, mediatek, android-sdk | 2026-10-14 |
 | [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | k3s, home, upgrade, helm, democratic-csi, truenas, nextcloud, immich, forgejo, snapshotter, api-key-rotation, version-pinning, subagents | 2026-10-09 |
