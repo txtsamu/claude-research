@@ -106,12 +106,50 @@ The real functions were tested by importing the module (the `__main__` guard mea
 fallback (ANOA_URL -> dead port 9599): "anoa fallback failed … Connection refused" -> camofox found 10, 7.8s
 ```
 
-### To actually enable it (not done yet)
+### Enabled on home (2026-10-18): home-nixos PR #8, generation 45
 
-1. Run anoa as a persistent service on home, as a unit in home-nixos next to `camofox-browser.service`, e.g. `anoa --headless --port 9500 --ephemeral --auth-token <agenix secret>`.
-2. Set `SCRAPE_BROWSER=anoa` (and `ANOA_TOKEN`) in `tiktok-bot.service`, plus `After=` on the anoa unit.
+Bot code: `txtsamu/tiktok-bot` commit `27f8098`. Config: [txtsamu/home-nixos#8](https://github.com/txtsamu/home-nixos/pull/8), squash-merged as `140ca7d`.
 
-Until then the bot runs with the default `camofox`, so behavior is unchanged.
+- **`flake.nix`**: new input `anoa.url = "github:porcupine-md/anoa-browser/v0.19.1"`. It deliberately does *not* follow our nixpkgs, because its Qt WebEngine build is tested against its own pin. The package is passed to modules as `specialArgs.anoa = anoa.packages.${system}.default`.
+- **`hosts/home/anoa.nix`**: `anoa-browser.service`. It runs as a `DynamicUser` (with State/Cache/RuntimeDirectory), `HOME=/var/lib/anoa-browser`, `NoNewPrivileges` and `PrivateTmp`. This was tested first with `systemd-run -p DynamicUser=yes …`; Chromium runs fine under it without `--no-sandbox`.
+- **Auth token:** new agenix secret `secrets/anoa-auth-token.age` containing `ANOA_TOKEN=<64 hex>`, encrypted to both recipients (host key + recovery). The bot and anoa share this one secret.
+  - The token was generated and encrypted on home without being printed:
+    ```bash
+    umask 077; T=$(mktemp)
+    printf "ANOA_TOKEN=%s\n" "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" > $T
+    nix shell nixpkgs#age -c age -r "<home ssh-ed25519 pubkey>" -r <recovery age1 pubkey> \
+      -o /tmp/anoa-auth-token.age $T; shred -u $T
+    sudo nix shell nixpkgs#age -c age -d -i /etc/ssh/ssh_host_ed25519_key /tmp/anoa-auth-token.age | wc -c  # 76
+    ```
+  - `--auth-token` on the command line would put the token in world-readable `/proc/<pid>/cmdline`. Instead, the unit `script` writes `printf '{"authToken":"%s"}' "$ANOA_TOKEN" > $RUNTIME_DIRECTORY/config.json` and runs `anoa --config` on it. `printf` is a bash builtin, so the token never appears in an argv.
+  - **The config key is `authToken`** (camelCase). Both `auth-token=` (INI) and `{"auth-token":…}` (JSON) are silently ignored, and anoa then runs **without auth**. The key name comes from `tests/unit/test_config.cpp` in anoa's source.
+  - anoa prints the token, plus a `/setup?token=…` URL, to stderr on every start (`src/main.cpp`). `LogFilterPatterns = "~token"` keeps those lines out of the journal; verified: `journalctl -u anoa-browser | grep -ci token` returns 0.
+- **Bind address:** anoa binds HTTP (9500) and the CDP proxy (9502) to `QHostAddress::Any`, i.e. 0.0.0.0, and has no option to change it. Only Chromium's own DevTools port (9501) is loopback-only. The ports are therefore **not** opened in the firewall: `nixos-fw` has no trusted interfaces, so the LAN and k3s pods are both blocked. The token covers 9500 (including `/mcp`) and 9502 (Bearer header or `?token=` on the websocket, `src/cdp/cdp_proxy.cpp`). It does not cover 9501, which only local processes can reach.
+- **`tiktok-bot.nix`**:
+  - `SCRAPE_BROWSER = "anoa"`.
+  - `EnvironmentFile = [ camofox-api-key anoa-auth-token ]`.
+  - `after` and `wants` (not `requires`) on `anoa-browser.service`, so the bot still starts, and falls back to camofox, if anoa is down.
+- **`provision.nix`**: tiktok-bot pin bumped `a3e7f1e` → `27f8098`. Checked first that `tiktok-bot-local.patch` still applies (`git apply --check`).
+
+Pre-merge checks, run on home in a throwaway copy:
+
+```bash
+nix flake lock && nix fmt && nix flake check          # all checks passed, 0 files reformatted
+nix build .#nixosConfigurations.home.config.system.build.toplevel -o result-sys
+nix store diff-closures /run/current-system ./result-sys   # 87 additions (anoa + Qt runtime), 0 version changes
+```
+
+Then CI went green, the PR was squash-merged, and home was deployed with `sudo nixos-rebuild switch --flake github:txtsamu/home-nixos#home --refresh`. That started `anoa-browser.service` and restarted `tiktok-bot`.
+
+Post-deploy verification:
+
+```
+no token  /json/list -> 401     no token /mcp -> 401     Bearer token /json/list -> 200
+tiktok-bot environ: SCRAPE_BROWSER=anoa, ANOA_TOKEN set
+live (bot code + real env): anoa found 30 videos for @bukanpidel1 (8.5s), dispatcher @tiktok 30 (10.6s)
+```
+
+The PR conflicts on `flake.lock` with the automated input-update PR #5; whichever merges second needs a rebase.
 
 ## Bot change 2: skip slideshow `.mp3`
 
@@ -133,13 +171,24 @@ A direct gallery-dl check on a photo URL couldn't confirm it end-to-end: plain g
 
 ## Deploy state / persistence
 
-- Edited in place in `/opt/tiktok-bot` (backup at `/tmp/tiktok_bot.py.bak` on home), then `systemctl restart tiktok-bot`; the bot came back healthy.
-- `provision-src-tiktok-bot` only clones when `/opt/tiktok-bot` is empty (pinned commit `a3e7f1e` + a nix-store local patch), so in-place edits survive rebuilds. They are **not yet committed** to `github.com/txtsamu/tiktok-bot` or re-pinned in home-nixos.
+- First edited in place in `/opt/tiktok-bot` and tested, then committed to `txtsamu/tiktok-bot` as `27f8098`. Only the anoa and mp3 changes went in; the host-specific `/opt/hermes-venv` → `/opt/tiktok-bot-venv` paths stay as the nix patch. To isolate them: copy the live file into a clean clone, then `git apply -R hosts/home/patches/tiktok-bot-local.patch`.
+- `provision-src-tiktok-bot` only clones when `/opt/tiktok-bot` is empty, so bumping the pin doesn't touch the live tree. The live checkout was synced so its git state matches a fresh provision (`27f8098` + local patch as the only diff). Home has no GitHub credentials (private repo, so `git fetch` fails with `could not read Username`), so the commit went over as a bundle:
+  ```bash
+  git bundle create tb.bundle a3e7f1e..main            # on fedora, in a clone
+  scp tb.bundle home:/tmp/
+  cd /opt/tiktok-bot && sudo git fetch /tmp/tb.bundle main:refs/remotes/origin/main \
+    && sudo git reset --mixed 27f8098                  # working tree untouched
+  ```
 
 ## References
 
 - anoa-browser repo / README: https://github.com/porcupine-md/anoa-browser
 - anoa v0.19.1 release: https://github.com/porcupine-md/anoa-browser/releases/tag/v0.19.1
+- anoa config keys (`authToken`): https://github.com/porcupine-md/anoa-browser/blob/v0.19.1/tests/unit/test_config.cpp
+- anoa token printed at startup / bind address: https://github.com/porcupine-md/anoa-browser/blob/v0.19.1/src/main.cpp
+- anoa CDP proxy auth + `QHostAddress::Any` bind: https://github.com/porcupine-md/anoa-browser/blob/v0.19.1/src/cdp/cdp_proxy.cpp
+- systemd `LogFilterPatterns=`: https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#LogFilterPatterns=
+- home-nixos PR enabling it: https://github.com/txtsamu/home-nixos/pull/8
 - gallery-dl TikTok extractor (`audio` option): https://github.com/mikf/gallery-dl/blob/master/gallery_dl/extractor/tiktok.py
 - gallery-dl configuration docs (`extractor.tiktok.audio`): https://gdl-org.github.io/docs/configuration.html
 - Chrome DevTools Protocol, Network domain (`setCookies`, `setUserAgentOverride`): https://chromedevtools.github.io/devtools-protocol/tot/Network/
