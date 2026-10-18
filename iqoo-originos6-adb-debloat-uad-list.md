@@ -14,7 +14,7 @@ Debloated an iQOO phone without root: wireless ADB from the fedora desktop, cros
 
 ## Result
 
-- 41 packages targeted, **31 uninstalled for user 0**, **1 disabled** (`com.vivo.magazine`), **9 refused** by vivo (`DELETE_FAILED_USER_RESTRICTED`, and `disable-user` also throws a SecurityException).
+- 41 packages targeted, **32 uninstalled for user 0**, **1 disabled** (`com.vivo.magazine`), **8 refused** by vivo (`DELETE_FAILED_USER_RESTRICTED`, and `disable-user` also throws a SecurityException).
 - Refused (still installed and enabled): `com.bbk.iqoo.logsystem`, `com.vivo.appstore`, `com.vivo.hiboard`, `com.vivo.globalsearch`, `com.vivo.cota`, `com.iqoo.website`, `com.bbk.cloud`, `com.vivo.assistant`. OriginOS protects these at the framework level, so plain ADB can't remove or disable them. This matches forum reports that "generic ADB commands don't work with most vivo apps".
 
 ## Steps
@@ -96,11 +96,29 @@ adb shell pm enable <pkg>                      # com.vivo.magazine (disabled)
 
 OTA updates can bring removed packages back. Re-run the loop after major updates.
 
-## Not tried yet: options for the 9 protected packages
+## Background restriction on the 8 protected packages (done 2026-10-19)
 
-- `adb shell am force-stop <pkg>`, plus `adb shell cmd appops set <pkg> RUN_ANY_IN_BACKGROUND ignore` to stop background running (not verified on OriginOS 6).
-- Revoke the apps' permissions or mobile data in Settings → Apps.
-- Block their telemetry domains at the DNS level (Technitium), the same approach as `technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md`.
+```bash
+for p in com.bbk.iqoo.logsystem com.vivo.appstore com.vivo.hiboard com.vivo.globalsearch \
+         com.vivo.cota com.iqoo.website com.bbk.cloud com.vivo.assistant; do
+  adb -s $D shell cmd appops set $p RUN_ANY_IN_BACKGROUND ignore </dev/null
+  adb -s $D shell cmd appops set $p RUN_IN_BACKGROUND ignore </dev/null
+  adb -s $D shell am set-standby-bucket $p restricted </dev/null
+  adb -s $D shell am force-stop $p </dev/null
+done
+# verify
+adb -s $D shell cmd appops get <pkg> | grep IN_BACKGROUND
+adb -s $D shell am get-standby-bucket <pkg>   # 5=exempted 10=active 45=restricted
+adb -s $D shell pidof <pkg>
+```
+
+Outcome:
+- **Appops `ignore` stuck on all 8.** OriginOS didn't reject them.
+- **Standby bucket `restricted` (45) only stuck on `com.iqoo.website`.** The rest silently stayed at 5 (exempted: appstore, cota, bbk.cloud) or 10 (active: logsystem, hiboard, globalsearch, assistant). vivo exempts its own system apps from App Standby.
+- **Processes that came back right after force-stop:** `com.bbk.iqoo.logsystem`, `com.vivo.globalsearch` and `com.vivo.assistant`. They're persistent or bound by the system/launcher, so appops can't keep them stopped. The other 5 stayed stopped.
+- Undo: `cmd appops set <pkg> RUN_ANY_IN_BACKGROUND allow` (and `RUN_IN_BACKGROUND allow`), plus `am set-standby-bucket <pkg> active`.
+
+The next step for the 3 that keep running would be blocking their telemetry domains at DNS (Technitium), the same approach as `technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md`.
 
 ## References
 
