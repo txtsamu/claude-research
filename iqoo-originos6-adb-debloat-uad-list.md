@@ -1,6 +1,6 @@
 ---
 type: how-to
-tags: [android, iqoo, vivo, originos, adb, debloat, uad-ng, wireless-debugging]
+tags: [android, iqoo, vivo, originos, adb, debloat, uad-ng, wireless-debugging, technitium, advanced-blocking, hagezi]
 created: 2026-10-19
 last_verified: 2026-10-19
 status: current
@@ -118,7 +118,44 @@ Outcome:
 - **Processes that came back right after force-stop:** `com.bbk.iqoo.logsystem`, `com.vivo.globalsearch` and `com.vivo.assistant`. They're persistent or bound by the system/launcher, so appops can't keep them stopped. The other 5 stayed stopped.
 - Undo: `cmd appops set <pkg> RUN_ANY_IN_BACKGROUND allow` (and `RUN_IN_BACKGROUND allow`), plus `am set-standby-bucket <pkg> active`.
 
-The next step for the 3 that keep running would be blocking their telemetry domains at DNS (Technitium), the same approach as `technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md`.
+The 3 that keep running are handled at the DNS level instead (next section).
+
+## DNS-level block: phone-only Technitium group (done 2026-10-19)
+
+This uses the same mechanism as `technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md`: an extra **Advanced Blocking** group, scoped to the phone's IP only, on all three LAN nodes (.200, .40, .42).
+
+- The phone has Private DNS **off** (`settings get global private_dns_mode` returns `off`) and gets `192.168.50.200, .42, .40, 1.1.1.1, 1.0.0.1` from DHCP (`dumpsys connectivity | grep DnsAddresses`).
+- List: **HaGeZi `native.vivo`** (wildcard format, 244 domains, mostly `*.vivoglobal.com` stats SDK, adlog, appstore analytics and per-region cota). URL: `https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.vivo-onlydomains.txt`
+- The list also includes functional hosts, so the group allowlists the Asia-region ones: `asia-timesync` (clock), `asia-st-exappupgrade` and `cname-asia-st-exappupgrade` (updates for vivo system apps, e.g. Smart Remote), `asia-album-api` (Gallery) and `asia-romsp-unifyconfig` (ROM config). OTA (`com.bbk.updater`) has no Asia `sysupgrade` entry in the list, so it isn't affected.
+- Many vivo ad domains (`adsdk.vivo.com.cn`, `asia-stsdk`…) were **already blocked globally** by blocklistproject ads. The new group adds the rest for the phone only.
+
+Credentials gotcha: `/run/agenix/technitium-admin-password` on home is an **env file** (`DNS_SERVER_ADMIN_PASSWORD=...`), not a bare password. Logging in with the whole line returns `Invalid username or password`.
+
+```bash
+PW=$(ssh home 'sudo cat /run/agenix/technitium-admin-password' | sed -n 's/^DNS_SERVER_ADMIN_PASSWORD=//p')
+# per node: login -> token, back up current config, merge, set
+/usr/bin/curl -s "http://$ip:5380/api/apps/config/get?token=$t&name=Advanced%20Blocking" | jq -r .response.config > advblock_before_$ip.json
+jq --slurpfile g iqoo_group.json '.networkGroupMap["192.168.50.26"]="iqoo-phone"
+   | .groups = ([.groups[] | select(.name!="iqoo-phone")] + $g)' advblock_before_$ip.json > advblock_new_$ip.json
+/usr/bin/curl -s -X POST "http://$ip:5380/api/apps/config/set?token=$t" \
+  --data-urlencode "name=Advanced Blocking" --data-urlencode "config@advblock_new_$ip.json"
+```
+
+`iqoo_group.json` has the same shape as the samsung-tv group: `blockAsNxDomain: true`, the HaGeZi URL in `blockListUrls`, and the 5 hosts above in `allowed`. **Merge into the existing config; don't replace it.** The samsung-tv group and the `.200`-only `192.168.50.1` mapping must survive.
+
+Verification (run from the phone itself with `adb shell ping -c1 <host>`, since the phone is the real client):
+
+| Host | Phone | This PC |
+|---|---|---|
+| asia-adlog / asia-cota / id-analyzer-appstore .vivoglobal.com | `unknown host` (NXDOMAIN) | asia-cota resolves (177.0.132.97), so other clients aren't affected |
+| asia-stsdk.vivoglobal.com, adsdk.vivo.com.cn | 127.0.0.1 | 0.0.0.0 (global blocklistproject ads) |
+| asia-timesync, asia-st-exappupgrade, asia-album-api | resolve | |
+| google.com | resolves | |
+
+Open items:
+- The phone has a **dynamic** DHCP lease on `192.168.50.26`. If the IP changes, the mapping silently stops applying. Fix: make the lease static on the MikroTik (same as the TV).
+- `1.1.1.1` and `1.0.0.1` are in the DHCP DNS list, so the phone can bypass Technitium. A MikroTik dst-nat redirect would close this, as for the TV (see that doc, section 9).
+- Undo: remove `192.168.50.26` from `networkGroupMap` and the `iqoo-phone` group on each node. Backups are `advblock_before_<ip>.json`.
 
 ## References
 
@@ -128,3 +165,5 @@ The next step for the 3 that keep running would be blocking their telemetry doma
 - [TechEnclave: FuntouchOS 14 debloat (older thread)](https://techenclave.com/threads/funtouchos-14-debloat.224435/)
 - [DroidWin: vivo bloatware removal](https://droidwin.com/?p=39836)
 - [Technastic: safe-to-remove packages without root](https://technastic.com/?p=15193)
+- [HaGeZi dns-blocklists (native.vivo tracker list)](https://github.com/hagezi/dns-blocklists)
+- [HaGeZi native.vivo wildcard list](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.vivo-onlydomains.txt)
