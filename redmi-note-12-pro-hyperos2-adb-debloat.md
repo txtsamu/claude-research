@@ -1,6 +1,6 @@
 ---
 type: how-to
-tags: [android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, wireless-debugging, mediatek]
+tags: [android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, wireless-debugging, mediatek, technitium, advanced-blocking, hagezi]
 created: 2026-10-19
 last_verified: 2026-10-19
 status: current
@@ -165,6 +165,61 @@ Restore it if games stutter.
 
 Side effect of removing `com.xiaomi.discover`: preloads it managed (Mi Notes, Screen Recorder, Gallery Editor, Sound Recorder, ...) no longer get updates through it, and it can no longer quietly reinstall removed preloads. Restore it with `install-existing` if a Xiaomi app needs updating.
 
+## 6. DNS-level block: Redmi-only Technitium group (2026-10-19)
+
+The same mechanism as the iQOO (`iqoo-originos6-adb-debloat-uad-list.md`) and the TV: a `redmi-phone`
+group in the **Advanced Blocking** app, mapped to `192.168.50.3` only, on all three nodes
+(.200, .40, .42). The Redmi has Private DNS `off` and gets `.200, .42, .40, 1.1.1.1, 1.0.0.1` over
+Wi-Fi DHCP.
+
+List: **HaGeZi `native.xiaomi`** (wildcard, 345 entries, `xiaomi.com` 183, `miui.com` 98, plus
+`gitv.tv`/`ptqy` Mi TV video and `mi.com`). URL:
+`https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.xiaomi-onlydomains.txt`
+
+Functional hosts the list would break (checked by walking each host's parents against the list,
+since Technitium blocks a listed domain **and all its subdomains**):
+
+| Host | Blocked via | Needed for | Action |
+|---|---|---|---|
+| `bigota.d.miui.net`, `hugeota.d.miui.net` | **`miui.net`** (the whole zone) | HyperOS OTA downloads | allowed (+ `cdnorg.d.miui.net`, `ultimateota.d.miui.com`) |
+| `api.xmpush.global.xiaomi.com` (+ `sgp-api`, `idmb-api`, `register`, `resolver.msg.global.xiaomi.net`) | listed | Mi Push (xmsf) notifications | allowed |
+| `findapi.micloud.xiaomi.net` | listed | Find Device | allowed |
+| `thm.market.xiaomi.com`, `t1-t17.market.xiaomi.com` | listed | Themes app images/downloads | allowed |
+| `update.intl.miui.com`, `account.xiaomi.com`, `time.xiaomi.com` | not in list | | |
+
+Left blocked: `resolver.gslb.mi-idc.com` / `resolver.mi.xiaomi.com` (Xiaomi HTTPDNS, apps fall back
+to system DNS), `api.setting.intl.miui.com`, `update.avlyun.sec.miui.com` (Security app's Avast
+engine updates), all `*.feedback.xmpush*`.
+
+```bash
+# login + per-node merge, identical to the iQOO doc (password from home's agenix env file)
+jq --slurpfile g redmi_group.json '.networkGroupMap["192.168.50.3"]="redmi-phone"
+   | .groups = ([.groups[] | select(.name!="redmi-phone")] + $g)' advblock_before_$ip.json > advblock_new_$ip.json
+/usr/bin/curl -s -X POST "http://$ip:5380/api/apps/config/set?token=$t" \
+  --data-urlencode "name=Advanced Blocking" --data-urlencode "config@advblock_new_$ip.json"
+```
+
+Resulting maps: `.200` {.31 samsung-tv, .1 samsung-tv, .26 iqoo-phone, .3 redmi-phone};
+`.40` {.31 samsung-tv, .26 iqoo-phone, .1 iqoo-phone, .3 redmi-phone}; `.42` {.31 samsung-tv,
+.26 iqoo-phone, .3 redmi-phone}.
+
+Verification:
+- **130 of 345** list entries were *already* blocked LAN-wide by the global blocklistproject list
+  (`dig ... TXT` shows `source=block-list-zone; blockListUrl=https://blocklistproject...`), e.g.
+  `tracking.intl.miui.com`, `data.mistat.intl.xiaomi.com`, `sdkconfig.ad.intl.xiaomi.com`.
+  On the phone `ping` shows those as `127.0.0.1`.
+- **192** entries resolve normally for other clients and are now NXDOMAIN on the Redmi only, e.g.
+  `miui-l7-data-other-c3.pt.miui.com`, `extranet.ap-southeast-1.miui-l7-feedback.*.elb.xiaomi.com`,
+  `globalvideo.cdn.pandora.intl.xiaomi.com`, `auth.api.gitv.tv` (PC: resolves; Redmi: `unknown host`).
+- Allowlisted hosts resolve on the Redmi: `bigota.d.miui.net`, `api.xmpush.global.xiaomi.com`,
+  `findapi.micloud.xiaomi.net`, and `update.intl.miui.com` (not in the list).
+
+Open items: the Redmi's lease is still **dynamic** (randomized MAC, `client-id 1:4e:eb:c6:...`), and
+`1.1.1.1`/`1.0.0.1` from DHCP let it bypass the block. The iQOO-style fix would be a static lease
+plus a MikroTik dst-nat redirect to **`.42`**, with `192.168.50.1 -> redmi-phone` mapped on `.42` only
+(`.200` already maps `.1` to the TV and `.40` to the iQOO). Undo: remove `192.168.50.3` from each
+node's map and delete the `redmi-phone` group (backups `advblock_before_<ip>.json`).
+
 ## Restore
 
 ```bash
@@ -181,4 +236,6 @@ adb -s $D shell pm enable <pkg>                      # com.preff.kb.xm, com.miui
 - [DroidWin: Xiaomi debloat](https://droidwin.com/?p=56833)
 - [Dr.Fone: ADB on Xiaomi to remove bloatware](https://drfone.wondershare.com/android-xiaomi/how-to-use-adb-on-xiaomi-to-remove-bloatware.html)
 - [Snapcraft: Android Debloater (Xiaomi ratings)](https://snapcraft.io/install/android-debloater/manjaro)
+- [HaGeZi native.xiaomi wildcard list](https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/native.xiaomi-onlydomains.txt)
+- [HaGeZi dns-blocklists](https://github.com/hagezi/dns-blocklists)
 - [UAD-ng package list](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation)
