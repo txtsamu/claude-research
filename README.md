@@ -37,6 +37,8 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-19 | [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | investigation |
+| 2026-10-19 | [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md) | how-to |
 | 2026-10-19 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | investigation |
 | 2026-10-19 | [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md) | how-to |
 | 2026-10-19 | [fiio-snowsky-disc-diskos-flash-fedora.md](fiio-snowsky-disc-diskos-flash-fedora.md) | how-to |
@@ -51,13 +53,12 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
 | 2026-10-12 | [ruijie-rg-es208gc-switch-audit-firmware-cve.md](ruijie-rg-es208gc-switch-audit-firmware-cve.md) | investigation |
 | 2026-10-09 | [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | how-to |
-| 2026-10-09 | [telegram-bot-proxmox-windows-vm-power.md](telegram-bot-proxmox-windows-vm-power.md) | how-to |
-| 2026-10-09 | [route-manager-effect-v4-caddy-lan-routes.md](route-manager-effect-v4-caddy-lan-routes.md) | how-to |
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md) | fiio, snowsky-disc, rsync, nas, fat32, fsck, dedup, flac | 2026-10-19 |
 | [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md) | pipewire, fedora, cosmic, usb-dac, sample-rate, bit-perfect, volume-keys | 2026-10-19 |
 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-19 |
 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | android, iqoo, vivo, originos, adb, debloat, uad-ng | 2026-10-19 |
@@ -167,6 +168,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | ingenic, x2000, usb-boot, swb, boot-rom, snowsky-disc | current: SWB entry works (a108:eaef in 5 s); flashing after software entry pending | 2026-10-19 |
 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | fiio, snowsky-disc, diskos, usb-audio, otg, reverse-engineering, ghidra, rea, mips | current: USB Audio fixed (switch-then-wait), verified 24/96 to Chu2; rea refuses NaN2008 MIPS | 2026-10-19 |
 | [iqoo-z11-usb-audio-output-flags-bitperfect-hires.md](iqoo-z11-usb-audio-output-flags-bitperfect-hires.md) | android, iqoo, vivo, originos, otg, usb-c, audio, hi-res, bit-perfect, audio-policy, poweramp, snapdragon-sound | current: no Android BIT_PERFECT (DIRECT only); Poweramp usbx verified 24/96 exclusive | 2026-10-19 |
 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | android, iqoo, vivo, originos, otg, usb-audio, adb, jadx, reverse-engineering | blocked | 2026-10-19 |
