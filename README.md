@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-19 | [iqoo-z11-usb-audio-output-flags-bitperfect-hires.md](iqoo-z11-usb-audio-output-flags-bitperfect-hires.md) | investigation |
 | 2026-10-19 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | investigation |
 | 2026-10-19 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | how-to |
 | 2026-10-18 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | how-to |
@@ -51,7 +52,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-05 | [mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md](mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md) | investigation |
 | 2026-10-05 | [tplink-wr840n-ap-web-api-wifi-channel.md](tplink-wr840n-ap-web-api-wifi-channel.md) | how-to |
 | 2026-10-05 | [technitium-servfail-quad9-forwarder-dead-route-after-bridge.md](technitium-servfail-quad9-forwarder-dead-route-after-bridge.md) | troubleshooting |
-| 2026-10-05 | [vsol-onu-web-login-scripting.md](vsol-onu-web-login-scripting.md) | how-to |
 
 ### How-to / deployment
 
@@ -164,6 +164,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [iqoo-z11-usb-audio-output-flags-bitperfect-hires.md](iqoo-z11-usb-audio-output-flags-bitperfect-hires.md) | android, iqoo, vivo, originos, otg, usb-c, audio, hi-res, bit-perfect, audio-policy, poweramp, snapdragon-sound | current: no Android BIT_PERFECT (DIRECT only); Poweramp usbx verified 24/96 exclusive | 2026-10-19 |
 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | android, iqoo, vivo, originos, otg, usb-audio, adb, jadx, reverse-engineering | blocked | 2026-10-19 |
 | [ruijie-rg-es208gc-switch-audit-firmware-cve.md](ruijie-rg-es208gc-switch-audit-firmware-cve.md) | ruijie, reyee, rg-es208gc, switch, firmware, cve-2025-56752, security, web-scripting, arm-cluster | current — config already optimal, nothing changed; firmware B1P39 is vulnerable, upgrade to B1P48 still pending | 2026-10-12 |
 | [home-nixos-config-best-practice-audit.md](home-nixos-config-best-practice-audit.md) | nixos, home, flake, audit, agenix, caddy, security, systemd, nix-gc | current — 13 findings; #2-#8 fixed on main 09-27, sandboxing (#9) merged + switch deployed 10-02; recovery-key move and `/root` stray state still open | 2026-10-03 |
