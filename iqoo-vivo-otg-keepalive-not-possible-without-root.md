@@ -2,7 +2,7 @@
 type: investigation
 tags: [android, iqoo, vivo, originos, otg, usb-audio, adb, jadx, reverse-engineering, fedora]
 created: 2026-10-11
-last_verified: 2026-10-11
+last_verified: 2026-10-19
 status: blocked
 ---
 
@@ -215,12 +215,36 @@ Gotchas: do not run two loops that both call `adb connect` (the connection flapp
 `unauthorized`), and `pkill -f` with a pattern that also appears in the new command line kills the
 new recorder too.
 
-### 10. User-reported workaround (not instrumented)
+### 10. Boot-with-IEM-attached workaround (verified 2026-10-19)
 
-Rebooting the phone with the IEM already plugged in keeps it working with no cutoff. Hypothesis:
-the port enters host mode by itself during boot, so the manual-switch path that arms the 5-minute
-timer never runs. Unverified: wireless ADB does not survive a reboot (`adb tcpip` resets), so this
-could not be recorded the same way.
+Rebooting the phone with the IEM already plugged in keeps it working with no cutoff, and the OTG
+switch never has to be turned on.
+
+**Verified on 2026-10-19.** The phone was rebooted with the Moondrop IEM plugged in. Wireless
+debugging was then re-enabled by hand, since it turns itself off at boot and comes back on a new
+port. Checked at 13 min 17 s uptime, more than 2.5x the usual cutoff:
+
+```sh
+D=<PHONE_IP>:<new-wireless-debug-port>
+adb -s $D shell cat /proc/uptime                                   # 797 s
+adb -s $D shell dumpsys usb | grep -E 'host_connected=|current_mode='  # host_connected=true current_mode=dfp
+adb -s $D shell dumpsys audio | grep 'Devices: usb_headset'        # usb_headset(4000000) active
+adb -s $D logcat -d -v time -b all | grep -E 'USB_DEVICE_ATTACHED|ACTION_USB_DETACHED|onAudioDevicesAdded'
+#   -> no output: no attach and no detach event since boot
+```
+
+Why it works: in the instrumented trials above, the ~5-min cut is a fixed timer counted from an
+**attach event** (manual OTG switch or a physical replug, both logged as `USB_DEVICE_ATTACHED`).
+When the IEM is attached through boot, the port comes up in host mode before userspace logs any
+attach. With no attach event, the timer is never armed. The user confirmed the IEM was plugged in
+for the whole reboot.
+
+Caveats:
+- Any unplug/replug, use of the OTG switch, or a reboot **without** the IEM attached goes back
+  to the 5-min timer.
+- Unrelated to the same day's debloat (`iqoo-originos6-adb-debloat-uad-list.md`). The timer lives
+  in the kernel `vusb` driver, and no removed or restricted package touches OTG.
+  `com.vivo.devicepower` was left installed.
 
 ## Can this phone be rooted? (so the sysfs write becomes possible)
 
@@ -339,7 +363,7 @@ timer that the in-session attach does.
   /sys/devices/virtual/vusb/usb0/host_mode` on a timer.
 - **UI automation on the phone** (an accessibility-based automation app that opens Settings and
   taps the switch). Not built or tested here.
-- **Boot with the IEM attached** (step 10), and leave it plugged in.
+- **Boot with the IEM attached** (step 10, verified 2026-10-19), and leave it plugged in.
 - **Avoiding OTG entirely:** a 3.5 mm or Bluetooth output.
 
 ## Patching OTG_Link_App
