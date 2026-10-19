@@ -168,17 +168,31 @@ git apply --check ../patch-usb-dac/usb-dac-workmode.patch && git am ../patch-usb
 
 Branch `fix/usb-dac-workmode` in `~/diskos/diskos`: `e07dfee` (community patch, author preserved via `git am`) + `54175a1` (BT guard).
 
-### Building mq_ui (in progress)
+### Building mq_ui
 
 Upstream builds the UI with a pinned musl-cross-make toolchain (GCC 11.2.0, musl 1.2.6, binutils 2.44, MIPS32r2 FP64 NaN2008) via `ui/Dockerfile`. Run with rootless Podman instead of Docker:
 
 ```bash
 cd ~/diskos/diskos/ui
-podman build -t diskos-ui-builder .                         # compiles GCC from source; slow (tens of minutes)
-podman run --rm -u "$(id -u):$(id -g)" -v "$PWD:/src:Z" diskos-ui-builder   # -> static mipsel ui/mq_ui
+podman build -t diskos-ui-builder .                         # compiles GCC from source; ~1 h on this box
+podman run --rm --userns=keep-id -v "$PWD:/src:Z" diskos-ui-builder   # -> static mipsel ui/mq_ui
 ```
 
-_Result, test and deploy outcome: TODO once the build finishes._
+With rootless Podman use `--userns=keep-id` (not Docker's `-u "$(id -u):$(id -g)"`) so the output files stay owned by you; `:Z` relabels the bind mount for SELinux.
+
+Result: `ui/mq_ui`, `ELF 32-bit LSB executable, MIPS, MIPS32 rel2, statically linked, stripped`, 4,285,004 bytes, md5 `78cf146954c4200a289a1f7511baa942`. Copy kept at `~/diskos/mq_ui.usb-dac-fix`.
+
+**Reproducibility check (worth doing):** built the *unpatched* v1.2.1 tree in a throwaway worktree and compared it with the release's bundled binary:
+
+```bash
+cd ~/diskos/diskos && git worktree add ../diskos-upstream 4cd4a60
+cd ../diskos-upstream/ui && podman run --rm --userns=keep-id -v "$PWD:/src:Z" diskos-ui-builder
+md5sum mq_ui ~/diskos/diskos-installer/payload/mq_ui
+# c3c602c010276aa3c7285aec8518b109  both -> byte-identical
+cd ~/diskos/diskos && git worktree remove --force ../diskos-upstream
+```
+
+The build is bit-for-bit reproducible, so the local toolchain matches upstream's and the patched binary differs from the official one *only* by the two commits. Branch pushed to the fork: `txtsamu/diskos` `fix/usb-dac-workmode`.
 
 ### Getting a custom mq_ui onto the Disc
 
