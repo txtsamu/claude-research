@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-19 | [mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md](mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md) | troubleshooting |
 | 2026-10-19 | [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | investigation |
 | 2026-10-19 | [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md) | how-to |
 | 2026-10-19 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | investigation |
@@ -127,6 +128,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md](mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md) | mikrotik, routeros, dhcp, dns, technitium, lan, nxdomain, immich | 2026-10-19 |
 | [kubewall-caddy-kwall-lan-route.md](kubewall-caddy-kwall-lan-route.md) | kubewall, caddy, nixos, home, k3s, tls, dns, kwall-lan | 2026-10-09 |
 | [px1-talos-vm-decommission-orphaned-storage.md](px1-talos-vm-decommission-orphaned-storage.md) | proxmox, talos, lvm-thin, iscsi, storage, cleanup, px1, warp-vm | 2026-10-05 |
 | [wifi-buffering-quic-channel-congestion-altos-ax3000.md](wifi-buffering-quic-channel-congestion-altos-ax3000.md) | wifi, altos-ax3000, mikrotik, quic, buffering, streaming, channel, dfs, 5ghz, isp, mtu, bufferbloat, nethome | 2026-09-24 |
