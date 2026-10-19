@@ -309,12 +309,35 @@ diskOS (upstream `ui/main.c` SD_DRAIN, ~line 826) only sends the `0201` play/pau
 - Device busybox `grep` has no `--line-buffered`: stream raw `tail -f` over SSH and filter on the PC side.
 - Final flash (2026-10-19 ~15:15): UI `3e828424469bcc62c3448f02b0bdf632` (`4a4d3ae` + `-DDISKOS_TEST_OUTPUTS`), `--no-ota`, image includes `S98diskos_sshkey`. Installer keeps the latest stock generations (pruned g0001 as "uncommitted"; g0002/g0003 committed, all `e75d85bd…`).
 
+## Fifth round: duplicate unplayable tracks, boot "Player didn't respond", remember Working Mode
+
+### Duplicate tracks that won't play — SD mounted with the wrong charset
+
+Library had 96 songs listed twice and 73 rows whose file "didn't exist". Analysis on a copy of the DB (`ssh disc 'cat /usr/data/fiio/db/song.db' > song.db`) against a file list (`ssh disc 'find /tmp/sdcard -type f'`):
+
+```
+ID 1    …YOASOBI 3rd EP「THE BOOK 3」[FLAC 96kHz／24bit]/01. 勇者.flac   <- MISSING under current mount
+ID 777  …YOASOBI 3rd EP?THE BOOK 3?[FLAC 96kHz?24bit]/01. ??.flac     <- same song, every non-ASCII char = '?'
+```
+
+Cause: card is FAT32 (`blkid`: vfat, label STB-STORAGE). Current mount: `vfat rw,…,codepage=437,iocharset=iso8859-1,shortname=mixed` — iso8859-1 can't represent CJK/full-width, kernel shows `?`. The stock player mounts with `mount -o iocharset=utf8 %s %s` (string in mq_player, `mount_storage_dev.c`), but diskOS's V2.40/V2.57 cold-boot direct mount (`ui/main.c` coldplug worker) called `mount("/dev/mmcblk0p1","/tmp/sdcard","vfat",0,NULL)` → kernel default iso8859-1. `/usr/data/coldplug.log` showed `SD direct-mounted (V2.40 vfat)` on every cold boot; after USB Storage the player remounted utf8 → the scanner saw both spellings. Fix `4a3548b`: `sd_mount_utf8()` passes `iocharset=utf8` (retry without only on EINVAL) for both exfat and vfat. Cleanup after flashing: cold boot, then Settings → Rescan library — the scanner prunes rows whose paths it no longer sees (`scanner.c` "post-walk delete of vanished songs"); favourites/playlists keyed by a `?` path don't carry over. Kernel 4.4.94 lists both `vfat` and `exfat` in `/proc/filesystems`.
+
+### "Player didn't respond" at every boot
+
+Boot log showed `mq_open /player fail: No such file or directory` right after `step:screens_init` — the UI started before mq_player created its queue. A failed non-quiet send whose `g_tx` couldn't even be opened sets the toast flag without logging the frame. The only send that early is `idle_takeover()` (`0664000C0000`, disables the stock player's idle power-off; called from `settings_apply_startup()` → `power_startup_mirror()`), which used `ipc_send_cmd`. It's a background sync retried by `power_tick` until confirmed → switched to `ipc_send_probe` (silent) in `32c4b88`.
+
+Same boot log also confirmed the Bluetooth report: `bt: radio came up with intent off at boot - powering it down` (twice) — the stock side does bring BT up on a cold boot; the `e36fc5a` watch caught it.
+
+### Remember the last Working Mode across restarts (`7a3ea76`, `8909c6e`)
+
+`ui_set_source_mode()` (only the picker calls it) saves `src_mode` (0 Local / 1 USB DAC / 2 BT Receiving; USB Storage never saved) and clears `usb_audio_on`; `usb_audio_on` is set on "USB DAC connected" and cleared when a switch away from USB completes. A one-shot boot timer (`modes_output_boot_restore()`, created next to the `localplayer_workmode_cb` timer) replays it 15 s after start (past the ~9 s player settle). A USB Audio restore with no DAC falls back after 8 s and keeps the preference. The BT boot-off watch stands down when `src_mode == 2`.
+
 ## Notes
 
 - Never run the installer with `sudo` — it keeps per-user state under `~/.local/share/diskos-installer`.
 - Don't redistribute generated `diskos_*.bin` images (contain FiiO's rootfs).
 - Installer location on fedora: `~/diskos/diskos-installer` (bundled squashfs tools renamed `*.broken` there).
-- Fork branch `txtsamu/diskos` `fix/usb-dac-workmode`: `e07dfee` DAC work-mode patch, `54175a1` BT-route guard, `83774f8` USB Audio switch-then-wait, `eda12f4` unplug-first guard, `10c1b72` restart after USB Storage + radios off at boot, `beec0f0` key-only SSH on 2222, `d44e66a` quiet = position stopped + radios-off once per boot, `e36fc5a` BT forced off at boot, `4a4d3ae` USB DAC unplug auto-revert.
+- Fork branch `txtsamu/diskos` `fix/usb-dac-workmode`: `e07dfee` DAC work-mode patch, `54175a1` BT-route guard, `83774f8` USB Audio switch-then-wait, `eda12f4` unplug-first guard, `10c1b72` restart after USB Storage + radios off at boot, `beec0f0` key-only SSH on 2222, `d44e66a` quiet = position stopped + radios-off once per boot, `e36fc5a` BT forced off at boot, `4a4d3ae` USB DAC unplug auto-revert, `7a3ea76`+`8909c6e` remember Working Mode, `32c4b88` silent idle-takeover at boot, `4a3548b` SD mount iocharset=utf8.
 - Installed build (2026-10-19 final flash): UI `2a9b702e8c4fa4f37ee5e04044607e2b` built with `-DDISKOS_TEST_OUTPUTS` (USB Audio row), flashed with `--no-ota` (no `/etc/diskos-ota/` → in-app updates unsupported, S97 ignores staged updates). Stock backups `g0001`–`g0003` all `e75d85bd…`.
 - External USB DAC output ("USB Audio", e.g. a Type-C DSP IEM cable) is hidden in public diskOS builds; enabling + fixing it is in [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md).
 
