@@ -292,12 +292,29 @@ diskOS (upstream `ui/main.c` SD_DRAIN, ~line 826) only sends the `0201` play/pau
 - Claude Code auto mode refused to write the boot script ("Unauthorized Persistence") even after chat approval; unblocked by allow rules in `~/.claude/settings.json` scoped to `~/diskos/diskos/payload/**` and `diskos_installer/**` (backup `settings.json.bak`).
 - Release installer patched in place from the fork (originals kept as `*.orig`): `diskos_installer/imagebuild.py`, `payload/diskos-debug.sh`, new `payload/S98diskos_sshkey`. There is no build-only command; `echo n | ./diskos-installer install …` builds and validates the image, then stops (E110 without a mask-ROM device, or at the confirm prompt).
 
+## Fourth round: "Player is busy" on USB Audio, unplug auto-revert, Bluetooth on at cold boot
+
+- **"Player is busy - try again" on USB Audio after any play since boot.** V2.57 keeps the I2S PCM `RUNNING` while paused (player log `[PAUSE]` at 12:00:30, yet `card0/pcm3p` `hw_ptr` advanced 6,999,584 → 7,091,312 in 2 s at 44.1 kHz). diskOS's output switch required every playback PCM closed (`out_pcm_quiet()`), so it only ever worked on a fresh boot. Fix `d44e66a`: "quiet" = track position stopped (`ui_is_playing()==0` held 500 ms), the same signal `ui_route_bt()` already relies on before sending `0666`; `out_pcm_quiet()` removed.
+- **Radios-off ran on every UI start**, which also killed Wi-Fi (and the SSH session) on each hot-reload. Now once per boot via the tmpfs marker `/tmp/.diskos_radios_reset` (`d44e66a`). Hot-reload recipe: `touch /tmp/.diskos_radios_reset` first.
+- **Bluetooth on after a cold power-on** (user report; not reproduced on the inspected boot — rfkill blocked, stock `BT_STATUS = 0`). `bt_boot_restore()` only *skipped enabling* BT when `bt_on=0`, never powered it down. Fix `e36fc5a`: with the intent off, poll `bt_radio_on()` every 2 s for 30 s and `bt_disable()` it (throttled to once per 6 s), unless the user turns BT on meanwhile. Verify after the next real power-on.
+- **Unplugging the USB DAC left the player on the silent `USB_HOST_NULL` sink.** Fix `4a4d3ae`: after "USB DAC connected", poll `card1/usbid` every 1 s; after 2 misses run the normal `out_switch(OUT_INTERNAL, 1)` and clear `g_osw.was_playing` so playback stays paused (no resume into the jack). Verified: unplug 15:07:50 → `DAC gone` → `set out device I2S3_OUT` 15:07:54 → role `device`; toast + paused confirmed by user. Re-tapping USB Audio and replugging within the 8 s window reconnected (`on_usb_audio_add` → `USB_HOST`).
+- Hot-loading over key SSH (no Debug Mode, no sshpass) — same steps as `tools/diskos-deploy.sh`:
+  ```bash
+  B=~/diskos/mq_ui.<build>; S="ssh -o ControlMaster=no -o ControlPath=none -o BatchMode=yes disc"
+  $S 'touch /tmp/.diskos_radios_reset; cat > /usr/data/mq_ui.new && chmod 755 /usr/data/mq_ui.new && md5sum /usr/data/mq_ui.new' < $B
+  md5sum $B   # must match, then:
+  $S 'mv /usr/data/mq_ui.new /usr/data/mq_ui; killall -9 mq_ui; setsid /usr/data/mq_ui </dev/null >/usr/data/diskos_boot.log 2>&1 & sleep 4; \
+      for p in $(pidof mq_ui); do [ "$(readlink /proc/$p/exe)" = /usr/bin/mq_ui ] && kill -9 $p; done'
+  ```
+- Device busybox `grep` has no `--line-buffered`: stream raw `tail -f` over SSH and filter on the PC side.
+- Final flash (2026-10-19 ~15:15): UI `3e828424469bcc62c3448f02b0bdf632` (`4a4d3ae` + `-DDISKOS_TEST_OUTPUTS`), `--no-ota`, image includes `S98diskos_sshkey`. Installer keeps the latest stock generations (pruned g0001 as "uncommitted"; g0002/g0003 committed, all `e75d85bd…`).
+
 ## Notes
 
 - Never run the installer with `sudo` — it keeps per-user state under `~/.local/share/diskos-installer`.
 - Don't redistribute generated `diskos_*.bin` images (contain FiiO's rootfs).
 - Installer location on fedora: `~/diskos/diskos-installer` (bundled squashfs tools renamed `*.broken` there).
-- Fork branch `txtsamu/diskos` `fix/usb-dac-workmode`: `e07dfee` DAC work-mode patch, `54175a1` BT-route guard, `83774f8` USB Audio switch-then-wait, `eda12f4` unplug-first guard, `10c1b72` restart after USB Storage + radios off at boot, `beec0f0` key-only SSH on 2222.
+- Fork branch `txtsamu/diskos` `fix/usb-dac-workmode`: `e07dfee` DAC work-mode patch, `54175a1` BT-route guard, `83774f8` USB Audio switch-then-wait, `eda12f4` unplug-first guard, `10c1b72` restart after USB Storage + radios off at boot, `beec0f0` key-only SSH on 2222, `d44e66a` quiet = position stopped + radios-off once per boot, `e36fc5a` BT forced off at boot, `4a4d3ae` USB DAC unplug auto-revert.
 - Installed build (2026-10-19 final flash): UI `2a9b702e8c4fa4f37ee5e04044607e2b` built with `-DDISKOS_TEST_OUTPUTS` (USB Audio row), flashed with `--no-ota` (no `/etc/diskos-ota/` → in-app updates unsupported, S97 ignores staged updates). Stock backups `g0001`–`g0003` all `e75d85bd…`.
 - External USB DAC output ("USB Audio", e.g. a Type-C DSP IEM cable) is hidden in public diskOS builds; enabling + fixing it is in [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md).
 
