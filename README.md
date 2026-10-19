@@ -169,7 +169,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | ingenic, x2000, usb-boot, swb, boot-rom, snowsky-disc | current: SWB entry works (a108:eaef in 5 s); flashing after software entry pending | 2026-10-19 |
+| [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | ingenic, x2000, usb-boot, swb, boot-rom, snowsky-disc | current: SWB entry works (a108:eaef in 5 s); writer refuses after software entry (E320), NAND lock unsupported in FiiO kernel | 2026-10-19 |
 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | fiio, snowsky-disc, diskos, usb-audio, otg, reverse-engineering, ghidra, rea, mips | current: USB Audio fixed (switch-then-wait), verified 24/96 to Chu2; rea refuses NaN2008 MIPS | 2026-10-19 |
 | [iqoo-z11-usb-audio-output-flags-bitperfect-hires.md](iqoo-z11-usb-audio-output-flags-bitperfect-hires.md) | android, iqoo, vivo, originos, otg, usb-c, audio, hi-res, bit-perfect, audio-policy, poweramp, snapdragon-sound | current: no Android BIT_PERFECT (DIRECT only); Poweramp usbx verified 24/96 exclusive | 2026-10-19 |
 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | android, iqoo, vivo, originos, otg, usb-audio, adb, jadx, reverse-engineering | blocked | 2026-10-19 |
