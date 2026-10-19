@@ -1,6 +1,6 @@
 ---
 type: how-to
-tags: [fiio, snowsky-disc, diskos, dap, ingenic, x2000, mask-rom, flashing, squashfs, udev, fedora, usb-dac, uac, podman, cross-compile]
+tags: [fiio, snowsky-disc, diskos, dap, ingenic, x2000, mask-rom, flashing, squashfs, udev, fedora, usb-dac, uac, podman, cross-compile, deadlock, ghidra]
 created: 2026-10-19
 last_verified: 2026-10-19
 status: current
@@ -211,12 +211,54 @@ From `docs/DEV_WORKFLOW.md`:
    cd ~/diskos/diskos-installer
    ./diskos-installer install --firmware ~/Downloads/SNOWSKY_DISC_update_20260909_v257.zip --ui ~/diskos/diskos/ui/mq_ui --variant public
    ```
+   This rewrites only the main rootfs partition (the same one the first flash replaced). Kernel, recovery kernel and recovery rootfs are only *checked* (hashes recorded under `base` in `stock/g0001/stock.json`), never written. FiiO's stock UI/player still live inside the diskOS image, so Vol-Up boot / Default UI > Stock keep working. Backup integrity check: `sha256sum ~/.local/share/diskos-installer/stock/g0001/stock.bin` must equal `stock.sha256` (`e75d85bd…`).
+
+Easier than the manual commands — the repo ships a safe deploy script (polls until the new build is confirmed running before pruning stock, leaves stock as fallback otherwise):
+
+```bash
+cd ~/diskos/diskos
+DISKOS_IP=<ip> DISKOS_PW='<debug-mode-pw>' bash tools/diskos-deploy.sh ~/diskos/mq_ui.usb-dac-fix
+# >> deployed OK: /usr/data/mq_ui running; mq_player alive
+```
+
+### Testing the DAC fix on the device
+
+Hot-loaded the patched build; verified the running binary with `md5sum /proc/$(pidof mq_ui)/exe`.
+
+- First "still no sound" was **not** the fix: `lsusb` on the PC showed no Disc at all (Disc UDC state `suspended/full-speed` = no host configured it). After reconnecting, the PC enumerated `2972:0158 FiiO SNOWSKY DISC` but PipeWire's default sink was still the onboard ALC897, so nothing was sent to the Disc.
+- Proof the fix works: quiet tone straight to the Disc sink while watching the Disc side:
+  ```bash
+  paplay --device=alsa_output.usb-FiiO_SNOWSKY_DISC-00.analog-stereo tone.wav &
+  ssh root@<ip> 'head -1 /proc/asound/card1/pcm0c/sub0/status; for f in /proc/asound/card0/pcm*p/sub0/status; do head -1 $f; done'
+  # card1 pcm0c (UAC capture from PC): RUNNING ; card0 pcm3p (internal DAC, I2S3): RUNNING
+  ```
+  Player log shows `work:UAC, work mode=UAC` (`work_mode=1`), versus `LOCALPLAYER` before the patch.
+- Then `pactl set-default-sink alsa_output.usb-FiiO_SNOWSKY_DISC-00.analog-stereo` → user confirmed audio in IEMs on the Disc's headphone jack.
+
+### Second bug the fix exposes: leaving USB DAC mode can wedge mq_player
+
+After the PC cable was pulled, the UI got `ipc_send_cmd '06xx…' failed: Resource temporarily unavailable` on every command and later showed "Player didn't respond". The `/player` POSIX message queue was full: `mq_recv_thread` in mq_player sat in `futex_wait`. Player log:
+
+```
+12:48:32.767 player_capture.c: close_pcm_capture_thread enter      <- never prints "exit"
+12:48:37.075 EVENT_USB_STATE_DISCONNECTED ... UAC_SRATE=0 ... reopen capture dev! / reopen capture dev ok!
+```
+
+Decompiled with Ghidra (see [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) for the setup): `close_pcm_capture_thread` (0x4614bc) sets capture state 2 and `pthread_join`s; the capture thread (0x460b40) is blocked in a read from an **idle** host (connected, PipeWire suspended), so it hasn't seen 2. The unplug fires `reopen_capture_dev` (0x461644), which sets state **3** without checking for a pending close; the reopen at rate 0 fails into state 5 (sleep 100 ms forever). The join never returns, and it runs on the player's only command thread. Latent FiiO V2.57 bug; old diskOS never entered real UAC mode, so it couldn't hit it.
+
+Safe order: unplug first (thread already in state 5, polling every 100 ms), then switch mode — the close completes. Guard committed in diskOS (`eda12f4`): leaving source mode 1 is refused with "Unplug the USB cable first" while `/sys/class/udc/*/state` reads `configured`. Observed UDC states: `not attached` (fresh boot, no gadget), `powered` (cable in, not enumerated), `configured` (host attached), `suspended` (gadget bound, host gone/asleep).
+
+Recovery when it happens: only a reboot (`ssh root@<ip> 'sync; reboot'`); never kill `mq_player`.
+
+Verified on device afterwards: USB DAC from the PC plays bit-transparent on the Disc side — PC `hw_params` = Disc capture = Disc DAC (`S32_LE`, 48 kHz for YouTube, 96 kHz for a 96 kHz FLAC once PipeWire was allowed to switch rates; see [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md)).
 
 ## Notes
 
 - Never run the installer with `sudo` — it keeps per-user state under `~/.local/share/diskos-installer`.
 - Don't redistribute generated `diskos_*.bin` images (contain FiiO's rootfs).
 - Installer location on fedora: `~/diskos/diskos-installer` (bundled squashfs tools renamed `*.broken` there).
+- Fork branch `txtsamu/diskos` `fix/usb-dac-workmode`: `e07dfee` DAC work-mode patch, `54175a1` BT-route guard, `83774f8` USB Audio switch-then-wait, `eda12f4` unplug-first guard.
+- External USB DAC output ("USB Audio", e.g. a Type-C DSP IEM cable) is hidden in public diskOS builds; enabling + fixing it is in [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md).
 
 ## References
 
