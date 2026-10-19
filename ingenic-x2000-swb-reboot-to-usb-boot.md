@@ -18,7 +18,16 @@ Goal: put the FiiO Snowsky Disc (Ingenic X2000) into its boot-ROM USB boot mode 
   reboot
   ```
   → the PC enumerated `a108:eaef Ingenic USB BOOT DEVICE` **5 s** later, no button.
-- **Flashing from that state**: _pending — see "Open question" below._
+- **Flashing from that state fails with the stock diskOS writer**: the install started 18:38:20 from the SWB-entered state returned `18:58:27 base gate: 0xDEAD000A (the NAND was not in its power-on state ...) ✗ [E320] Nothing was written`. Nothing was written; the Disc kept its build.
+
+### Ways to restore the NAND power-on state that were ruled out (2026-10-19)
+| Approach | Result |
+|---|---|
+| SPI-NAND RESET (`0xFF`) | Already issued by the writer right before the gate (`nand_reset()`, `flash/my_write6.c:436`) — on GD5F2GM7 it does not restore the block-protect bits. (GigaDevice text "reset returns to power-on defaults" is from the GD5F1GQ5 part and its `66h`+`99h` reset.) |
+| Kernel MTD lock before reboot | FiiO's 4.4 SFC-NAND driver implements no lock ops: `flash_lock -i /dev/mtdN 0 1` → `error 122 (Operation not supported)` on mtd0..7; `flash_lock -l /dev/mtd5 0 1` and `flash_unlock` → same. |
+| Full power cycle | Restores the NAND but also clears CPM_SLPC → normal boot. |
+
+Remaining option: make the writer accept the unlocked chip only when the boot ROM was entered deliberately via SWB (the V2.57 base-partition hash check still runs) — requires rebuilding `my_write6_dram.bin` and updating `WRITER_SHA256` in `diskos_installer/flasher.py`. Until then, flashing needs a power-off + Vol-Down.
 
 ## How the magic value was found
 
