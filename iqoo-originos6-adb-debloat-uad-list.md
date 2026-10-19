@@ -120,6 +120,14 @@ Outcome:
 
 The 3 that keep running are handled at the DNS level instead (next section).
 
+**Gotcha: don't restrict `com.vivo.assistant`.** It drives OriginOS's **status bar music capsule** (the Origin Island-style media pill). After it was background-restricted and force-stopped, the capsule disappeared while music played (BitChord had a normal MediaStyle notification and an active session, so the player wasn't at fault). Removing the restriction fixed it:
+```bash
+adb -s $D shell cmd appops set com.vivo.assistant RUN_ANY_IN_BACKGROUND allow
+adb -s $D shell cmd appops set com.vivo.assistant RUN_IN_BACKGROUND allow
+adb -s $D shell am set-standby-bucket com.vivo.assistant active
+```
+After this the user paused and replayed music (and/or rebooted) and the capsule came back. The package stayed `stopped=true` from the force-stop. Its only MAIN activity (`.ui.GuideActivity`) isn't exported, so `am start`/`monkey` can't clear the flag over ADB. It made no difference here. Diagnosing from logs wasn't possible: vivo suppresses SystemUI/app logcat output, and `com.android.bbklog` had already been removed. The DNS block still covers its telemetry. So **7** packages stay background-restricted.
+
 ## DNS-level block: phone-only Technitium group (done 2026-10-19)
 
 This uses the same mechanism as `technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md`: an extra **Advanced Blocking** group, scoped to the phone's IP only, on all three LAN nodes (.200, .40, .42).
