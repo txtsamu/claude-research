@@ -1,6 +1,6 @@
 ---
 type: investigation
-tags: [android, iqoo, vivo, originos, otg, usb-c, audio, usb-dac, hi-res, bit-perfect, audio-policy, poweramp, bitchord, snapdragon-sound, bluetooth-codecs, adb]
+tags: [android, iqoo, redmi, xiaomi, mediatek, vivo, originos, otg, usb-c, audio, usb-dac, hi-res, bit-perfect, audio-policy, poweramp, bitchord, snapdragon-sound, bluetooth-codecs, adb]
 created: 2026-10-19
 last_verified: 2026-10-19
 status: current
@@ -275,6 +275,66 @@ Init scripts loosen the DAC permissions, but SELinux still blocks them:
 - `/sys/class/typec/` (the modern Type-C class) is permission-denied to `shell`.
 - `vusbd` is a vivo USB daemon running with a root seclabel (`/data/vusbd/`, gadget config
   `charging,vusbd`). It's a vivo service/diagnostics channel, not an OTG switch.
+
+## 6. Comparison: Redmi Note 12 Pro 5G (HyperOS 2, MT6877) flags, scanned 2026-10-19
+
+Same scan on the Redmi (`192.168.50.3`, Android 14 / SDK 34, `Config source:
+/vendor/etc/audio_policy_configuration.xml`). The main file `xi:include`s
+`bluetooth_audio_policy_configuration.xml`, `a2dp_in_…`, `usb_audio_accessory_only_policy_configuration.xml`
+and `r_submix_…`. So the AOSP `usb` HAL module (loaded, handle 26) only does USB *accessory*.
+**USB headset/device audio is served by MediaTek's primary module**, the same pattern as the iQOO's Qualcomm primary.
+
+```sh
+D=192.168.50.3:<port>
+adb -s $D shell dumpsys media.audio_policy | grep 'Config source'
+for f in audio_policy_configuration.xml usb_audio_policy_configuration.xml bluetooth_audio_policy_configuration.xml \
+         a2dp_in_audio_policy_configuration.xml r_submix_audio_policy_configuration.xml; do
+  adb -s $D shell cat /vendor/etc/$f > $f; done
+grep -c BIT_PERFECT *.xml        # 0 in every file
+# parse: inline the xi:includes, then walk module/mixPort and the routes whose sink contains "USB" (python3 -I + ElementTree)
+```
+
+| Flags | mixPort | → USB headset | Formats / rates |
+|---|---|---|---|
+| `PRIMARY` | primary output | yes | PCM 16/32, 44.1-48 kHz |
+| `DEEP_BUFFER` | deep_buffer | yes | PCM 16/32, 44.1-48 kHz |
+| `FAST` | fast | yes | PCM 16/32, 44.1-48 kHz |
+| `VOIP_RX` | voip_rx | yes | PCM 16/32, 16-48 kHz |
+| `DIRECT` + `MMAP_NOIRQ` | mmap_no_irq_out | **no** | PCM 16, 48 kHz |
+| `INCALL_MUSIC` | incall_music_uplink | no | PCM 16/32, 44.1-48 kHz |
+| *(none)* | **hifi_playback** | yes | dynamic (follows the DAC) |
+| *(none)* | a2dp output (bluetooth) | | dynamic |
+| *(none)* | hearing aid output, r_submix output | | PCM 16 |
+| Inputs | primary input, voice tx, FM Tuner input; `MMAP_NOIRQ` mmap_no_irq_in; `VOIP_TX` voip_tx; `FAST` fast input; hifi_input (dynamic); a2dp input; r_submix input | | PCM 16, 8-48 kHz (hifi dynamic) |
+
+Differences from the iQOO:
+
+- **No plain `DIRECT` output at all.** The iQOO has `direct_pcm` (16/24/32-bit, up to 384 kHz)
+  routed to USB. The Redmi's only DIRECT port is the 48 kHz MMAP one, and it **doesn't route to USB**.
+  So on the Redmi, the only Android-side hi-res path to a USB DAC is the mixer at the DAC's native
+  rate via `hifi_playback`.
+- No `BIT_PERFECT` either (`Preferred mixer audio configuration:` empty), the same as the iQOO and
+  as recorded in `bitchord-android-usb-exclusive-mode-uac-driver.md`. Note: that doc's
+  `usb_audio_policy_configuration.xml` (HIDL 2.0, `usb_device output` FAST only) isn't the file
+  actually included at runtime. The active config uses the accessory-only variant plus MTK primary.
+  Same conclusion.
+- Fixed ports top out at 48 kHz, PCM 16/32 (no 24-packed).
+- Bluetooth codec libs visible to shell: only `libaivsopus.so` (no `lib_bt_aptx.so`, unlike the iQOO).
+- USB-C port: `supported_modes=dual, audio_acc, debug_acc`.
+
+Chu II DSP on the Redmi (`0x31b2:0x0113`): policy profiles **PCM 8 / 16 / 8_24-bit at 44.1/48/88.2/96 kHz**,
+plus a fixed 16-bit 44.1/48 profile. With Poweramp playing, the mixer's USB thread sat in standby
+(last config 96 kHz PCM_32), and Poweramp's own driver had the DAC:
+
+```
+usbxoutput.c: prepare selected alt=2 ch=2 sr=44100 pipeline sr=44100 fmt=s24 srs=0xf0 count=4 srs= 44100 48000 88200 96000
+usb_audio_stream.c: UAC1 ... vid=0x31b2 pid=0x0113 iface=2 alt=2 ep=0x04 sr=44100 fmt=s24 ch=2 bits=24 sync=1
+media_session (poweramp): volumeType=REMOTE
+```
+
+There Poweramp **followed the track's 44.1 kHz** with all four rates allowed (`srs=0xf0 count=4`),
+which is bit-perfect for 44.1 kHz sources. On the iQOO the same app was pinned to 96 kHz
+(`srs=0x80 count=1`), so that's a per-install Poweramp setting, not a DAC limit.
 
 ## Gotchas
 
