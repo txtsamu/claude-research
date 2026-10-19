@@ -343,6 +343,24 @@ Same boot log also confirmed the Bluetooth report: `bt: radio came up with inten
 - Library/sync work (NAS → card rsync, dedup, mid-sync reset + fsck) is in [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md).
 - Builds flashed: `final8` (`f86751c9…`, 17:30). `final10` (`c817e51a…`, adds flash-mode setting + Debug tile) attempted from the SWB-entered state at 18:38 — result recorded in the SWB doc.
 
+## Next steps (deferred): faster updates
+
+Where a full flash's ~20 min goes (from today's flash logs and `diskos_installer/flasher.py`):
+
+| Phase | Time | Source |
+|---|---|---|
+| Image build on the PC | ~3 s | installer log |
+| USB upload of 96 MiB | ~125 s | usbboot log `bytes=100663296 … elapsed-ms=124964` (~0.8 MB/s, boot-ROM USB limit) |
+| Fixed wait for the writer | 1080 s always | `FLASH_WAIT = os.environ.get("DISKOS_FLASH_WAIT", "1080")`; no early-completion polling; comment: hash time "not yet measured" |
+| Real NAND work | unmeasured, likely a few minutes | 768 blocks × 64 pages program + erase + verify; image/base hashes read from *uncached* DRAM |
+
+Options, best first:
+1. **No flash for UI-only changes: own OTA key.** Flash once with `--ota-key <your ECDSA P-256 public key PEM>` instead of `--no-ota`; then sign each new `mq_ui` with the private key and let diskOS's in-app updater (or a local/SD source) install it in seconds. Upstream releases stay rejected (their key isn't trusted). Needs: key generation + safe storage, the signing step (see `payload/diskos-root.pub.pem` / `ui/ota.c` / `S97diskos_install` `ota_bundle_ok` for the bundle format: keyauthz, leafpub.pem, update.manifest(.sig), mq_ui), and pointing the updater's download base at the fork's releases or a local file.
+2. **Measure, then shorten the wait for full flashes.** `DISKOS_FLASH_WAIT=<seconds>` is honoured by the installer. Measure the writer's real duration first (a timing-instrumented/probe build, or reading dbg progress); a too-short wait yields an UNKNOWN outcome that requires the 25-min recovery wait.
+3. **Speed up the writer** (cached-DRAM hashing, faster SFC/quad mode). Biggest change to the one program that writes the NAND — last resort.
+
+Also parked: SWB "Restart to Flash Mode" (see [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md)) — needs a SWB-aware writer gate.
+
 ## Notes
 
 - Never run the installer with `sudo` — it keeps per-user state under `~/.local/share/diskos-installer`.
