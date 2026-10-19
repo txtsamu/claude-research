@@ -57,6 +57,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [fiio-snowsky-disc-diskos-flash-fedora.md](fiio-snowsky-disc-diskos-flash-fedora.md) | fiio, snowsky-disc, diskos, dap, ingenic, mask-rom, flashing, squashfs, udev, fedora, usb-dac, usb-audio | 2026-10-19 |
 | [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md) | fiio, snowsky-disc, rsync, nas, fat32, fsck, dedup, flac | 2026-10-19 |
 | [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md) | pipewire, fedora, cosmic, usb-dac, sample-rate, bit-perfect, volume-keys | 2026-10-19 |
 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-19 |
