@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-19 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | how-to |
 | 2026-10-19 | [iqoo-z11-usb-audio-output-flags-bitperfect-hires.md](iqoo-z11-usb-audio-output-flags-bitperfect-hires.md) | investigation |
 | 2026-10-19 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | investigation |
 | 2026-10-19 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | how-to |
@@ -51,12 +52,12 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-09 | [kubewall-caddy-kwall-lan-route.md](kubewall-caddy-kwall-lan-route.md) | troubleshooting |
 | 2026-10-05 | [mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md](mikrotik-hex-s-setup-review-dhcp-cleanup-subnet-options.md) | investigation |
 | 2026-10-05 | [tplink-wr840n-ap-web-api-wifi-channel.md](tplink-wr840n-ap-web-api-wifi-channel.md) | how-to |
-| 2026-10-05 | [technitium-servfail-quad9-forwarder-dead-route-after-bridge.md](technitium-servfail-quad9-forwarder-dead-route-after-bridge.md) | troubleshooting |
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-19 |
 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | android, iqoo, vivo, originos, adb, debloat, uad-ng | 2026-10-19 |
 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | tiktok-bot, home, anoa, camofox, scraping, cdp, gallery-dl | 2026-10-18 |
 | [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | samsung, smart-tv, tizen, sdb, developer-mode, debloat | 2026-10-18 |
