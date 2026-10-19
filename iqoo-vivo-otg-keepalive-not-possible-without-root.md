@@ -299,6 +299,14 @@ Caveats (this is inference, not proof for this exact phone):
   sink-only enforcement) isn't directly visible from `shell` (no dmesg access). It's inferred
   from the observed result: host mode with no attach event.
 
+## Update 2026-10-19: full OTG flag inventory
+
+A full list of the OTG/USB-C properties, settings, `dumpsys usb` port capabilities, the `vusb`
+sysfs nodes (now also `otg_drp`, `otg_vbus`, `usb_type`, `usbid_value`, `sleep_mode`) and the
+relevant init.rc lines is in `iqoo-z11-usb-audio-output-flags-bitperfect-hires.md` §5. New lead,
+not yet tried: the port reports `can_change_mode=true`, and `dumpsys usb set-port-roles` exists as
+a test hook. The phone model is now known to be the **iQOO Z11 5G** (Snapdragon 7s Gen 3, SM7635).
+
 ## Can this phone be rooted? (so the sysfs write becomes possible)
 
 Looked into it on 2026-10-11. Short version: no clean path, and nothing that helps this problem.
