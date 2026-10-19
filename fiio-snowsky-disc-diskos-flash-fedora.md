@@ -332,6 +332,17 @@ Same boot log also confirmed the Bluetooth report: `bt: radio came up with inten
 
 `ui_set_source_mode()` (only the picker calls it) saves `src_mode` (0 Local / 1 USB DAC / 2 BT Receiving; USB Storage never saved) and clears `usb_audio_on`; `usb_audio_on` is set on "USB DAC connected" and cleared when a switch away from USB completes. A one-shot boot timer (`modes_output_boot_restore()`, created next to the `localplayer_workmode_cb` timer) replays it 15 s after start (past the ~9 s player settle). A USB Audio restore with no DAC falls back after 8 s and keeps the preference. The BT boot-off watch stands down when `src_mode == 2`.
 
+## Sixth round: mode transitions, paused resume, Debug tile, flash mode by software
+
+- **USB Audio → USB Storage left the port in host role** (`role=host`, `udc=not attached`, `storage: export not confirmed; SD access remains held`); only a restart cleared it. The player returns the port to device role only on its `0642 0` (Local) path. A subagent audited every Working Mode pair (fork `26f5e89`, table as a comment above `ui_set_source_mode()`): USB Audio → USB DAC/BT/Storage and USB DAC → Storage now pass through Local automatically (`modes_via_local_then()`, "Leaving USB Audio..."); USB DAC exits still refuse while a host is attached; USB DAC/BT/Storage → USB Audio stay a refusal ("Return to local playback first").
+- **Resume Playback autoplays at boot** (`[MEMORY]: mount stable, begin memory play`). Fork `52d298c`: in the first 60 s, if it is playing and the user hasn't sent any transport command (`ipc_transport_seq()==0`), send one `0201` pause — song and position stay restored.
+- **Quick Settings Debug tile** (`356b3c7`): opt-in, opens the Debug Mode screen (password shown there), lit while Debug SSH runs (`debug_ssh_on()`).
+- **Restart to Flash Mode** (`f345950`) — see [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md). Verified: `devmem 0x100000cc 32 0x42575302; reboot` → `a108:eaef` in 5 s.
+- **Two flashes need a power-off in between.** Flashing again in the same mask-ROM session failed with `base gate: 0xDEAD000A … [E320] Nothing was written` — the writer requires the SPI-NAND in its power-on state (all blocks protected, ECC on) and the first flash had unlocked it. Unplug, hold power until off, re-enter flash mode.
+- Leaving flash mode after a flash: the Disc stays in USB boot until power is cut.
+- Library/sync work (NAS → card rsync, dedup, mid-sync reset + fsck) is in [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md).
+- Builds flashed: `final8` (`f86751c9…`, 17:30). `final10` (`c817e51a…`, adds flash-mode setting + Debug tile) attempted from the SWB-entered state at 18:38 — result recorded in the SWB doc.
+
 ## Notes
 
 - Never run the installer with `sudo` — it keeps per-user state under `~/.local/share/diskos-installer`.
