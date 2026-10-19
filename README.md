@@ -43,8 +43,7 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-19 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | investigation |
 | 2026-10-19 | [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md) | how-to |
 | 2026-10-19 | [fiio-snowsky-disc-diskos-flash-fedora.md](fiio-snowsky-disc-diskos-flash-fedora.md) | how-to |
-| 2026-10-19 | [fiio-snowsky-disc-diskos-flash-fedora.md](fiio-snowsky-disc-diskos-flash-fedora.md) | fiio, snowsky-disc, diskos, dap, ingenic, mask-rom, flashing, squashfs, udev, fedora | 2026-10-19 |
-| [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | how-to |
+| 2026-10-19 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | how-to |
 | 2026-10-19 | [iqoo-z11-usb-audio-output-flags-bitperfect-hires.md](iqoo-z11-usb-audio-output-flags-bitperfect-hires.md) | investigation |
 | 2026-10-19 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | investigation |
 | 2026-10-19 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | how-to |
@@ -53,7 +52,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-18 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
 | 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
 | 2026-10-12 | [ruijie-rg-es208gc-switch-audit-firmware-cve.md](ruijie-rg-es208gc-switch-audit-firmware-cve.md) | investigation |
-| 2026-10-09 | [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | how-to |
 
 ### How-to / deployment
 
