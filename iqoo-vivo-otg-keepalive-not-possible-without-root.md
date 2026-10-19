@@ -427,8 +427,8 @@ that `vivo_otg_status` (`Settings.System`) exists only on `Have_otg_ccopen` mode
 unverified.
 
 ## References
-- [vivo-source-mirror/X60_Pro: drivers/usb/dwc3/dwc3-vusb.c](https://github.com/vivo-source-mirror/X60_Pro/blob/main/drivers/usb/dwc3/dwc3-vusb.c): vivo `vusb` driver, `host_mode`/`otg_mode` sysfs, `DWC3_VUSB_HOST_DISABLED_TIME (300*1000)`
-- [vivo-source-mirror/X60_Pro: vivo-smb5-lib.c](https://github.com/vivo-source-mirror/X60_Pro/blob/main/drivers/power/supply/qcom/sm7250/vivo-smb5-lib.c): `DRP_MODE` votable, forced `EN_SNK_ONLY_BIT` when the OTG switch times out
+- [vivo-source-mirror/X60_Pro: drivers/usb/dwc3/dwc3-vusb.c](https://github.com/vivo-source-mirror/X60_Pro/blob/master/drivers/usb/dwc3/dwc3-vusb.c): vivo `vusb` driver, `host_mode`/`otg_mode` sysfs, `DWC3_VUSB_HOST_DISABLED_TIME (300*1000)`
+- [vivo-source-mirror/X60_Pro: vivo-smb5-lib.c](https://github.com/vivo-source-mirror/X60_Pro/blob/master/drivers/power/supply/qcom/sm7250/vivo-smb5-lib.c): `DRP_MODE` votable, forced `EN_SNK_ONLY_BIT` when the OTG switch times out
 - [vivo open source portal](https://opensource.vivo.com/Project): official kernel source releases (no I2512 kernel found)
 - [iQOO community: USB-C Earphones Not Recognized on iQOO 15 – OTG Dependency and Auto Disconnect](https://community.iqoo.com/in/thread/137185) — near-identical symptom, unresolved
 - [GSMArena: iQOO 12 OriginOS 6 stable update](https://m.gsmarena.com/newscomm-70653.php) — comments report dongle DAC regressions after the Android 16 update
