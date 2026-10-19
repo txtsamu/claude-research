@@ -1,6 +1,6 @@
 ---
 type: how-to
-tags: [android, iqoo, vivo, originos, adb, debloat, uad-ng, wireless-debugging, technitium, advanced-blocking, hagezi]
+tags: [android, iqoo, vivo, originos, adb, debloat, uad-ng, wireless-debugging, technitium, advanced-blocking, hagezi, mikrotik]
 created: 2026-10-19
 last_verified: 2026-10-19
 status: current
@@ -152,10 +152,49 @@ Verification (run from the phone itself with `adb shell ping -c1 <host>`, since 
 | asia-timesync, asia-st-exappupgrade, asia-album-api | resolve | |
 | google.com | resolves | |
 
-Open items:
-- The phone has a **dynamic** DHCP lease on `192.168.50.26`. If the IP changes, the mapping silently stops applying. Fix: make the lease static on the MikroTik (same as the TV).
-- `1.1.1.1` and `1.0.0.1` are in the DHCP DNS list, so the phone can bypass Technitium. A MikroTik dst-nat redirect would close this, as for the TV (see that doc, section 9).
-- Undo: remove `192.168.50.26` from `networkGroupMap` and the `iqoo-phone` group on each node. Backups are `advblock_before_<ip>.json`.
+See the next section for the static lease and the 1.1.1.1 bypass fix.
+
+## Static lease + forced DNS redirect on the MikroTik (applied 2026-10-19)
+
+Same pattern as the TV (`technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md` §9), with one difference: **the phone is redirected to `.40`, not `.200`.** Redirected queries reach Technitium from `192.168.50.1` (hairpin masquerade), and on `.200` that IP is already mapped to `samsung-tv`. So `.40` alone gets `"192.168.50.1": "iqoo-phone"`, and each device's redirected traffic lands on its own node. This is safe because the router uses DoH for its own lookups and doesn't query `.40`.
+
+```bash
+# Technitium .40 only (config backed up first as advblock_pre_redirect_192.168.50.40.json)
+jq '.networkGroupMap["192.168.50.1"]="iqoo-phone"' advblock_pre_redirect_192.168.50.40.json > advblock_redirect.json
+# then apps/config/set as above
+```
+
+```routeros
+/export file=pre-iqoo-dns-2026-10-19
+/ip dhcp-server lease make-static [find address=192.168.50.26]
+/ip dhcp-server lease set [find address=192.168.50.26] comment="iQOO I2512 phone (static, DNS redirect + phone-only vivo blocking)"
+/ip firewall mangle add chain=prerouting src-address=192.168.50.26 dst-address-list=!lan-dns protocol=udp dst-port=53 connection-state=new action=mark-connection new-connection-mark=iqoo-dns-redirect passthrough=yes comment="iQOO DNS redirect mark udp"
+/ip firewall mangle add chain=prerouting src-address=192.168.50.26 dst-address-list=!lan-dns protocol=tcp dst-port=53 connection-state=new action=mark-connection new-connection-mark=iqoo-dns-redirect passthrough=yes comment="iQOO DNS redirect mark tcp"
+/ip firewall nat add chain=dstnat src-address=192.168.50.26 dst-address-list=!lan-dns protocol=udp dst-port=53 action=dst-nat to-addresses=192.168.50.40 comment="iQOO DNS redirect udp -> Technitium .40"
+/ip firewall nat add chain=dstnat src-address=192.168.50.26 dst-address-list=!lan-dns protocol=tcp dst-port=53 action=dst-nat to-addresses=192.168.50.40 comment="iQOO DNS redirect tcp -> Technitium .40"
+/ip firewall nat add chain=srcnat connection-mark=iqoo-dns-redirect action=masquerade comment="iQOO DNS redirect hairpin"
+```
+
+Notes:
+- The `lan-dns` address list (.200/.40/.42) already existed from the TV setup.
+- The phone's MAC is an Android **randomized** MAC (`client-id 1:32:2e:...`, locally administered). It stays the same for this SSID unless the Wi-Fi privacy setting is changed to "non-persistent" or the network is forgotten and re-added. Either of those would break the static lease.
+- The new rules showed the `I` flag briefly, then it cleared, the same as with the TV.
+- `nslookup` is not on the phone (`toybox` doesn't have it), so it can't test the redirect itself.
+
+Verification: this PC (`192.168.50.20`) got temporary copies of the udp mangle+dstnat rules (comment `TEMP test iqoo`) to `.40`, which were removed straight after:
+```
+dig @1.1.1.1 asia-cota.vivoglobal.com            -> NXDOMAIN
+  TXT: source=advanced-blocking-app; group=iqoo-phone; ... domain=asia-cota.vivoglobal.com
+dig @1.1.1.1 id-analyzer-appstore.vivoglobal.com -> NXDOMAIN
+dig @1.1.1.1 asia-timesync.vivoglobal.com        -> NOERROR (allowlisted)
+dig @1.1.1.1 google.com                          -> NOERROR
+# after removing TEMP rules: real 1.1.1.1 answer again (NOERROR, no Technitium TXT)
+```
+A `:foreach ... /ip firewall connection remove` one-liner for clearing test conntrack entries hit a RouterOS `syntax error` over ssh. It wasn't needed: the UDP entries had already expired by the time of the re-check.
+
+Open items / undo:
+- Not covered: DoT (TCP/853) or DoH from the phone. Private DNS is currently `off`. If it's ever turned on, it bypasses all of this.
+- Undo: `/ip firewall nat remove [find comment~"iQOO DNS"]`, `/ip firewall mangle remove [find comment~"iQOO DNS"]`, `/ip dhcp-server lease make-dynamic [find address=192.168.50.26]`. In Technitium, remove `192.168.50.26` from every node's map, remove `192.168.50.1` from the map on `.40` only, and delete the `iqoo-phone` group.
 
 ## References
 
