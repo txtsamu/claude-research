@@ -246,6 +246,59 @@ Caveats:
   in the kernel `vusb` driver, and no removed or restricted package touches OTG.
   `com.vivo.devicepower` was left installed.
 
+## Why boot-with-IEM bypasses the timer: vivo's kernel source (researched 2026-10-19)
+
+vivo publishes kernel sources (opensource.vivo.com, mirrored on GitHub). **The I2512 / OriginOS 6
+kernel is not published**, but older Qualcomm vivo kernels contain the driver behind the exact sysfs
+node found in step 5. Found with GitHub code search:
+
+```sh
+gh api -X GET search/code -f q='vusb host_mode'                    # -> drivers/usb/dwc3/dwc3-vusb.c
+gh api -X GET search/code -f q='filename:dwc3-vusb.c' -q '.items[].repository.full_name'
+#   vivo-source-mirror/X60_Pro, iQOO_Neo3, T1_IQOO_Z6_5G, Y11s, Y20s, ZProtons/android_kernel_vivo_kona, ...
+gh api repos/vivo-source-mirror/X60_Pro/contents/drivers/usb/dwc3/dwc3-vusb.c -H 'Accept: application/vnd.github.raw' > dwc3-vusb.c
+gh api repos/vivo-source-mirror/X60_Pro/contents/drivers/power/supply/qcom/sm7250/vivo-smb5-lib.c -H 'Accept: application/vnd.github.raw' > smb5-lib.c
+```
+
+What `dwc3-vusb.c` (X60 Pro kernel) does:
+
+- It creates the `vusb` class device with the `host_mode` and `otg_mode` attributes. These are the
+  same files `FtFeature.setOtgEnable()` writes.
+- **The 5-minute timer is hard-coded:** `#define DWC3_VUSB_HOST_DISABLED_TIME (300*1000)`. That's
+  300 s, which matches the measured ~5 min 5 s.
+- Writing `enabled` to `host_mode` (the OTG switch) sets `host_enable = true`, votes
+  `OTG_DRP_VOTER` on the charger's `DRP_MODE` votable (lets the USB-C port be dual-role, i.e. able
+  to act as host), and **queues `host_disabled_work` 300 s later**.
+- `host_disabled_work` removes the DRP vote and sets `host_enable = false`. vivo's charger driver
+  (`vivo-smb5-lib.c`) then writes `EN_SNK_ONLY_BIT` to `TYPE_C_MODE_CFG_REG`: the port becomes
+  **sink-only**, so it can't power or host a USB-C DAC, and the DAC drops (`ACTION_USB_DETACHED`).
+- At probe, `host_enable` starts `false` and no timer is queued. **The timer is only ever armed
+  from the `host_mode` write path** (and from detect-work loops that run only while
+  `host_enable` is true).
+
+Why the boot case escapes:
+
+1. With the IEM plugged in at power-on, the PMIC's Type-C hardware detects the DAC (a sink) and
+   takes the source/host role during early boot. This happens before userspace exists and before
+   the OTG switch is involved. Android later finds the device already enumerated, which is why
+   logcat shows **no `USB_DEVICE_ATTACHED`** (step 10).
+2. Nothing writes `host_mode`, so `host_enable` stays `false` and **`host_disabled_work` is never
+   queued**. No timer, no forced sink-only, no cut.
+3. Any later replug or OTG switch use goes through the normal path again, either the switch
+   (arms the 300 s timer) or sink-only enforcement (a fresh attach isn't detected without OTG).
+
+Caveats (this is inference, not proof for this exact phone):
+
+- The source is from older phones (2020-21, sm8250/sm7250, kernel 4.19). In that version,
+  `typec_detect_work` **cancels** the timer while a sink stays attached, so the timeout would be
+  idle-based (matching vivo's FAQ wording). This phone measurably cuts at ~5 min **during
+  playback**, so the OriginOS 6 driver changed the cancel logic. The constant, the sysfs interface
+  and the "timer armed only by the `host_mode` write" structure are the parts that explain the
+  boot behaviour.
+- The early-boot role (Qualcomm Type-C hardware defaulting to dual-role/try-source before vivo's
+  sink-only enforcement) isn't directly visible from `shell` (no dmesg access). It's inferred
+  from the observed result: host mode with no attach event.
+
 ## Can this phone be rooted? (so the sysfs write becomes possible)
 
 Looked into it on 2026-10-11. Short version: no clean path, and nothing that helps this problem.
@@ -374,6 +427,9 @@ that `vivo_otg_status` (`Settings.System`) exists only on `Have_otg_ccopen` mode
 unverified.
 
 ## References
+- [vivo-source-mirror/X60_Pro: drivers/usb/dwc3/dwc3-vusb.c](https://github.com/vivo-source-mirror/X60_Pro/blob/main/drivers/usb/dwc3/dwc3-vusb.c): vivo `vusb` driver, `host_mode`/`otg_mode` sysfs, `DWC3_VUSB_HOST_DISABLED_TIME (300*1000)`
+- [vivo-source-mirror/X60_Pro: vivo-smb5-lib.c](https://github.com/vivo-source-mirror/X60_Pro/blob/main/drivers/power/supply/qcom/sm7250/vivo-smb5-lib.c): `DRP_MODE` votable, forced `EN_SNK_ONLY_BIT` when the OTG switch times out
+- [vivo open source portal](https://opensource.vivo.com/Project): official kernel source releases (no I2512 kernel found)
 - [iQOO community: USB-C Earphones Not Recognized on iQOO 15 – OTG Dependency and Auto Disconnect](https://community.iqoo.com/in/thread/137185) — near-identical symptom, unresolved
 - [GSMArena: iQOO 12 OriginOS 6 stable update](https://m.gsmarena.com/newscomm-70653.php) — comments report dongle DAC regressions after the Android 16 update
 
