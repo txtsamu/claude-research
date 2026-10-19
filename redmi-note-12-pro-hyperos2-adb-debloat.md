@@ -131,6 +131,7 @@ done < remove.txt
 | `com.google.mainline.telemetry` | Google module telemetry | uninstalled |
 | `com.android.dreams.basic` | screensaver | uninstalled |
 | `com.android.cts.ctsshim` | CTS test stub | uninstalled |
+| `com.xiaomi.discover` | System Apps Updater (reinstalls/updates Xiaomi preloads) | uninstalled (removed separately, same session) |
 
 `-1000` hit two packages that HyperOS treats as updatable preloads (installer `com.xiaomi.discover`).
 `disable-user` worked for both. The default keyboard is Gboard
@@ -147,7 +148,6 @@ Unlike the iQOO, Claude Code's auto-mode classifier allowed this `pm uninstall` 
 - Xiaomi apps: Mi Notes, Screen Recorder, Calculator, Files Manager, Gallery Editor (`com.miui.mediaeditor`),
   Media Viewer, Sound Recorder, Mi Share, Floating window (`com.miui.freeform`), Recording Assistant
   (`com.miui.audiomonitor`), ShareMe, Mi Home, Mi Remote (`com.duokan.phone.remotecontroller`, IR remote).
-- `com.xiaomi.discover` (System Apps Updater): it reinstalls and updates Xiaomi preloads. Many guides remove it.
 - Google apps: Chrome, Messages, Gboard (in use), Maps, Photos, Gmail, Wellbeing, Health Connect, Gemini, Google app.
 
 ## 5. Do not touch on HyperOS
@@ -162,6 +162,8 @@ Unlike the iQOO, Claude Code's auto-mode classifier allowed this `pm uninstall` 
 The hyperos-debloat README notes that removing the gaming optimisation packages
 (`com.xiaomi.joyose`, `com.xiaomi.migameservice`, ...) can hurt game performance. `joyose` is already removed here.
 Restore it if games stutter.
+
+Side effect of removing `com.xiaomi.discover`: preloads it managed (Mi Notes, Screen Recorder, Gallery Editor, Sound Recorder, ...) no longer get updates through it, and it can no longer quietly reinstall removed preloads. Restore it with `install-existing` if a Xiaomi app needs updating.
 
 ## Restore
 
