@@ -252,12 +252,53 @@ Recovery when it happens: only a reboot (`ssh root@<ip> 'sync; reboot'`); never 
 
 Verified on device afterwards: USB DAC from the PC plays bit-transparent on the Disc side — PC `hw_params` = Disc capture = Disc DAC (`S32_LE`, 48 kHz for YouTube, 96 kHz for a 96 kHz FLAC once PipeWire was allowed to switch rates; see [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md)).
 
+## Third bug: USB Storage while playing wedges mq_player (upstream; fixed in the fork by a restart)
+
+Symptom after the custom flash: USB Audio said "No USB DAC found - internal DAC restored" and the port never went to host — but the player had already stopped processing *any* command. Proof the player queue was not being drained (read-only):
+
+```bash
+ssh root@<ip> 'mkdir -p /dev/mqueue; mount -t mqueue none /dev/mqueue; cat /dev/mqueue/player /dev/mqueue/ui'
+# /dev/mqueue/player: QSIZE:408 ...   <- commands piling up, mq_player not reading
+```
+
+Thread states (`/proc/$(pidof mq_player)/task/*/{comm,wchan,syscall}`): `mq_recv_thread` blocked on a futex inside the command dispatcher (return address 0x4d5260), main thread blocked in `pthread_join`. Return addresses read straight from the thread stacks:
+
+```bash
+P=$(pidof mq_player); T=<tid>; set -- $(cat /proc/$P/task/$T/syscall); SP=$8
+dd if=/proc/$P/mem bs=4 skip=$((SP/4)) count=512 2>/dev/null | hexdump -v -e '1/4 "%08x\n"' | grep -n -E '^00(4[0-9a-f]|5[0-9a-f]|6[0-9a])[0-9a-f]{4}$'
+```
+
+Decompiled (Ghidra, see the RE doc): main thread in `stop_music_theard` (player_thread.c, 0x465230) — sets the music thread's cmd to 3 and `pthread_join`s it. Player log sequence:
+
+```
+13:58:49 play_ctrl:2 … start local          (song playing from SD)
+13:59:21 playlist server is running / umount /tmp/sdcard succeeded   (USB Storage: card unmounted under the player)
+13:59:37 mount to /tmp/sdcard succeeded      (back to Local)
+13:59:38 new play -> stop_music_theard -> join never returns
+```
+
+diskOS (upstream `ui/main.c` SD_DRAIN, ~line 826) only sends the `0201` play/pause *toggle* before exporting, so the music thread survives holding a file on the unmounted card. Fix chosen (fork commit `10c1b72`): when the card returns local (`storage_resume_local`), toast "Restarting to reload the card..." and call the Restart button's own drain+sync+`reboot(RB_AUTOBOOT)` path (`settings_restart_now()` factored out of `boot_confirm_cb`). Recovery if it happens on an unfixed build: reboot.
+
+## Radios off at boot, key-only SSH (fork commits `10c1b72`, `beec0f0`)
+
+- `ui/main.c` after `wifi_init_intent()`: `cfg_set_int("wifi_on", 0); cfg_set_int("bt_on", 0);` — both start off every boot; Quick Settings enables them for the session.
+- Key-only dev SSH: `payload/S98diskos_sshkey` (installed to `/etc/init.d/` by `diskos_installer/imagebuild.py`) runs `diskos-debug.sh key-on` only if `/usr/data/sshd/root_home/.ssh/authorized_keys` exists. `key-on` bind-mounts that home over the empty read-only `/root` (dropbear 2022.83 has no option to read keys elsewhere), then starts `/usr/data/sshd/dropbear -s -p 2222` (a symlink to dropbearmulti, so Debug Mode's `pgrep -f "dropbearmulti dropbear"` neither matches nor kills it).
+- Key provisioned once over Debug Mode SSH (persists in `/usr/data` across flashes):
+  ```bash
+  ssh root@<ip> 'mkdir -p /usr/data/sshd/root_home/.ssh && cat > /usr/data/sshd/root_home/.ssh/authorized_keys && chmod 700 /usr/data/sshd/root_home /usr/data/sshd/root_home/.ssh && chmod 600 /usr/data/sshd/root_home/.ssh/authorized_keys' < ~/.ssh/id_rsa.pub
+  ```
+- `~/.ssh/config` on fedora: `Host disc` / `HostName 192.168.50.57` / `Port 2222` / `User root` / `IdentityFile ~/.ssh/id_rsa`. DHCP lease on the MikroTik is dynamic (user chose not to pin it) — update HostName if it changes.
+- Verified before flashing by running the new script from `/tmp` on the live device: `ssh disc` logs in; password-only attempt on 2222 → `Authentications that can continue: publickey` / `Permission denied (publickey)`; key daemon survived toggling Debug Mode off/on. Gotcha: `Host *` has `ControlMaster auto` + `ControlPersist 10m`, so negative tests need `-o ControlMaster=no -o ControlPath=none` or they silently reuse the authenticated master.
+- Claude Code auto mode refused to write the boot script ("Unauthorized Persistence") even after chat approval; unblocked by allow rules in `~/.claude/settings.json` scoped to `~/diskos/diskos/payload/**` and `diskos_installer/**` (backup `settings.json.bak`).
+- Release installer patched in place from the fork (originals kept as `*.orig`): `diskos_installer/imagebuild.py`, `payload/diskos-debug.sh`, new `payload/S98diskos_sshkey`. There is no build-only command; `echo n | ./diskos-installer install …` builds and validates the image, then stops (E110 without a mask-ROM device, or at the confirm prompt).
+
 ## Notes
 
 - Never run the installer with `sudo` — it keeps per-user state under `~/.local/share/diskos-installer`.
 - Don't redistribute generated `diskos_*.bin` images (contain FiiO's rootfs).
 - Installer location on fedora: `~/diskos/diskos-installer` (bundled squashfs tools renamed `*.broken` there).
-- Fork branch `txtsamu/diskos` `fix/usb-dac-workmode`: `e07dfee` DAC work-mode patch, `54175a1` BT-route guard, `83774f8` USB Audio switch-then-wait, `eda12f4` unplug-first guard.
+- Fork branch `txtsamu/diskos` `fix/usb-dac-workmode`: `e07dfee` DAC work-mode patch, `54175a1` BT-route guard, `83774f8` USB Audio switch-then-wait, `eda12f4` unplug-first guard, `10c1b72` restart after USB Storage + radios off at boot, `beec0f0` key-only SSH on 2222.
+- Installed build (2026-10-19 final flash): UI `2a9b702e8c4fa4f37ee5e04044607e2b` built with `-DDISKOS_TEST_OUTPUTS` (USB Audio row), flashed with `--no-ota` (no `/etc/diskos-ota/` → in-app updates unsupported, S97 ignores staged updates). Stock backups `g0001`–`g0003` all `e75d85bd…`.
 - External USB DAC output ("USB Audio", e.g. a Type-C DSP IEM cable) is hidden in public diskOS builds; enabling + fixing it is in [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md).
 
 ## References
