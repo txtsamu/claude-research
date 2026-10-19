@@ -1,6 +1,6 @@
 ---
 type: how-to
-tags: [android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, wireless-debugging, mediatek, technitium, advanced-blocking, hagezi]
+tags: [android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, wireless-debugging, mediatek, technitium, advanced-blocking, hagezi, mikrotik]
 created: 2026-10-19
 last_verified: 2026-10-19
 status: current
@@ -214,11 +214,58 @@ Verification:
 - Allowlisted hosts resolve on the Redmi: `bigota.d.miui.net`, `api.xmpush.global.xiaomi.com`,
   `findapi.micloud.xiaomi.net`, and `update.intl.miui.com` (not in the list).
 
-Open items: the Redmi's lease is still **dynamic** (randomized MAC, `client-id 1:4e:eb:c6:...`), and
-`1.1.1.1`/`1.0.0.1` from DHCP let it bypass the block. The iQOO-style fix would be a static lease
-plus a MikroTik dst-nat redirect to **`.42`**, with `192.168.50.1 -> redmi-phone` mapped on `.42` only
-(`.200` already maps `.1` to the TV and `.40` to the iQOO). Undo: remove `192.168.50.3` from each
-node's map and delete the `redmi-phone` group (backups `advblock_before_<ip>.json`).
+## 7. Static lease + forced DNS redirect (2026-10-19)
+
+Why it isn't a straight copy of the TV/iQOO setup: redirected queries are hairpin-masqueraded, so
+Technitium sees them coming **from the router**, and Advanced Blocking can only tell clients apart
+by source IP. `192.168.50.1` was already taken on two nodes (`.200` → samsung-tv, `.40` → iqoo-phone).
+The first attempt sent the Redmi to `.42` (mapping `.1 → redmi-phone` there), but the user didn't
+want `.42` used, so that was reverted. The final design gives the router a **dedicated alias IP,
+`192.168.50.252`**, used only as the source for the Redmi's redirected queries, and points the
+redirect at `.200`, where `.252 → redmi-phone` is mapped.
+
+```routeros
+/export file=pre-redmi-dns-2026-10-19
+/ip dhcp-server lease make-static [find address=192.168.50.3]
+/ip dhcp-server lease set [find address=192.168.50.3] comment="Redmi Note 12 Pro (static, DNS redirect + phone-only xiaomi blocking)"
+
+# the DHCP pool is 192.168.50.3-254, so reserve the alias with a dummy static lease first
+/ip dhcp-server lease add address=192.168.50.252 mac-address=02:00:00:00:02:52 server=dhcp1 comment="RESERVED: router alias for Redmi DNS redirect source (do not hand out)"
+/ip address add address=192.168.50.252/32 interface=bridgeLocal comment="Redmi DNS redirect hairpin source"
+
+/ip firewall mangle add chain=prerouting src-address=192.168.50.3 dst-address-list=!lan-dns protocol=udp dst-port=53 connection-state=new action=mark-connection new-connection-mark=redmi-dns-redirect passthrough=yes comment="Redmi DNS redirect mark udp"
+/ip firewall mangle add chain=prerouting src-address=192.168.50.3 dst-address-list=!lan-dns protocol=tcp dst-port=53 connection-state=new action=mark-connection new-connection-mark=redmi-dns-redirect passthrough=yes comment="Redmi DNS redirect mark tcp"
+/ip firewall nat add chain=dstnat src-address=192.168.50.3 dst-address-list=!lan-dns protocol=udp dst-port=53 action=dst-nat to-addresses=192.168.50.200 comment="Redmi DNS redirect udp -> Technitium .200"
+/ip firewall nat add chain=dstnat src-address=192.168.50.3 dst-address-list=!lan-dns protocol=tcp dst-port=53 action=dst-nat to-addresses=192.168.50.200 comment="Redmi DNS redirect tcp -> Technitium .200"
+/ip firewall nat add chain=srcnat connection-mark=redmi-dns-redirect action=src-nat to-addresses=192.168.50.252 comment="Redmi DNS redirect hairpin"
+```
+
+Technitium: `.200` map gained `"192.168.50.252": "redmi-phone"`. On `.42` the temporary
+`"192.168.50.1": "redmi-phone"` was rolled back to its pre-redirect backup. Final maps:
+`.200` {.31 tv, .1 tv, .26 iqoo, .3 redmi, .252 redmi}; `.40` {.31 tv, .26 iqoo, .1 iqoo, .3 redmi};
+`.42` {.31 tv, .26 iqoo, .3 redmi}.
+
+The same alias trick would let any further device get its own redirect group without needing
+another Technitium node: one reserved alias IP + `src-nat to-addresses=<alias>` per device.
+
+Verification: this PC got temporary copies of the udp mark + dstnat rules (comment `TEMP test redmi`), removed straight after:
+```
+dig @1.1.1.1 miui-l7-data-other-c3.pt.miui.com -> NXDOMAIN
+dig @1.1.1.1 auth.api.gitv.tv                  -> NXDOMAIN
+  TXT: source=advanced-blocking-app; group=redmi-phone; ...native.xiaomi-onlydomains.txt; domain=auth.api.gitv.tv
+dig @1.1.1.1 bigota.d.miui.net                 -> NOERROR (allowlisted OTA)
+dig @1.1.1.1 api.xmpush.global.xiaomi.com      -> NOERROR (allowlisted push)
+dig @1.1.1.1 google.com                        -> NOERROR
+# after removing TEMP rules: real 1.1.1.1 answers again
+```
+
+Notes / undo:
+- The Redmi's MAC is randomized (`client-id 1:4e:eb:c6:40:d9:af`). Forgetting the Wi-Fi network or
+  switching to a non-persistent MAC breaks the static lease.
+- Undo: `/ip firewall nat remove [find comment~"Redmi DNS"]`, `/ip firewall mangle remove [find comment~"Redmi DNS"]`,
+  `/ip address remove [find comment="Redmi DNS redirect hairpin source"]`,
+  `/ip dhcp-server lease remove [find address=192.168.50.252]`, `/ip dhcp-server lease make-dynamic [find address=192.168.50.3]`.
+  In Technitium, remove `.3` (all nodes) and `.252` (`.200`) from the maps and delete the `redmi-phone` group.
 
 ## Restore
 
