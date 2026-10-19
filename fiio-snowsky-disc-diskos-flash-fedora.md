@@ -341,7 +341,7 @@ Same boot log also confirmed the Bluetooth report: `bt: radio came up with inten
 - **Two flashes need a power-off in between.** Flashing again in the same mask-ROM session failed with `base gate: 0xDEAD000A … [E320] Nothing was written` — the writer requires the SPI-NAND in its power-on state (all blocks protected, ECC on) and the first flash had unlocked it. Unplug, hold power until off, re-enter flash mode.
 - Leaving flash mode after a flash: the Disc stays in USB boot until power is cut.
 - Library/sync work (NAS → card rsync, dedup, mid-sync reset + fsck) is in [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md).
-- Builds flashed: `final8` (`f86751c9…`, 17:30). `final10` (`c817e51a…`, adds flash-mode setting + Debug tile) attempted from the SWB-entered state at 18:38 — result recorded in the SWB doc.
+- **Installed now (19:29:40, SUCCESS): `final11` (`6d43c5e0…`, fork `83fd21d`)** — everything above + Debug tile; Restart to Flash Mode compiled out (`-DDISKOS_SWB_FLASHMODE` not set). Earlier: `final8` (`f86751c9…`, 17:30). `final10` (`c817e51a…`, adds flash-mode setting + Debug tile) attempted from the SWB-entered state at 18:38 — result recorded in the SWB doc.
 
 ## Next steps (deferred): faster updates
 
