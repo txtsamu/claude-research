@@ -60,6 +60,49 @@ Root cause of the original behaviour: OpenRGB's attach/close handling resets the
 7. **Build the tool** (script below) and run a **zone sweep** (`gbrgb sweep`): lights each hardware zone 0-10 red in turn. The fan lit on **zone 6**.
 8. **Persistence:** since the firmware can't keep state itself, re-apply from systemd (below).
 
+## Telegram control of the light (2026-10-20)
+
+The bot `@txtcybr_bot` is `vm-bot` (TypeScript, Effect v4; private repo `txtsamu/vm-bot`, source also at `home:/home/moo/vm-bot`), running as `Deployment/vm-bot` in namespace `homelab` on home's k3s. See [telegram-bot-proxmox-windows-vm-power.md](telegram-bot-proxmox-windows-vm-power.md) for the VM-power side. It could not drive the light directly: the controller is a USB chip on the Fedora PC, so `home` calls a small HTTP endpoint on the PC.
+
+```
+Telegram -> vm-bot pod (home k3s) --HTTP POST + bearer token--> light-agent (Fedora, user service) --> gbrgb --> USB controller
+```
+
+Commands: `/light <colour|hex|on|off>`, `/mode <breathing|flashing|doubleflash|cycle|random|static> [colour] [slow|fast]`, plus buttons and the `/` menu (set per allowed user with `setMyCommands` scope `chat`, cleared for everyone else).
+
+Setup, in order (token never printed; generated into a 0600 file and sent over stdin):
+
+```bash
+# 1. light agent on the PC (source: vm-bot/light-agent/light_agent.py, user service file next to it)
+mkdir -p ~/.config/systemd/user ~/.config/light-agent
+cp light-agent.service ~/.config/systemd/user/
+( umask 077; python3 -c 'import secrets;print("LIGHT_AGENT_TOKEN="+secrets.token_urlsafe(32))' > ~/.config/light-agent/env )
+echo 'LIGHT_AGENT_HOST=192.168.50.20' >> ~/.config/light-agent/env     # PC LAN address; the agent refuses 0.0.0.0
+systemctl --user daemon-reload && systemctl --user enable --now light-agent
+
+# 2. firewall: only `home` may reach it. FedoraWorkstation zone already opens 1025-65535 to the LAN, so an accept rule alone restricts nothing.
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.50.200" port port="8099" protocol="tcp" accept'
+sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.50.200" invert="True" port port="8099" protocol="tcp" drop'
+sudo firewall-cmd --reload
+
+# 3. k3s secret keys LIGHT_URL / LIGHT_TOKEN (built locally, sent on stdin), then build and roll out
+python3 make_patch.py | ssh home 'sudo k3s kubectl -n homelab patch secret vm-bot --type merge --patch-file /dev/stdin'
+podman build -t localhost/vm-bot:0.4.0 . && podman save localhost/vm-bot:0.4.0 | ssh home 'sudo k3s ctr images import -'
+cat k8s/vm-bot.yaml | ssh home 'sudo k3s kubectl apply -f -'
+```
+
+Verified: from `home` without the token -> 401, with it -> 200 and the light changes; from `px1` the connection times out; bad colours, unknown modes and an injection attempt (`ff00ff; touch /tmp/pwned`) are rejected with 400 and nothing runs.
+
+Gotchas: (1) the agent runs as the logged-in user (hidraw ACL), so `/light` fails at the login screen. (2) My first loopback test returned 401 for the good requests because `T=$(...) && VAR=$T cmd &` backgrounds the whole list, so `$T` never existed in the parent shell; export it first. (3) `git diff` is rewritten into a compact format by the rtk hook here, so `git diff > patch` produced an unusable patch (and a `checkout` then discarded the work); use `git diff --no-ext-diff` via `command git` or just redo small edits. (4) OpenRGB autostart renamed to `~/.config/autostart/OpenRGB.desktop.disabled` so it does not reset the colour at login.
+
+## Effects (`gbrgb mode`)
+
+Packet values copied from OpenRGB's `SetLEDEffect`: Breathing = effect 2 (period0 `400+speed*100`, period1 = period0, period2 200); Flashing = effect 3 (100, 100, `speed*200+700`); Double flash = effect 3 with params (0,1,2,0); Colour cycle = effect 4 (period0 `speed*100+300`, period1 = period0-200, param0 7); Random = effect 8 (period0 100, params 1,5). Wave is not offered: this board's layout mask `0x05F` has no wave bits.
+
+## Colour palette (open question)
+
+Plain hex colours look off on LEDs: the green LED in each pixel is much brighter, so cyan/yellow skew green and white looks blue. FastLED's standard correction for typical strips/5050 LEDs scales channels by `0xFFB0F0` = (255, 176, 240) (`TypicalLEDStrip`/`TypicalSMD5050`; `TypicalPixelString` = (255, 224, 140)). A plain-vs-corrected comparison was run on the fan; the result is not yet recorded here. If adopted, apply it once in the light agent so every colour and button gets it.
+
 ## Dead ends (don't re-tread)
 
 - **My patch to OpenRGB** (send `CC 47 01` in the controller destructor and after init, fork `txtsamu/OpenRGB`, branch `fix/gigabyte-fusion2-keep-lighting-on-exit`): useless on this board — support flag is 0, and `SupportsSetPersistentLighting()` guards it. Also OpenRGB master segfaults on exit here (Logitech Nano Receiver HID++ 2.0 watcher thread race), which kills the process before destructors run. Not pursued.
@@ -106,6 +149,8 @@ Needs the OpenRGB udev rules (`openrgb --generate-udev-rules /etc/udev/rules.d/6
 
 ## `gbrgb.py`
 
+(Also in the private repo `txtsamu/gbrgb`; this copy includes the effect modes.)
+
 ```python
 #!/usr/bin/env python3
 """gbrgb - tiny Gigabyte RGB Fusion 2 (ITE IT5701/IT5702, USB 048d:5702) controller for Linux.
@@ -128,6 +173,11 @@ REPORT_ID = 0xCC
 VID, PID = 0x048D, 0x5702
 
 EFFECT_STATIC = 1
+EFFECT_PULSE = 2
+EFFECT_BLINK = 3
+EFFECT_CYCLE = 4
+EFFECT_RANDOM = 8
+MODES = ("static", "breathing", "flashing", "doubleflash", "cycle", "random")
 ZONE_NAMES = {  # hardware zone index -> header (from Gigabyte's code: TurnOff_DStrip uses 5/6)
     0: "zone0 (I/O?)", 1: "zone1", 2: "zone2", 3: "zone3 (PCIe?)", 4: "zone4",
     5: "D_LED1?", 6: "D_LED2?", 7: "zone7", 8: "zone8", 9: "zone9", 10: "zone10",
@@ -206,6 +256,36 @@ class Fusion2:
             self.send(0x20 + z, 0, 0)
         self.apply(0xFF)
 
+    def mode(self, zone, name, rgb, speed=4, brightness=100):
+        """Hardware effects. Timings/params are the ones OpenRGB's driver sends (verified on this board)."""
+        if name == "static":
+            return self.static(zone, rgb, brightness)
+        s = max(0, min(9, speed))
+        params = (0, 0, 0, 0)
+        p0 = p1 = p2 = 0
+        if name == "breathing":
+            etype = EFFECT_PULSE
+            p0 = 400 + s * 100 if s <= 6 else 1000 + (s - 6) * 200
+            p1, p2 = p0, 200
+        elif name in ("flashing", "doubleflash"):
+            etype = EFFECT_BLINK
+            p0, p1, p2 = 100, 100, s * 200 + 700
+            if name == "doubleflash":
+                params = (0, 1, 2, 0)
+        elif name == "cycle":
+            etype = EFFECT_CYCLE
+            p0 = (s * 100 + 300) + (1300 * (s - 8) if s > 8 else 0)
+            p1 = p0 - 200
+            params = (7, 0, 0, 0)
+        elif name == "random":
+            etype = EFFECT_RANDOM
+            p0 = 100
+            params = (1, 5, 0, 0)
+        else:
+            raise ValueError("unknown mode %r" % name)
+        self.effect(zone, etype, rgb, brightness, p0, p1, p2, 0, params)
+        self.apply(1 << zone if zone < 8 else 0xFF, (1 << (zone - 8)) if zone >= 8 else 0)
+
     def static(self, zone, rgb, brightness=100):
         self.effect(zone, EFFECT_STATIC, rgb, brightness)
         self.apply(1 << zone if zone < 8 else 0xFF, (1 << (zone - 8)) if zone >= 8 else 0)
@@ -270,6 +350,21 @@ def cmd_config(dev_unused, a):
     print("wrote", CONFIG, cfg)
 
 
+def saved_color(zone, default="ff00ff"):
+    try:
+        with open(CONFIG) as f:
+            return json.load(f)["zones"].get(str(zone), default)
+    except (OSError, KeyError, ValueError):
+        return default
+
+
+def cmd_mode(dev, a):
+    init(dev)
+    color = a.color or saved_color(a.zone)
+    dev.mode(int(a.zone), a.name, parse_color(color), a.speed)
+    print("zone %s -> %s (%s, speed %d)" % (a.zone, a.name, color, a.speed))
+
+
 def cmd_apply(dev, a):
     with open(a.config) as f:
         cfg = json.load(f)
@@ -301,6 +396,12 @@ def main():
     s.add_argument("color", help="name or RRGGBB")
     s.add_argument("--no-keep", action="store_true")
     s.set_defaults(fn=cmd_set)
+    s = sub.add_parser("mode", help="hardware effect: " + ", ".join(MODES))
+    s.add_argument("zone")
+    s.add_argument("name", choices=MODES)
+    s.add_argument("--color", help="name or RRGGBB (default: the saved colour)")
+    s.add_argument("--speed", type=int, default=4, help="0 (slow) .. 9 (fast), default 4")
+    s.set_defaults(fn=cmd_mode)
     s = sub.add_parser("config", help="write %s (needs root)" % CONFIG)
     s.add_argument("zones", help="zone index or comma list, e.g. 6")
     s.add_argument("color")
@@ -319,6 +420,9 @@ if __name__ == "__main__":
 
 ## References
 
+- [FastLED colour correction](https://github.com/FastLED/FastLED/wiki/FastLED-Color-Correction), [`color.h` constants](https://github.com/FastLED/FastLED/blob/master/src/color.h)
+- [ETC Selador white paper (RGB mixing looks washed out in amber/cyan/purple)](https://www.etcconnect.com/uploadedFiles/Main_Site/Documents/Public/White_Papers/Selador_white_paper_US.pdf)
+- [WLED forum: hue shifts at low brightness](https://wled.discourse.group/t/only-one-color-is-on-when-brightness-is-set-low/7348)
 - [OpenRGB issue #343 — Gigabyte X570, Direct ignored on LED header](https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/343)
 - [OpenRGB Gigabyte RGB Fusion 2 USB driver source](https://gitlab.com/CalcProgrammer1/OpenRGB/-/tree/master/Controllers/GigabyteRGBFusion2USBController)
 - [OpenRGB udev rules doc](https://gitlab.com/CalcProgrammer1/OpenRGB/-/blob/master/Documentation/UdevRules.md)
