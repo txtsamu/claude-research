@@ -3,7 +3,7 @@ type: investigation
 tags: [kt02h20, ktmicro, jcally, fiio-ja11, usb-dac, firmware, reverse-engineering, hid, cdc-acm, wine, capstone, fedora]
 created: 2026-10-20
 last_verified: 2026-10-20
-status: current   # protocol decoded + cross-platform CLI built and unit-tested; the actual flash is NOT done (no software backup possible, user decision pending)
+status: current   # FLASHED 2026-10-20: dongle now enumerates as 2972:0102 "FiiO JadeAudio JA11"; no software backup was possible (stock image not obtained)
 ---
 
 # Jcally (KTMicro KT02H20) USB-C DAC: flashing FiiO JA11 firmware — protocol RE + cross-platform CLI
@@ -119,11 +119,22 @@ KT_TEST_IMAGE="JadeAudio JA11_V2.2.bin" python3 -m unittest test_ktflash -v   # 
 
 Safety rails: dry-run default; write needs three flags; aborts **before erase** if CHP chip id ≠ image chip id; erase block is only sent after the chip check; the 16-byte header is written last. Tests reassemble the flash from the packets through a mock bootloader and compare to the original image byte-for-byte.
 
-## 7. Status / next steps
+## 7. The flash (2026-10-20) — result
 
-- [ ] User decision: flash with no software backup? Recommended first: obtain `jcally_jm12_v1.3.bin` (stock) so the device can be reverted, and confirm the exact Jcally model.
-- [ ] Dongle is currently parked in bootloader mode (`8888:cdc0`) from the probing — replug to restore audio.
-- [ ] If flashed: record the post-flash `lsusb`, mixer/volume behaviour, and whether the dongle needs the reverted image.
+User chose to flash without a stock image (informed that no backup is possible). Steps, from a freshly replugged dongle in normal mode:
+
+```bash
+sudo setfacl -m u:moo:rw /dev/hidraw6        # temp ACL, lost on replug
+cd ~/kt02h20-flasher && ~/scratch/venv/bin/python ktflash.py flash "JadeAudio JA11_V2.2.bin" --execute --yes --no-backup-ok
+# unlocking: 31b2:0111 ... -> bootloader port /dev/ttyACM0 -> chip id: KT02H20B -> writing 67/67 -> back as 2972:0102 FIIO JadeAudio JA11
+```
+
+- First attempt aborted harmlessly *before* any write: the pip `hidapi` wheel uses libusb on Linux and needed raw USB permissions although hidraw access was granted. Fixed in the tool: on Linux it now prefers `/dev/hidraw*` and only falls back to hidapi.
+- All 67 packets acked (`0xA5`), `STP` and `ZRST` acked, dongle re-enumerated by itself within ~15 s.
+- Post-flash `lsusb`: `2972:0102 FiiO Electronics Technology JadeAudio JA11` (was `31b2:0111 KTMicro KT02H20 HIFI Audio`).
+- ALSA: card `JA11`, S16/S24_3LE/S32, 44.1–384 kHz; playback endpoint is now **ASYNC** with a sync feedback EP (was ADAPTIVE); `PCM Playback Volume` range 0..100 / -50..0 dB (was 0..85 / -42.5..0 dB). Not yet verified: actual playback quality/volume, mic, FiiO control-app/PEQ.
+
+To revert: flash a stock Jcally image (e.g. `jcally_jm12_v1.3.bin`) with the same command; unplug/replug first so the bootloader is fresh.
 
 ## References
 
