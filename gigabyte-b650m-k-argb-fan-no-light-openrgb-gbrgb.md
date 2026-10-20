@@ -6,7 +6,7 @@ last_verified: 2026-10-20
 status: current
 ---
 
-# Gigabyte B650M K: case-fan ARGB won't light in OpenRGB — reverse-engineered a tiny replacement
+# Gigabyte B650M K: case-fan ARGB won't light in OpenRGB — wrong board layout (fixed) + tiny `gbrgb` fallback
 
 **Host:** Fedora 43, Gigabyte B650M K Rev 1.1 (ITE IT5701, USB `048d:5702`, firmware 4.0.26.2). Fans: Ocypus Delta C70 case, 3-pin 5V ARGB, plugged into the board's **D_LED2** header.
 
@@ -14,7 +14,19 @@ status: current
 
 In OpenRGB the fan only lit after the sequence *Wave → Direct → pick colour*. Static worked but reset as soon as OpenRGB closed. A newer OpenRGB build (git master, 1.1+) did not light the fan at all (CLI and GUI), and no longer offered Wave.
 
-## Resolution (what actually works)
+## UPDATE — real root cause found, OpenRGB fixed (2026-10-20)
+
+After `gbrgb` proved hardware **zone 6** lights the fan, I traced OpenRGB's packets (temporary `getenv("GB_TRACE")` fprintf in `SendPacket`) and compared with the working sequence. OpenRGB only ever sent effects to zones 5 and 1, never zone 6.
+
+**Cause:** `gb_fusion2_device_list` has two entries named `B650M K` — layout 4 (one `D_LED` zone = hardware zone 5, id `0x0820005F`) and layout 13 (`D_LED1` + `D_LED2`, id `0x0870005F`). `Init_Controller()` takes the first name match, so layout 13 (the one with zone 6) was unreachable. The board's ACPI table (`/sys/firmware/acpi/tables/SSDT1`, OEM `GBT`) holds `0x0870005F` and not `0x0820005F`, confirming layout 13; DMI cannot tell them apart.
+
+**Fix (one line):** swap `&b650m_k_device` / `&b650m_k_2_device` in the list in `Controllers/GigabyteRGBFusion2USBController/GigabyteFusion2USB_Devices.cpp`. Fork `txtsamu/OpenRGB`, branch `fix/b650m-k-d-led2-layout`, commit 80e36d67. Built with `qmake6` out of tree, installed as `/usr/local/bin/openrgb`, udev rules via `sudo openrgb --generate-udev-rules /etc/udev/rules.d/60-openrgb.rules`.
+
+**Second gotcha:** D_LED zones start with **0 LEDs**, and the driver silently skips any strip zone with 0 LEDs, even for hardware effects. Give the zone a size once (GUI: Edit Zone, e.g. 32; CLI: `openrgb -d 0 -z 1 -s 32 -m Static -c 00FF00`). With that, Direct, Static, Breathing, Flashing, Color Cycle, Double Flash and Random all work. Wave is deliberately absent for this board (effect mask `0x05F`).
+
+**Still true:** the colour does not survive OpenRGB closing (firmware flag `0x47` unsupported, see above), so keep OpenRGB running or use `gbrgb` + systemd. OpenRGB also segfaults on exit on this machine (Logitech HID++ 2.0 watcher race). Upstream contributes via **GitLab merge requests** only (the GitHub repo is a mirror with PRs disabled); the MR text is not filed yet.
+
+## Resolution (original, before the layout cause was found)
 
 A ~200-line Python script (`gbrgb`, below) that talks to `/dev/hidrawN` with the exact packets Gigabyte Control Center sends. A hardware "Static" effect on **zone 6** (= D_LED2) lights the fan and **stays lit after the process exits**. A oneshot systemd unit re-applies the colour at boot and after sleep.
 
