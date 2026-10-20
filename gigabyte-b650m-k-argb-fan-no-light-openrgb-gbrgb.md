@@ -86,7 +86,11 @@ sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address
 sudo firewall-cmd --reload
 
 # 3. k3s secret keys LIGHT_URL / LIGHT_TOKEN (built locally, sent on stdin), then build and roll out
-python3 make_patch.py | ssh home 'sudo k3s kubectl -n homelab patch secret vm-bot --type merge --patch-file /dev/stdin'
+python3 - <<'E' | ssh home 'sudo k3s kubectl -n homelab patch secret vm-bot --type merge --patch-file /dev/stdin'
+import json,os
+env=dict(l.strip().split("=",1) for l in open(os.path.expanduser("~/.config/light-agent/env")) if "=" in l)
+print(json.dumps({"stringData":{"LIGHT_URL":"http://192.168.50.20:8099/light","LIGHT_TOKEN":env["LIGHT_AGENT_TOKEN"]}}))
+E
 podman build -t localhost/vm-bot:0.4.0 . && podman save localhost/vm-bot:0.4.0 | ssh home 'sudo k3s ctr images import -'
 cat k8s/vm-bot.yaml | ssh home 'sudo k3s kubectl apply -f -'
 ```
