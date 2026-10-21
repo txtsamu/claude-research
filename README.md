@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-21 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | investigation |
 | 2026-10-21 | [immich-strip-ai-machine-learning-fork.md](immich-strip-ai-machine-learning-fork.md) | how-to |
 | 2026-10-20 | [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md) | investigation |
 | 2026-10-20 | [diskos-disc-hotload-watchdog-snowsky-logo-hang.md](diskos-disc-hotload-watchdog-snowsky-logo-hang.md) | troubleshooting |
@@ -176,6 +177,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance | current | 2026-10-21 |
 | [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md) | kt02h20, ktmicro, jcally, fiio-ja11, usb-dac, firmware, reverse-engineering, hid, cdc-acm | current: protocol decoded (HID 0x54 unlock -> 8888:cdc0 CDC bootloader), cross-platform CLI built + tested, JA11 V2.2 flashed OK (now 2972:0102 JadeAudio JA11); no software backup possible | 2026-10-20 |
 | [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | ingenic, x2000, usb-boot, swb, boot-rom, snowsky-disc | current: SWB entry works (a108:eaef in 5 s); writer refuses after software entry (E320), NAND lock unsupported in FiiO kernel | 2026-10-19 |
 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | fiio, snowsky-disc, diskos, usb-audio, otg, reverse-engineering, ghidra, rea, mips | current: USB Audio fixed (switch-then-wait), verified 24/96 to Chu2; rea refuses NaN2008 MIPS | 2026-10-19 |
