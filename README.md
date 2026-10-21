@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-21 | [immich-strip-ai-machine-learning-fork.md](immich-strip-ai-machine-learning-fork.md) | how-to |
 | 2026-10-20 | [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md) | investigation |
 | 2026-10-20 | [diskos-disc-hotload-watchdog-snowsky-logo-hang.md](diskos-disc-hotload-watchdog-snowsky-logo-hang.md) | troubleshooting |
 | 2026-10-20 | [gigabyte-b650m-k-argb-fan-no-light-openrgb-gbrgb.md](gigabyte-b650m-k-argb-fan-no-light-openrgb-gbrgb.md) | troubleshooting |
@@ -60,6 +61,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [immich-strip-ai-machine-learning-fork.md](immich-strip-ai-machine-learning-fork.md) | immich, fork, machine-learning, postgres, migration, pnpm, podman | 2026-10-21 |
 | [fiio-snowsky-disc-diskos-flash-fedora.md](fiio-snowsky-disc-diskos-flash-fedora.md) | fiio, snowsky-disc, diskos, dap, ingenic, mask-rom, flashing, squashfs, udev, fedora, usb-dac, usb-audio | 2026-10-19 |
 | [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md) | fiio, snowsky-disc, rsync, nas, fat32, fsck, dedup, flac | 2026-10-19 |
 | [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md) | pipewire, fedora, cosmic, usb-dac, sample-rate, bit-perfect, volume-keys | 2026-10-19 |
