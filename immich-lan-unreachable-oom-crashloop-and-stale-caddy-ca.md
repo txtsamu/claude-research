@@ -8,7 +8,7 @@ status: current
 
 # immich.lan "not reachable": server OOMKilled crash-loop + fedora trusts the old Caddy CA
 
-Two independent causes were found. Cause 1 was fixed (memory limit raised, see below); the Cause 2 fix on fedora is proposed but not applied.
+Two independent causes were found. Cause 1 was fixed (memory limit raised, see below); the Cause 2 was fixed too (CA anchor replaced on fedora).
 
 ## Triage
 
@@ -53,7 +53,7 @@ Rolled out clean, new pod 3/3 Running. Still worth doing if it recurs: lower job
 
 Same mechanism as [caddy-internal-ca-cert-mismatch-after-host-migration.md](caddy-internal-ca-cert-mismatch-after-host-migration.md) (that doc fixed the phone, fedora was missed). Browsers with a click-through still work; curl, PWAs and the Immich mobile app do not.
 
-Proposed fix on fedora (needs sudo, not run):
+Applied 2026-10-22 on fedora (old anchor backed up first); `curl https://immich.lan/` now returns 200 with verify=0:
 ```bash
 ssh moo@home 'sudo cat /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt' \
   | sudo tee /etc/pki/ca-trust/source/anchors/caddy-local-ca.crt >/dev/null
