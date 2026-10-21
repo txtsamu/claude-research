@@ -10,7 +10,7 @@ status: current
 
 Goal: run Immich without the `immich-machine-learning` container and without any model-driven feature, so the server is just server + Redis (Valkey) + Postgres.
 
-Fork lives in `~/immich` on branch `strip-ai`, cloned shallow from `https://github.com/immich-app/immich.git` at `166e935` (2026-10-20, v3.3.0rc0). **Not committed or pushed anywhere** at the time of writing (408 files changed, +6.5k / -57.5k lines).
+Fork lives in `~/immich` on branch `strip-ai`, cloned shallow from `https://github.com/immich-app/immich.git` at `166e935` (2026-10-20, v3.3.0rc0). Committed locally on branch `strip-ai` as `ef74a43` (408 files changed, +6.5k / -57.5k lines), **not pushed** anywhere. Follow-up: [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) measures what memory the stripped server still uses.
 
 ## What Immich's AI actually is
 
