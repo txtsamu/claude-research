@@ -3,12 +3,12 @@ type: troubleshooting
 tags: [immich, k3s, oomkilled, caddy, tls, internal-ca, home, fedora]
 created: 2026-10-22
 last_verified: 2026-10-22
-status: open
+status: current
 ---
 
 # immich.lan "not reachable": server OOMKilled crash-loop + fedora trusts the old Caddy CA
 
-Two independent causes were found. Nothing was changed on `home` or on fedora during the diagnosis; both fixes are proposed below.
+Two independent causes were found. Cause 1 was fixed (memory limit raised, see below); the Cause 2 fix on fedora is proposed but not applied.
 
 ## Triage
 
@@ -35,7 +35,12 @@ sudo dmesg -T | grep "Memory cgroup out of memory"         # kills at 05:16, 05:
 - After the last restart (06:05) the server was at ~1975m CPU / ~3.8 GiB and climbing back toward the limit, so a repeat OOM is likely until the heavy job finishes or the limit is raised.
 - The 4608Mi limit is the value chosen in [home-k8s-resource-rightsizing-victoriametrics.md](home-k8s-resource-rightsizing-victoriametrics.md) (observed peak was 3857Mi). The peak is now above that.
 
-Proposed (not applied): raise the `server` limit (e.g. 6Gi, node has ~15.5 GiB with ~6 GiB available), and/or lower job concurrency in Immich Admin > Settings > Job Settings (thumbnail generation, metadata extraction).
+Applied 2026-10-22 (node has ~15.5 GiB, ~62% used):
+```bash
+sudo k3s kubectl -n homelab set resources deploy/immich -c server --requests=memory=3Gi --limits=memory=6Gi
+sudo k3s kubectl -n homelab rollout status deploy/immich
+```
+Rolled out clean, new pod 3/3 Running. Still worth doing if it recurs: lower job concurrency in Immich Admin > Settings > Job Settings (thumbnail generation, metadata extraction).
 
 ## Cause 2: this fedora box trusts the *old* Caddy CA (strict TLS clients fail)
 
