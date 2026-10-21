@@ -37,7 +37,9 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
-| 2026-10-21 | [immich-effect-v4-stage1-repositories.md](immich-effect-v4-stage1-repositories.md) | how-to |
+| 2026-10-21 | [immich-effect-v4-stage2-services.md](immich-effect-v4-stage2-services.md) | how-to |
+| 2026-10-21 | [immich-effect-v4-stage2-services.md](immich-effect-v4-stage2-services.md) | immich, fork, effect, effect-ts, nestjs, services, subagents, vitest, podman | 2026-10-21 |
+| [immich-effect-v4-stage1-repositories.md](immich-effect-v4-stage1-repositories.md) | how-to |
 | 2026-10-21 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | investigation |
 | 2026-10-21 | [immich-strip-ai-machine-learning-fork.md](immich-strip-ai-machine-learning-fork.md) | how-to |
 | 2026-10-20 | [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md) | investigation |
