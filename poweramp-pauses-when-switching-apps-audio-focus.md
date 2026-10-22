@@ -60,7 +60,15 @@ Output goes to a USB DAC (FiiO JadeAudio JA11, `AUDIO_DEVICE_OUT_USB_HEADSET`). 
 adb shell dumpsys media.audio_flinger | grep -E "Output thread|underruns|Delayed writes|Total writes"
 ```
 
-Web search found no vivo/iQOO-specific report, but Poweramp's forum has the same pattern on other phones; the developer's standard advice is to raise buffer size/audio thread priority, disable Direct Volume Control, try OpenSL ES vs AudioTrack/Hi-Res output, and check ROM CPU throttling when the screen is off. Not yet tried on this device.
+Web search found no vivo/iQOO-specific report, but Poweramp's forum has the same pattern on other phones; the developer's standard advice is to raise buffer size/audio thread priority, disable Direct Volume Control, try OpenSL ES vs AudioTrack/Hi-Res output, and check ROM CPU throttling when the screen is off. 
+### Result of raising the buffer (2026-10-22)
+
+User raised the buffer size in Poweramp (Settings > Audio > Advanced Tweaks). Effects:
+
+- Poweramp rebuilt its output: a new track at 192 kHz (`dumpsys media.audio_flinger`, 08:31) instead of the 48 kHz / 4 ms `AudioOut_D` mixer path. The old thread's counters (`underruns=9 overruns=120`) stopped changing, so they are stale, not a measurement of the new path.
+- The user reports the bigger buffer **helps** with general glitching, but crackling **still happens on lock/unlock**.
+
+Remaining untested ideas, in order: disable Direct Volume Control; raise audio thread priority; try OpenSL ES vs AudioTrack/Hi-Res output; turn off EQ; sample CPU frequency during screen-off (`adb shell cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq`) and check OriginOS battery/background settings for Poweramp. Next measurement: play, lock/unlock a few times, then re-read `underruns=` for the new output thread.
 
 ## References
 
