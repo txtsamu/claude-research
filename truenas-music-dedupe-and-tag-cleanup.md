@@ -65,7 +65,7 @@ export BEETSDIR=$HOME/beets-music     # config.yaml, library.db, import.log
 beet import -A -q <curated album dirs>          # tags already verified: as-is, copy into new tree
 beet import -q -g Telegram Nekogram             # messy flat dump: MusicBrainz autotag, -g groups by album tag
 ```
-The new tree was built as a copy (`music-organized/`), then swapped in: `mv music music-old && mv music-organized music`; set `directory:` in the beets config to the new path (beets 2.14 stores relative paths, so the DB follows). `music-old` is the rollback.
+The new tree was built as a copy (`music-organized/`), then swapped in: `mv music music-old && mv music-organized music && mv music-old music-sync`; set `directory:` in the beets config to the new path (beets 2.14 stores relative paths, so the DB follows). `music-old` (renamed `music-sync` afterwards) was the rollback and is now the phone download inbox (`music-sync/Telegram/`).
 
 Clean-up steps after the import: normalize album artists with `beet modify -a` (collaborations and variants such as "Danilla, X", Dewa vs Dewa 19, case variants), compilations -> `Various Artists` + `comp=yes`, Cyrillic genres from the metadata source translated to English, `beet write` to push DB tags into files (some FLACs only had non-standard `album_artist` tags), `lastgenre` for missing genres.
 
