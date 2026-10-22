@@ -85,7 +85,8 @@ Web: Poweramp forum has the same symptom, mostly over Bluetooth (aptX Adaptive s
 
 References: [Poweramp: stuttering on Bluetooth when locking/unlocking](https://forum.powerampapp.com/topic/25322-music-is-stuttering-on-bluetooth-when-locking-and-unlocking-the-phone/), [Poweramp: music stops when device locked](https://forum.powerampapp.com/topic/10116-music-stops-playing-when-device-locked-possible-solution/), [Spotify community: stuttering when screen is locked](https://community.spotify.com/t5/Android/Music-stuttering-when-Screen-is-locked/m-p/3591102/highlight/true), [GSMArena: iQOO 12 OriginOS 6](https://m.gsmarena.com/iqoo_12_finally_gets_stable_originos_6_update_based_on_android_16-amp-70653.php)
 
-## References
+**User finding (2026-10-22): the unlock lag only happens with fingerprint unlock; pattern unlock keeps audio smooth.** This matches the forum report where removing fingerprint unlock fixed lock-related audio problems, so the trigger is the biometric unlock path (fingerprint service/HAL work, sensor/display boost, CPU load), not Poweramp's buffer or focus. Cause not yet identified; next step is capturing logcat (`adb logcat -v time`) during a fingerprint unlock and diffing against a pattern unlock. Workaround: unlock with pattern/PIN.
+
 
 - [Poweramp forum: crackling sound when lockscreen](https://forum.powerampapp.com/topic/10176-crackling-sound-when-lockscreen/)
 - [Poweramp forum: song/sound is breaking up when the screen is locked](https://forum.powerampapp.com/topic/20765-songsound-is-breaking-up-when-the-screen-is-locked/)
