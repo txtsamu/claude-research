@@ -2,7 +2,7 @@
 type: how-to
 tags: [fiio, snowsky-disc, diskos, music, rsync, nas, nfs, fat32, fsck, dedup, flac]
 created: 2026-10-19
-last_verified: 2026-10-19
+last_verified: 2026-10-22
 status: current
 ---
 
@@ -56,3 +56,28 @@ Deleting on the card over SSH: diskOS's `rm` is a guard wrapper that refuses any
 ## Library cleanup after deletions/renames
 
 The scanner prunes rows whose files vanished — unless a skipped dot-directory blocked it: `.Trash-1000` (Linux file manager) and `Music/.thumbnails` both set `g_prune_blocked`. Fixed in the fork (`69e3f04`, `2008afd`: a dot-dir blocks only if songs are indexed under it). On older builds: delete those dirs (`/bin/busybox rm -rf`), then rescan. Check: `sqlite3 /usr/data/fiio/db/song.db 'select count(*) from SONG'` equals the audio-file count on the card (797 at the end).
+
+## 2026-10-22 re-sync after the library reorganization
+
+The NAS library was reorganized into `Artist/Album (Year)/NN - Title` the same day, so nearly every path changed: the dry run showed ~810 adds / ~885 deletes, i.e. a full ~26 GB re-copy (`--delete` removed the old layout first, then it wrote at ~16 MB/s, ~27 min). Added `/CLAUDE.md` to `snowsky-sync.exclude` (the library root now holds an agent-instructions file). `*Yiruma*` still skips that artist; a tag scan (mutagen, artist/albumartist/composer/album/title for `yiruma|이루마`) confirmed no Yiruma tracks live outside `Yiruma/`.
+
+### Gotcha: case-variant folders collide on FAT
+rsync exited 23 on every run: `mkstemp ".../RAN/HOP3 (2011)/..." failed: No such file or directory`, and `--delete` was skipped for some old dirs. Cause: the NAS had both `RAN/` (HOP3, tagged "RAN") and `Ran/` (3 albums, tagged "Ran"). FAT is case-insensitive, so rsync created and deleted the shared folder against itself. Check for this on the source before syncing:
+```bash
+cd ~/nfs_photos/music && python3 -I -c "
+import os,collections
+s=collections.defaultdict(set)
+for d,ds,fs in os.walk('.'):
+    for n in ds+fs: s[os.path.join(d,n).lower()].add(os.path.join(d,n))
+print([v for v in s.values() if len(v)>1])"
+```
+Fix (beets, tag backup first at `~/music-tag-backup/ran-merge-2026-10-22.json`): find exact ids with `beet ls -a -f '$id|$albumartist|$album' albumartist:Ran` (a loose `albumartist:Ran` also matches Kuburan/Sarah Cothran, so use the ids), then
+```bash
+export BEETSDIR=$HOME/beets-music
+beet modify -y 'albumartist:=Ran' artist=RAN albumartist=RAN      # items
+beet modify -y -a 'id:188..190' albumartist=RAN                    # albums -> moves folders
+beet write 'albumartist:=RAN'; /usr/bin/find . -depth -type d -empty -delete
+```
+(`rtk find` rejects `-empty -delete`; call `/usr/bin/find`.) Then rerun the sync: card 804 audio files = NAS 804 (minus Yiruma), `fsck.vfat -n` clean.
+
+Leftover on the card: `Music/[Hi-Res][211201]YOASOBI - THE BOOK 2.../` holding only three excluded `*.url` ad shortcuts, so rsync cannot remove the dir (excluded files are kept). Harmless; delete by hand if the stock scanner trips on it.
