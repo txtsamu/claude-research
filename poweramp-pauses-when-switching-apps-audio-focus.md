@@ -87,8 +87,12 @@ References: [Poweramp: stuttering on Bluetooth when locking/unlocking](https://f
 
 **User finding (2026-10-22): the unlock lag only happens with fingerprint unlock; pattern unlock keeps audio smooth.** This matches the forum report where removing fingerprint unlock fixed lock-related audio problems, so the trigger is the biometric unlock path (fingerprint service/HAL work, sensor/display boost, CPU load), not Poweramp's buffer or focus. Cause not yet identified; next step is capturing logcat (`adb logcat -v time`) during a fingerprint unlock and diffing against a pattern unlock. Workaround: unlock with pattern/PIN.
 
+Web search for why (3 queries) found **no confirmed mechanism and no vivo/iQOO report** tying fingerprint unlock to audio lag. Only precedents: a Poweramp forum user on a Samsung (Android 6) whose music stopped after lock until the saved fingerprint was deleted and pattern unlock used, and an old iOS 7 Touch ID music-skip thread. Plausible but unverified: fingerprint auth causes a CPU/power/display burst or fingerprint-HAL activity that briefly disturbs the audio thread or USB path. Sensor type on this iQOO was not checked.
+
 
 - [Poweramp forum: crackling sound when lockscreen](https://forum.powerampapp.com/topic/10176-crackling-sound-when-lockscreen/)
 - [Poweramp forum: song/sound is breaking up when the screen is locked](https://forum.powerampapp.com/topic/20765-songsound-is-breaking-up-when-the-screen-is-locked/)
 - [Poweramp forum: crackling with USB DAC](https://forum.powerampapp.com/topic/9763-crackling-with-usb-dac/)
 - [Poweramp forum: crackling during playback](https://forum.powerampapp.com/topic/9882-crackling-during-playback)
+- [Poweramp: fingerprint may interfere (Samsung, pattern unlock fixed)](https://forum.powerampapp.com/topic/10116-music-stops-playing-when-device-locked-possible-solution/)
+- [iMore: music skips after Touch ID unlock (iOS 7)](https://forums.imore.com/iphone-5s/273113-music-skips-stutters-after-unlocking-device-using-touch-id-ios-7-0-4-a.html)
