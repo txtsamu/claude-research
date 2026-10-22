@@ -53,6 +53,39 @@ PY
 4. Cross-check changes: `もしも命が描けたら` -> "Moshimo Inochi ga Kaketara", `アドレナ` -> "Adrena", and the Ride On Time album tracks use the album's official titles (Someday, The Door Into Summer, Clouds, Kissing Goodnight).
 5. Gotcha: `pip download` run with cwd on the NFS dir dropped 4 wheel files into `music/`; removed. Run pip from the scratchpad/venv.
 
+## 4. Organizing with beets (2026-10-22, later the same day)
+
+Goal: `Artist/Album (Year)/NN - Title.ext`, correct tags, searchable filenames. Convention and agent instructions live in `music/CLAUDE.md` on the share.
+
+```bash
+python3 -m venv ~/venvs/beets && ~/venvs/beets/bin/pip install beets requests pylast pillow   # beets 2.14
+export BEETSDIR=$HOME/beets-music     # config.yaml, library.db, import.log
+# config.yaml: directory, plugins: inline fetchart embedart lastgenre, import: copy yes, write yes, quiet_fallback asis,
+# paths: default/comp/singleton, inline fields track_prefix + disc_prefix, replace rules (quote -> ')
+beet import -A -q <curated album dirs>          # tags already verified: as-is, copy into new tree
+beet import -q -g Telegram Nekogram             # messy flat dump: MusicBrainz autotag, -g groups by album tag
+```
+The new tree was built as a copy (`music-organized/`), then swapped in: `mv music music-old && mv music-organized music`; set `directory:` in the beets config to the new path (beets 2.14 stores relative paths, so the DB follows). `music-old` is the rollback.
+
+Clean-up steps after the import: normalize album artists with `beet modify -a` (collaborations and variants such as "Danilla, X", Dewa vs Dewa 19, case variants), compilations -> `Various Artists` + `comp=yes`, Cyrillic genres from the metadata source translated to English, `beet write` to push DB tags into files (some FLACs only had non-standard `album_artist` tags), `lastgenre` for missing genres.
+
+### Mistake and recovery
+A year fix used `beet modify -y -a albumartist:YOASOBI 'album:=THE BOOK for,' year=2026`. The query matched every album, so all 817 files got `year=2026` and every folder was renamed `(2026)`. Recovery: the untouched originals still had real dates, so a Python script (beets `Library` API) read `date` from the source files by (artist, title[, album]), set item year/month/day, `store()` + `write()`, then album-level year (`album.store(inherit=False)`), then `beet move` + `find -depth -type d -empty -delete`. 711 restored from source, rest from known release years (hand-checked). Lesson: always `beet ls` the same query and check the count before `modify`; prefer `id:` queries.
+
+### Other findings
+- `Sparkle.dsf` (RADWIMPS) is a truncated download: DSF header says 728 MB, file is 97 MB (69 s of 8:57). mutagen cannot write ID3 into it ("invalid padding").
+- RADWIMPS DSD128 -> FLAC archive: `ffmpeg -i x.dsf -af aresample=resampler=soxr:precision=28 -ar 176400 -sample_fmt s32 -c:a flac` (ffmpeg 7.1 decodes DSD but has no DSD encoder/muxer). Output in `music-archives/RADWIMPS - Kimi no Na wa. (DSD128 to FLAC 24bit 176.4kHz)/`.
+- Two mp4 music videos were moved to `music-archives/Videos/`; SHE IS SUMMER audio was transcoded with `ffmpeg -vn -af aresample=dither_method=triangular -sample_fmt s16 -c:a flac` (AAC source, so not truly lossless).
+- NAS `sync.sh` (rsync `-ah`, no `--delete`) copies `music` to Nextcloud, so the swap leaves the old layout there too until removed by hand.
+- Pitfall: the first background "wait for beets" loop used `pgrep -f` with the same command text and matched itself, running forever.
+
+### Beets references
+- [Path formats](https://beets.readthedocs.io/en/stable/reference/pathformat.html) (use `$albumartist`, not `$artist`)
+- [Plugins index](https://beets.readthedocs.io/en/stable/_sources/plugins/index.rst.txt), [Chromaprint/Acoustid plugin](https://docs.beets.io/en/v1.3.0/plugins/chroma.html)
+- [Picard file naming scripts](https://picard-docs.musicbrainz.org/en/extending/scripts.html), [Plex forum compilation naming thread](https://forums.plex.tv/t/file-folder-naming-for-compilations-various-artists/191121.md)
+- [Baka Majime](https://en.wikipedia.org/wiki/Baka_Majime), [SHE IS SUMMER - hair salon (Billboard JAPAN)](https://www.billboard-japan.com/goods/detail/593157), [Your Name (album)](https://en.wikipedia.org/wiki/Your_Name_(album))
+- [Extract audio without re-encoding](https://tinyapps.org/blog/201211220700_extract_audio_mp4.html), [AAC to FLAC discussion](https://forums.whathifi.com/threads/converting-from-lossy-aac-to-lossless-flac.42891/post-453691)
+
 ## Not verified / left alone
 
 Yiruma's Korean titles (English names not found), "Suki da" / "Mister" / "Seventeen" track membership of THE BOOK 3 (sources conflict), Moonglow "Ai o Egaite -Let's Kiss The Sun-" and "Sunshine -Ai no Kin'iro-", the DSF `スパークル` (no tags) and `上白石萌音` (an artist name used as the title).
