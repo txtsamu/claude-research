@@ -140,7 +140,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
-| [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | android, iqoo, poweramp, adb, audio-focus, instagram | 2026-10-22 |
+| [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | android, iqoo, poweramp, adb, audio-focus, usb-dac, fingerprint, instagram | 2026-10-22 |
 | [diskos-disc-hotload-watchdog-snowsky-logo-hang.md](diskos-disc-hotload-watchdog-snowsky-logo-hang.md) | fiio, snowsky-disc, diskos, disco, hot-load, watchdog, fiio_init | 2026-10-20 |
 | [gigabyte-b650m-k-argb-fan-no-light-openrgb-gbrgb.md](gigabyte-b650m-k-argb-fan-no-light-openrgb-gbrgb.md) | openrgb, gigabyte, b650m-k, rgb-fusion, it5702, hidraw, argb, reverse-engineering, systemd | 2026-10-20 |
 | [mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md](mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md) | mikrotik, routeros, dhcp, dns, technitium, lan, nxdomain, immich | 2026-10-19 |
