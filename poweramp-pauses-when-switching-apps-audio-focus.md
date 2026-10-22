@@ -68,7 +68,9 @@ User raised the buffer size in Poweramp (Settings > Audio > Advanced Tweaks). Ef
 - Poweramp rebuilt its output: a new track at 192 kHz (`dumpsys media.audio_flinger`, 08:31) instead of the 48 kHz / 4 ms `AudioOut_D` mixer path. The old thread's counters (`underruns=9 overruns=120`) stopped changing, so they are stale, not a measurement of the new path.
 - The user reports the bigger buffer **helps** with general glitching, but crackling **still happens on lock/unlock**.
 
-Remaining untested ideas, in order: disable Direct Volume Control; raise audio thread priority; try OpenSL ES vs AudioTrack/Hi-Res output; turn off EQ; sample CPU frequency during screen-off (`adb shell cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq`) and check OriginOS battery/background settings for Poweramp. Next measurement: play, lock/unlock a few times, then re-read `underruns=` for the new output thread.
+Correction: "Audio Thread Priority" is not present in the current build (1031); the advice comes from 2017 forum posts, and a web search found no changelog entry confirming when it was removed. A 2017 Xiaomi report also fixed most lock-screen crackling with a **wakelock** option plus a bigger buffer, so look for a wake-lock setting instead.
+
+Remaining untested ideas, in order: disable Direct Volume Control; look for a wake-lock option; try OpenSL ES vs AudioTrack/Hi-Res output; turn off EQ; sample CPU frequency during screen-off (`adb shell cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq`) and check OriginOS battery/background settings for Poweramp. Next measurement: play, lock/unlock a few times, then re-read `underruns=` for the new output thread.
 
 ## References
 
