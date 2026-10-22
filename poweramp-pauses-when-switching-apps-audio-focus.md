@@ -72,6 +72,19 @@ Correction: "Audio Thread Priority" is not present in the current build (1031); 
 
 Remaining untested ideas, in order: disable Direct Volume Control; look for a wake-lock option; try OpenSL ES vs AudioTrack/Hi-Res output; turn off EQ; sample CPU frequency during screen-off (`adb shell cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq`) and check OriginOS battery/background settings for Poweramp. Next measurement: play, lock/unlock a few times, then re-read `underruns=` for the new output thread.
 
+### Lag on unlock, then resume (2026-10-22)
+
+User: music lags on unlock, then resumes. Lock 08:38:31, unlock 08:39:12 (`logcat -b events | grep screen_toggled`).
+
+- `dumpsys audio` / `media.audio_flinger` show **no** audio event at the unlock instant (no focus change, no re-route, no new underruns). Poweramp stays PLAYING.
+- While locked, a Poweramp `USAGE_ASSISTANCE_SONIFICATION` AudioTrack (piid 11407) started/stopped repeatedly and the audio patch was rebuilt on the same device (08:38:50 - 08:39:01). Purpose not identified.
+- At the time the active output thread's device was `EARPIECE`, not the JA11 DAC (patch USB -> earpiece at 08:35:45), so the DAC routing needs verifying before blaming the buffer.
+- Logcat around the unlock showed no ANR/slow/lmkd lines.
+
+Web: Poweramp forum has the same symptom, mostly over Bluetooth (aptX Adaptive stutter on lock/unlock fixed by SBC; bigger buffer; toggling absolute volume). Other threads: enable Poweramp's **Use Wakelock**, exempt from battery optimizers, and one case fixed by removing fingerprint unlock. A GSMArena comment says dongle DACs crackled then went silent after the iQOO OriginOS 6 update (anecdote). No confirmed iQOO fix found.
+
+References: [Poweramp: stuttering on Bluetooth when locking/unlocking](https://forum.powerampapp.com/topic/25322-music-is-stuttering-on-bluetooth-when-locking-and-unlocking-the-phone/), [Poweramp: music stops when device locked](https://forum.powerampapp.com/topic/10116-music-stops-playing-when-device-locked-possible-solution/), [Spotify community: stuttering when screen is locked](https://community.spotify.com/t5/Android/Music-stuttering-when-Screen-is-locked/m-p/3591102/highlight/true), [GSMArena: iQOO 12 OriginOS 6](https://m.gsmarena.com/iqoo_12_finally_gets_stable_originos_6_update_based_on_android_16-amp-70653.php)
+
 ## References
 
 - [Poweramp forum: crackling sound when lockscreen](https://forum.powerampapp.com/topic/10176-crackling-sound-when-lockscreen/)
