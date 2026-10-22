@@ -188,7 +188,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md](snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md) | fiio, snowsky-disc, usb-dac, uac2, android, ghidra, reverse-engineering, firmware | 2026-10-22 |
+| [snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md](snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md) | fiio, snowsky-disc, usb-dac, uac2, android, ghidra, reverse-engineering, firmware | current | 2026-10-22 |
 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance | current | 2026-10-21 |
 | [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md) | kt02h20, ktmicro, jcally, fiio-ja11, usb-dac, firmware, reverse-engineering, hid, cdc-acm | current: protocol decoded (HID 0x54 unlock -> 8888:cdc0 CDC bootloader), cross-platform CLI built + tested, JA11 V2.2 flashed OK (now 2972:0102 JadeAudio JA11); no software backup possible | 2026-10-20 |
 | [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | ingenic, x2000, usb-boot, swb, boot-rom, snowsky-disc | current: SWB entry works (a108:eaef in 5 s); writer refuses after software entry (E320), NAND lock unsupported in FiiO kernel | 2026-10-19 |
