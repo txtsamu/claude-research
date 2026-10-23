@@ -129,6 +129,27 @@ churn, not a regression. No crashes in the crash buffer.
 Revert: `setprop persist.logd.size 50M; logcat -b all -G 50M`; `settings put global window_animation_scale 1.0`
 (and the other two); `cmd package install-existing com.xiaomi.mi_connect_service` / `com.milink.service`.
 
+### Second removal round (post-reboot "what bloat is left" audit)
+
+Remaining bloat was mostly resident Google/Xiaomi extras (RSS, which double-counts shared memory): Android Auto
+~260 MB (2 procs), Digital Wellbeing ~175 MB, Device Health Services ~315 MB (3 procs), plus Mi Cloud ~100 MB,
+Xiaomi Calendar ~100 MB, Google app ~230 MB. Removed (user approved the "safe" set, explicitly **kept Mi Browser**
+`com.mi.globalbrowser`, which is now a user-installed app):
+
+```bash
+for p in com.google.android.projection.gearhead com.google.android.apps.wellbeing \
+  com.google.android.apps.turbo com.google.android.apps.subscriptions.red \
+  com.google.android.apps.restore com.google.android.printservice.recommendation; do
+  adb shell pm uninstall -k --user 0 "$p" </dev/null
+done
+# revert: adb shell cmd package install-existing <pkg>
+```
+
+Still installed and offered but not removed: Mi Video/Music, Mi Cloud (5 pkgs), Xiaomi Calendar/Gallery, Themes,
+Mi Push (`xmsf`), Google app, stock YouTube, SafetyCore. Right after removal "Used RAM" did not drop (2.43 -> 2.58 GB,
+cache/zram churn after the kill), so the saving only shows over time. Right after the reboot the CPU was still ~35% idle
+with `nice` activity (post-boot dexopt/Play updates), not a steady state.
+
 ## 6. Commands used
 
 ```bash
