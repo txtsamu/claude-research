@@ -126,6 +126,54 @@ In `apps/Launcher/main.js` I added a temporary `dbg(msg)` that sets `new Image()
 
 Rebuild/redeploy loop: `PROFILE=samu tools/deploy-launcher.sh` (about 5 s).
 
+## 8. Default/boot app: not achievable on this TV (confirmed, not just skipped)
+
+Wanted: make Clean Home the TV's default Home/boot app (repo's Part 2: rows in
+`app-context.db.key_filter` plus `db/appfw/home_appid`, `booting_appid_backup`,
+`db/first_screen/type` in vconf). This needs a writable shell. Two candidate
+paths, both confirmed dead on this TV rather than just untried:
+
+1. **Plain `sdb shell`** — closed on retail firmware (seen in step 4/backup).
+2. **A root shell via `samsung-tv-root`** (see the separate investigation doc,
+   [samsung-tv-root-exploit-compatibility-probe.md](samsung-tv-root-exploit-compatibility-probe.md)) —
+   its `execute`/`root acquire` commands only work *after* one of its three
+   root routes succeeds and leaves a persistent agent running on the TV; all
+   three fail preflight on this hardware (armv7l / kernel 4.1.10 / Tizen 5.5).
+   The one-shot preflight callback is not an interactive shell, so there is no
+   write path through that project either.
+
+Conclusion: on this exact model/firmware, there is currently no way to write
+`app-context.db` or the boot vconf keys through either project. Not a risk
+decision, just no execution path exists. Clean Home stays a regular app you
+open from the TV's app list; Samsung doesn't expose a public API for a
+third-party app to become the boot default without root.
+
+## 9. Dark background: switch the built-in default from Obsidian to Aurora
+
+The launcher ships three themes (`apps/Launcher/main.js`, `THEMES`): Obsidian
+(flat `#000000`, the actual code default despite the project's own
+`wallpapers/README.md` claiming it defaults to Aurora), Aurora (CSS radial
+teal/violet glow on navy — no external media needed), and a 6-column layout
+variant. The 42 entries in `wallpapers.json` are metadata only; the real
+`.mp4`/`.jpg` files are intentionally not committed (~88 MB, not the authors'
+to redistribute — see `apps/Launcher/wallpapers/README.md`), so without
+supplying your own clips the background is always the flat CSS one.
+
+Fix (pure CSS/JS, no exploit, no root needed):
+
+```bash
+# main.js: three "obsidian" defaults -> "aurora"
+sed -i 's/theme: "obsidian"/theme: "aurora"/g' apps/Launcher/main.js
+sed -i 's/typeof parsed.theme === "string" ? parsed.theme : "obsidian"/typeof parsed.theme === "string" ? parsed.theme : "aurora"/' apps/Launcher/main.js
+# bump the localStorage store key so an existing TV save (theme: "obsidian") doesn't override the new default
+sed -i 's/cleanhome.v2/cleanhome.v3/' apps/Launcher/main.js
+PROFILE=samu tools/deploy-launcher.sh
+```
+
+A "Theme" tile already exists in the settings rail (`main.js` line ~1100,
+`cycleTheme()`) to cycle Obsidian → Aurora → Six-column by remote, independent
+of this change to the default.
+
 ## Undo
 
 ```bash
