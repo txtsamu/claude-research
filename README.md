@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-23 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | how-to |
 | 2026-10-23 | [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | investigation |
 | 2026-10-23 | [samsung-tv-dotnet-launcher-standalone-invocation.md](samsung-tv-dotnet-launcher-standalone-invocation.md) | investigation |
 | 2026-10-23 | [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | investigation |
@@ -78,6 +79,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | android, xiaomi, redmi, miui, adb, debloat, telemetry, ads | 2026-10-23 |
 | [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora | 2026-10-23 |
 | [diskos-stock-plus-round-screen-features-and-flash.md](diskos-stock-plus-round-screen-features-and-flash.md) | fiio, snowsky-disc, diskos, lvgl, round-display, flash, usbboot | 2026-10-23 |
 | [immich-effect-v4-stage1-repositories.md](immich-effect-v4-stage1-repositories.md) | immich, fork, effect, effect-ts, nestjs, kysely, subagents, git-subtree | 2026-10-21 |
