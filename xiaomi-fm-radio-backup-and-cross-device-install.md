@@ -119,7 +119,38 @@ If it finds stations, the cable and location are fine and the Note 12 Pro lacks 
 Other things that cost nothing to try: a different wired headset (4-pole TRRS vs 3-pole), plugging it in fully, moving
 near a window. Stations are broadcast on 87.5-108.0 only; the app's band is fixed at that range.
 
-## 7. Not verified
+## 7. Installing the third package (`com.android.fmradio`) did not help; all three removed
+
+User suggested installing the remaining system package. Done:
+
+```bash
+adb -s $N install ~/phone-backup/redmi10-fm-radio/com.android.fmradio_2.0.apk     # Success
+adb -s $N shell pm grant com.android.fmradio android.permission.RECORD_AUDIO
+adb -s $N shell pm grant com.android.fmradio android.permission.POST_NOTIFICATIONS
+adb -s $N shell am force-stop com.miui.fm; adb -s $N shell am force-stop com.miui.fmservice   # free /dev/fm
+adb -s $N shell am start -n com.android.fmradio/.FmMainActivity     # it has NO launcher icon; resolve-activity said "No activity found"
+```
+
+`dumpsys package com.android.fmradio` shows `FmMainActivity`, `FmEmActivity` (MTK engineering mode), `FmService`, `FmProvider`.
+Tapping its play button auto-scanned in **four passes** (per-step codes `-----1` .. `-----4`, ~74/126/126/79 steps) and ended with
+`FMLIB_CORE: scan stop!!! tune ret=0`. The screen then showed 100.1 MHz, which I wrongly took as a found station; the
+"Radio Stations" list said **"No stations found"**. The one thing that went wrong in my process: my `KEYCODE_BACK` came while that scan
+was still running, so I cannot be sure the last pass ran to the end. A clean rerun was started but the user stopped the session and asked for removal.
+`content query --uri content://com.android.fmradio/station` fails (`provider not exported`).
+
+Conclusion unchanged: the FM chip and driver work, but no station was found by either app. Most likely cause is still the antenna path,
+unconfirmed. The Redmi 10 headphone cross-test from section 6 was never run.
+
+Removed at the user's request ("its not working"):
+
+```bash
+for p in com.miui.fm com.miui.fmservice com.android.fmradio; do adb -s $N uninstall $p; done   # all Success
+adb -s $N shell pm list packages -u | grep -iE "fmradio|miui\.fm|fmservice"                    # empty
+```
+
+The APK + data backups of all three remain in `~/phone-backup/redmi10-fm-radio/`.
+
+## 8. Not verified
 
 Actual tuning/audio was **not** tested over ADB: it needs wired headphones and the permission prompt accepted on
 the phone. `com.android.fmradio` was backed up but not installed (the Mi Radio + fmservice pair covers it).
