@@ -98,6 +98,37 @@ was just a permission denial.
 Left alone on purpose: `swappiness=100` (PSI shows no thrash), `lmkd`/minfree values, `com.miui.home`, `com.miui.securitycenter`,
 `com.miui.powerkeeper`, `com.huaqin.sarcontroller` (SAR/regulatory), `com.lbe.security.miui` (permission manager).
 
+### Applied (same day, user approved) and results
+
+```bash
+# all run as root via: adb shell su < apply.sh   (stdin, to avoid the su -c quoting problem)
+logcat -b all -G 256K                         # runtime resize; main was 50 MiB
+setprop persist.logd.size 256K                # survives reboot (was 50M)
+settings put global window_animation_scale 0.5
+settings put global transition_animation_scale 0.5
+settings put global animator_duration_scale 0.5
+pm uninstall -k --user 0 com.xiaomi.mi_connect_service
+pm uninstall -k --user 0 com.milink.service
+am force-stop com.dergoogler.mmrl.wx; am force-stop com.topjohnwu.magisk
+adb reboot                                    # clears orphan procs, applies encore's pending removal
+```
+
+| | Before | After reboot |
+|---|---|---|
+| `logd` ring buffers | main/kernel 50 MiB each | 256 KiB each, `persist.logd.size=256K` held |
+| MemAvailable | ~1.55-1.67 GB | ~2.07 GB |
+| ZRAM in swap | 1.1 GB (296 MB physical) | 0.5 GB (107 MB physical) |
+| Used RAM | 3.17 GB | 2.43 GB |
+| Modules | LowRAMFlagJos, NLSound, encore (remove flag), magisk-swapspace | `encore` gone; the other three remain |
+| Animations | 1.0 / 1.0 / default | 0.5 / 0.5 / 0.5 |
+
+Notes: right after the live resize `logd` still held ~67 MB PSS (it does not return heap until restarted),
+so the real saving only shows after a reboot. Right after boot, memory PSI `some avg10=1.50` is normal boot
+churn, not a regression. No crashes in the crash buffer.
+
+Revert: `setprop persist.logd.size 50M; logcat -b all -G 50M`; `settings put global window_animation_scale 1.0`
+(and the other two); `cmd package install-existing com.xiaomi.mi_connect_service` / `com.milink.service`.
+
 ## 6. Commands used
 
 ```bash
