@@ -132,8 +132,11 @@ the credential vector and calls `PS_AuthInfo::Match` for each entry.)
 
 ### The compiled credential for ps_mount_cifs
 
-`.rodata` (vaddr == file offset, 0x353a8..0x3e494) holds the table. Around the
-`ps_mount_cifs` key at 0x38f54:
+`.rodata` (vaddr == file offset, 0x353a8..0x3e494) holds the table, and the key
+strings are `ps_insmod` (0x358dc), `ps_mount` (0x38d84), `ps_mount_cifs`
+(0x38f54), `ps_umount` (0x39af0), `ps_umount_cifs` (0x39b5c), `ps_mknod`
+(0x39bbc), `ps_rmmod` (0x39bf4), `ps_systemctl` (0x39c54). The SMB credential
+appears in the block ending just before the `ps_mount_cifs` key:
 
 ```
 0x38dab  label regex  User\:\:Pkg\:\:org\.tizen\.remotepc
@@ -154,6 +157,32 @@ Points that matter:
 - The policy is compiled in. A grep for `ps_mount_cifs` across `/usr/apps`,
   `/opt/usr`, `/usr/share` and `/etc` returns only the `ps_agent` binary itself;
   there is no XML/config to edit.
+
+Attribute that block to `ps_mount` rather than `ps_mount_cifs` and it changes
+nothing for the attacker: both keys are only reachable from the same process, and
+this is the only credential in the whole table that carries an SMB
+`credentials=` argument with a caller-supplied host. Exact key-level attribution
+could not be settled further — `PS_CredentialManager::GetCredentials` (0xef6c)
+fails to decompile (`rea`: `Analysis failed`) and `.data.rel.ro` contains no
+pointers to these strings, so the table is built at runtime by that function and
+the grouping above rests on `.rodata` layout adjacency.
+
+### The rest of the table (why no other agent is reachable)
+
+Every other credential pair in `.rodata` is equally app-specific and equally
+unreachable from uid 901 (`System`) or from our own TPK app
+(`User::Pkg::samudntest01`):
+
+| label | path | serves |
+|---|---|---|
+| `User::Pkg::org.tizen.ep-hotel-hms` | `/opt/usr/apps/org.tizen.ep-hotel-hms/bin/` | loading usbserial/cp210x/cdc-acm/ftdi_sio modules |
+| `System::Privileged` | `/usr/apps/com.samsung.tv.nfc-daemon/bin/...`, `/usr/bin/gatorDir/tztv-tagpro-*` | NFC + tagpro kernel modules |
+| `User::App::org.tizen.netflix-app` / `User::Pkg::org.tizen.netflix-app` | `/usr/apps/org.tizen.netflix-app/bin/netflix-app`, `/usr/bin/launchpad-loader`, `/usr/bin/node`, `/usr/bin/wrt-service`, `.../wrt-service-standalone`, `/usr/bin/wrt` | loop-mounts of `empNetflix.img`, `*.tmg`, `wsa` images |
+| (remotepc) | `/usr/apps/org.tizen.remotepc/bin/remotepc_uilauncher` | the SMB/CIFS mount |
+
+The remaining `mount`-shaped rules (`^/tmp/[A-Za-z0-9_.:-]+$`,
+`^-l /tmp/...$`, `^/opt/usr/apps/<pkg>/res/wgt$`) belong to those same app
+credentials, not to a generic agent, so knowing them does not add a route.
 
 Consequence: `dbus-send`, `busctl`, the sdk shell (SMACK `System`) and our own
 TPK app can never satisfy this. The agent name, the label and the exact
