@@ -76,7 +76,29 @@ was just a permission denial.
 - Set and read protected settings: confirm the meaning of `global/personalized_ad_enabled` and
   `secure/upload_log_pref` by flipping the UI toggle and diffing `settings list global/secure`.
 
-## 5. Commands used
+## 5. Performance / RAM audit (read-only, 2026-10-23)
+
+`dumpsys meminfo`: Total 3.81 GB, free+cached ~2.16 GB, used PSS 2.56 GB, ZRAM 296 MB physical for 1.1 GB swapped.
+`/proc/pressure/memory` was ~0 (avg10/avg60 `0.00`): **no memory stall, the phone is not RAM-starved**.
+
+| Finding | Detail | Action candidate |
+|---|---|---|
+| Load average ~26 is a false alarm | `ps -A -o PID,STAT,NAME` shows ~25 permanent `D`-state MediaTek kernel threads (`wdtk-*`, `ccci_*`, `charger_thread`, `gauge_*`, `hang_detect`...). They count toward loadavg but use no CPU; `procs_blocked 0`, idle CPU ~700% | None |
+| `logd` uses ~124 MB PSS | `persist.logd.size=50M`; `logcat -g`: main buffer 50 MiB (49 consumed), kernel 50 MiB | `logcat -b all -G 256K` now, `setprop persist.logd.size 256K` to persist; saves ~100 MB. Costs debug-log history only |
+| Root-manager processes | `com.dergoogler.mmrl.wx:root:0` x3 (~58 MB RSS each) + `com.topjohnwu.magisk:root:0` (~134 MB RSS) | Close MMRL/Magisk apps when not in use |
+| Orphans of removed packages | `com.miui.daemon` (18 MB) still running after `pm uninstall --user 0` | Reboot clears them; also applies the pending `encore` module removal |
+| Optional Xiaomi services still resident | `mi_connect_service` 22 MB, `milink.service` 19 MB, `xmsf` 11 MB, `miwallpaper` 32 MB, `securitycenter.remote` 31 MB | Remove Mi Connect/MiLink if casting is unused |
+| Google app | `googlequicksearchbox` x3 procs ~230 MB (`:googleapp`, `:search`, `:interactor`) | Disabling loses Assistant, Discover, search widget, Lens |
+| Two launchers resident | `bitpit.launcher` 87 MB + `com.miui.home` 69 MB | Keep `com.miui.home`: MIUI recents/gestures depend on it |
+| Big user apps | Quetta browser (4 processes, ~400 MB), Play Store (2 procs, ~160 MB), GMS 125 MB | User choice |
+| Animations | `window/transition_animation_scale=1.0`, `animator_duration_scale=null` | `settings put global window_animation_scale 0.5` (and the other two): feels faster, fully reversible |
+| Governor / IO | `schedutil`; eMMC scheduler `cfq`, `read_ahead_kb=128` | Leave; gains would be marginal |
+| Dex state | `dumpsys package dexopt` output was not conclusive | `cmd package compile -m speed-profile -a` is safe, takes a while |
+
+Left alone on purpose: `swappiness=100` (PSI shows no thrash), `lmkd`/minfree values, `com.miui.home`, `com.miui.securitycenter`,
+`com.miui.powerkeeper`, `com.huaqin.sarcontroller` (SAR/regulatory), `com.lbe.security.miui` (permission manager).
+
+## 6. Commands used
 
 ```bash
 adb shell su -c 'id; magisk -v; getenforce'
