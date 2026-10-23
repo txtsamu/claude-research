@@ -38,6 +38,7 @@ One combined view across all three tables below, so the latest work is visible a
 | Date | Doc | Type |
 |---|---|---|
 | 2026-10-23 | [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | investigation |
+| 2026-10-23 | [samsung-tv-archive-root-dotnet-launcher-route.md](samsung-tv-archive-root-dotnet-launcher-route.md) | investigation |
 | 2026-10-23 | [samsung-tv-root-exploit-compatibility-probe.md](samsung-tv-root-exploit-compatibility-probe.md) | investigation |
 | 2026-10-23 | [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | how-to |
 | 2026-10-22 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | troubleshooting |
