@@ -37,6 +37,8 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-23 | [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | investigation |
+| 2026-10-23 | [samsung-tv-dotnet-launcher-standalone-invocation.md](samsung-tv-dotnet-launcher-standalone-invocation.md) | investigation |
 | 2026-10-23 | [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | investigation |
 | 2026-10-23 | [samsung-tv-archive-root-dotnet-launcher-route.md](samsung-tv-archive-root-dotnet-launcher-route.md) | investigation |
 | 2026-10-23 | [samsung-tv-root-exploit-compatibility-probe.md](samsung-tv-root-exploit-compatibility-probe.md) | investigation |
@@ -197,6 +199,8 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | samsung, tizen, tv, kernel, exploit, lpe, ntksys, sdp-mem, mali, kbase, uep, memfd, firmware, msd, armv7l | current: kernel routes surveyed — califio T5300 physmap chain matches platform but dies on 2026 mmap whitelist, /dev/sdp_mem is 0600 root (reachable only from root, unverified), Mali kbase CVEs still open and no KASLR; memfd beats UEP for native payloads; firmware MSDU will not decrypt (KantS2 passphrase unpublished) | 2026-10-23 |
+| [samsung-tv-dotnet-launcher-standalone-invocation.md](samsung-tv-dotnet-launcher-standalone-invocation.md) | samsung, tizen, tv, root, dotnet, dotnet-launcher, aul, capabilities, tizen-source, armv7l | current: invocation contract solved from Tizen 5.5 src RPMs — `--standalone <dll>` plus AUL_APPID/AUL_ROOT_PATH env short-circuits both fatal aul calls, no setuid so file caps survive; netcoreapp3.0 probe built; unpublished upstream | 2026-10-23 |
 | [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | samsung, tizen, tv, root, remotepc, cifs, smack, ghidra, reverse-engineering | current: Remote PC/CIFS route mapped end to end, ps_agent credential policy reversed (anchored boost::regex_match, one reachable caller pair), full credential inventory tabulated, RDP+SMB lab verified, awaiting the TV-side Shared Folder trigger | 2026-10-23 |
 | [samsung-tv-root-exploit-compatibility-probe.md](samsung-tv-root-exploit-compatibility-probe.md) | samsung, tizen, tv, root, sdb, dotnet, armv7l | historical: superseded by the Remote PC/CIFS write-up; blocked: entry-point bug fires on this older armv7l/Tizen 5.5 model, but all 3 escalation routes fail (wrong CPU arch, wrong kernel, missing runtime capability bits) | 2026-10-23 |
 | [snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md](snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md) | fiio, snowsky-disc, usb-dac, uac2, android, ghidra, reverse-engineering, firmware | current | 2026-10-22 |
