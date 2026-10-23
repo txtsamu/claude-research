@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-23 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | how-to |
 | 2026-10-23 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | investigation |
 | 2026-10-23 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | how-to |
 | 2026-10-23 | [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | investigation |
@@ -80,6 +81,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | android, xiaomi, redmi, fm-radio, adb, wireless-debugging, apk-backup | 2026-10-23 |
 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | android, xiaomi, redmi, miui, adb, debloat, telemetry, ads | 2026-10-23 |
 | [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora | 2026-10-23 |
 | [diskos-stock-plus-round-screen-features-and-flash.md](diskos-stock-plus-round-screen-features-and-flash.md) | fiio, snowsky-disc, diskos, lvgl, round-display, flash, usbboot | 2026-10-23 |
