@@ -106,6 +106,26 @@ tools/setup.sh --tv 192.168.50.31 --profile samu --no-spotify
 
 Output ended with `Installed the package: Id(tvunlock02.Launcher)` and `successfully launched pid = 730`. Clean Home (`tvunlock02.Launcher`) is now in the TV's app list.
 
+## 7. Empty "No apps" home screen: first-run crash (upstream bug) + curation
+
+Symptom: Clean Home opens but says no apps. `sdb shell` is dead on this firmware and a TV can't be screenshotted from the PC, so I had the TV report to me over HTTP:
+
+```bash
+# tiny stdlib HTTP collector on the PC (port 8792) that logs GET/POST bodies
+python3 -I collector.py          # ThreadingHTTPServer(("0.0.0.0", 8792), Handler)
+sudo firewall-cmd --add-port=8792/tcp      # runtime only; undo: --remove-port=8792/tcp
+```
+
+In `apps/Launcher/main.js` I added a temporary `dbg(msg)` that sets `new Image().src = "http://<pc-ip>:8792/log?m=..."`, plus a `window` `error` listener, and logged the `getAppsInfo` results (all removed afterwards). Findings, in order:
+
+1. `Uncaught TypeError: Cannot set property 'textContent' of undefined` at the start of `loadApps()`. On a first run (no localStorage cache) it did `el.title.textContent = "Loading"; el.sub.textContent = ...`, but `el.title`/`el.sub` no longer exist in `index.html`, so it threw before `fetchApps()` ran. The author's TV always had a cache, so upstream never hit it. Fix: use `el.empty` / `el.emptyText` instead of those two lines.
+2. After that, `tizen.application.getAppsInfo` returned **298** apps (UA: `Tizen 5.5`, Chrome 69), so the privileges in `config.xml` are fine.
+3. The upstream curated filter (`isConsumer` then `isCurated`) left 6 apps: e-Manual, Gallery, LiveTV, Netflix, TVDeviceCare, YouTube. Showing every `show:true` app is worse: about half of the 298 are Samsung internals (hotel mode, AgingApp, debug menus). I kept the curation and added these ids to `SAMSUNG_KEEP`: `com.samsung.tv.knox-browser`, `com.samsung.tv.store`, `com.samsung.tv.coba.source`, `com.samsung.tv.cobalt-ytkids`, `com.samsung.tv.cobalt-yttv`, `com.samsung.tv.mycontents`, `org.tizen.bmplayer`, `org.tizen.globoplayapp`, `org.tizen.remotepc`.
+4. The launcher caches the filtered list for 6 h under `cleanhome.apps.v1`; bump that key after changing filters (I ended at `...v6`) or the stale list is reused.
+5. Upstream has hard-coded beacons to `http://192.168.100.24:8792/{perf,caps,dump}` (the author's LAN). I pointed them at `127.0.0.1`.
+
+Rebuild/redeploy loop: `PROFILE=samu tools/deploy-launcher.sh` (about 5 s).
+
 ## Undo
 
 ```bash
