@@ -196,7 +196,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | samsung, tizen, tv, root, remotepc, cifs, smack, ghidra, reverse-engineering | current: Remote PC/CIFS route mapped end to end, ps_agent credential policy reversed (anchored boost::regex_match, single allowed caller), RDP+SMB lab verified, awaiting the TV-side Shared Folder trigger | 2026-10-23 |
+| [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | samsung, tizen, tv, root, remotepc, cifs, smack, ghidra, reverse-engineering | current: Remote PC/CIFS route mapped end to end, ps_agent credential policy reversed (anchored boost::regex_match, one reachable caller pair), full credential inventory tabulated, RDP+SMB lab verified, awaiting the TV-side Shared Folder trigger | 2026-10-23 |
 | [samsung-tv-root-exploit-compatibility-probe.md](samsung-tv-root-exploit-compatibility-probe.md) | samsung, tizen, tv, root, sdb, dotnet, armv7l | historical: superseded by the Remote PC/CIFS write-up; blocked: entry-point bug fires on this older armv7l/Tizen 5.5 model, but all 3 escalation routes fail (wrong CPU arch, wrong kernel, missing runtime capability bits) | 2026-10-23 |
 | [snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md](snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md) | fiio, snowsky-disc, usb-dac, uac2, android, ghidra, reverse-engineering, firmware | current | 2026-10-22 |
 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance | current | 2026-10-21 |
