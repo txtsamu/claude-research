@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-23 | [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | how-to |
 | 2026-10-22 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | troubleshooting |
 | 2026-10-22 | [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | troubleshooting |
 | 2026-10-22 | [truenas-music-dedupe-and-tag-cleanup.md](truenas-music-dedupe-and-tag-cleanup.md) | how-to |
@@ -72,6 +73,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora | 2026-10-23 |
 | [diskos-stock-plus-round-screen-features-and-flash.md](diskos-stock-plus-round-screen-features-and-flash.md) | fiio, snowsky-disc, diskos, lvgl, round-display, flash, usbboot | 2026-10-23 |
 | [immich-effect-v4-stage1-repositories.md](immich-effect-v4-stage1-repositories.md) | immich, fork, effect, effect-ts, nestjs, kysely, subagents, git-subtree | 2026-10-21 |
 | [immich-strip-ai-machine-learning-fork.md](immich-strip-ai-machine-learning-fork.md) | immich, fork, machine-learning, postgres, migration, pnpm, podman | 2026-10-21 |
