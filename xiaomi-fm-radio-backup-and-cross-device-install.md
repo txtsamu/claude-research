@@ -89,7 +89,37 @@ adb -s $N shell ps -A | grep miui.fm     # com.miui.fmservice:remote and com.miu
 Afterwards a `com.miui.fmservice/.../PermissionActivity` task appeared: the first-run permission screen, which
 must be accepted on the phone.
 
-## 6. Not verified
+## 6. Result: software works, but the tuner receives nothing
+
+User report: "tuning does not work". The app sat on `87.5` with a "Tuning..." toast and an empty dial. Debug steps, in order:
+
+```bash
+adb -s $N shell ls -lZ /dev/fm                     # crw-rw---- media media u:object_r:fm_device:s0 (exists)
+adb -s $N shell dumpsys audio | grep -A3 "Connected devices"   # type:0x4 (headset) connected: antenna present
+adb -s $N shell input keyevent KEYCODE_WAKEUP      # uiautomator dump failed ("null root node") with screen off
+adb -s $N exec-out screencap -p > fm.png           # screenshot: found seek buttons (scale 1.2 vs displayed image)
+adb -s $N logcat -c; adb -s $N shell input tap 792 2114      # seek-forward button
+adb -s $N logcat -d | grep -E "FMLIB|Fm:s-|AudioALSAFM"
+```
+
+What the log showed:
+- `Fm:s-FmLocalService: onFmTurnedOn`, `AudioALSAFMController: setFmVolume()`: the service and the audio HAL FM path are up.
+- `FMLIB_CORE: seek start freq 8750 band_channel_no=[206] ... band[8750 - 10800]`, then **all 205 steps logged `freq=XXXX-----1`**
+  (no other result code appeared even once), ending `FMLIB_JNI: seek, [freq=8750] [ret=0]`: it wrapped to the start with no station.
+- `FMR_tune ... [ret=0]`, `isRDSsupport [support=1]`; `FMR_read_rds_data ... [ret=-1013]` every 500 ms (no RDS data).
+- No crashes, no FM-related `avc: denied`. (The `mcd_data_file` denial is unrelated.)
+
+Reading: every driver call succeeds (chip MT6635 answers, `/dev/fm` works), but the tuner sees zero channels across the
+whole 87.5-108.0 MHz band. That points to **no usable RF at the chip**: the headphone-cable antenna is not routed to the
+FM input on this board, or the FM front end is unpopulated. The official Note 12 Pro 5G firmware ships with no FM app
+either, which supports that. This is an inference from the log, not confirmed on the board.
+
+Discriminating test (not yet done): plug the same headphones into the Redmi 10 (FM works there with `com.miui.fm`).
+If it finds stations, the cable and location are fine and the Note 12 Pro lacks the antenna path.
+Other things that cost nothing to try: a different wired headset (4-pole TRRS vs 3-pole), plugging it in fully, moving
+near a window. Stations are broadcast on 87.5-108.0 only; the app's band is fixed at that range.
+
+## 7. Not verified
 
 Actual tuning/audio was **not** tested over ADB: it needs wired headphones and the permission prompt accepted on
 the phone. `com.android.fmradio` was backed up but not installed (the Mi Radio + fmservice pair covers it).
