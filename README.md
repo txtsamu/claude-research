@@ -37,6 +37,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-24 | [samsung-tv-uep-bypass-and-kants2-root.md](samsung-tv-uep-bypass-and-kants2-root.md) | investigation |
 | 2026-10-23 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | how-to |
 | 2026-10-23 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | investigation |
 | 2026-10-23 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | how-to |
@@ -204,6 +205,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [samsung-tv-uep-bypass-and-kants2-root.md](samsung-tv-uep-bypass-and-kants2-root.md) | samsung, tizen, kants2, uep, kernel-exploit | current: root + UEP-off proven on device (152 ms fast path); boot persistence blocked | 2026-10-24 |
 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | android, redmi, miui, magisk, root, swap, zram, lmkd | current: root over adb works (Magisk 30.7); swap already on as 2.2 GB lz4 zram, swappiness 100, MIUI writeback loop device; magisk-swapspace installed but inactive; encore module flagged for removal | 2026-10-23 |
 | [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | samsung, tizen, tv, kernel, exploit, lpe, ntksys, sdp-mem, mali, kbase, uep, memfd, firmware, msd, armv7l | current: kernel routes surveyed — califio T5300 physmap chain matches platform but dies on 2026 mmap whitelist, /dev/sdp_mem is 0600 root (reachable only from root, unverified), Mali kbase CVEs still open and no KASLR; memfd beats UEP for native payloads; firmware MSDU will not decrypt (KantS2 passphrase unpublished) | 2026-10-23 |
 | [samsung-tv-dotnet-launcher-standalone-invocation.md](samsung-tv-dotnet-launcher-standalone-invocation.md) | samsung, tizen, tv, root, dotnet, dotnet-launcher, aul, capabilities, tizen-source, armv7l | current: invocation contract solved from Tizen 5.5 src RPMs — `--standalone <dll>` plus AUL_APPID/AUL_ROOT_PATH env short-circuits both fatal aul calls, no setuid so file caps survive; netcoreapp3.0 probe built; unpublished upstream | 2026-10-23 |
