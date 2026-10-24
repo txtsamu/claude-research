@@ -245,6 +245,16 @@ looked like "SUID blocked" but was actually bash waiting on an empty stdin.
   boot persistence means writing flash or the bootloader, which was deliberately
   out of scope.
 
+Measured after an actual unplug/replug (2026-10-24, `/proc/uptime` 203 s), layer by layer:
+launcher `HIDE_IDS` and the `ConditionPathExists` markers survive because they are files on
+`/opt`; `pkgcmd -D` deactivations, `systemctl stop`/`mask --runtime`, the `/etc/hosts`
+bind mount and the UEP flip do not. Running services go `104 -> 115` on their own and the
+telemetry daemons (`media-analytics`, `contents-recognition`, `vision-data-recognition`,
+`voice-app`) come back at boot. Re-apply is two commands and is scripted in
+[samsung-tv-t6500-debloat-cold-boot-persistence.md](samsung-tv-t6500-debloat-cold-boot-persistence.md),
+which also records why each script must be invoked as data (`hermes_root -p -c
+'sh -c "$(cat …)"'`) even while root: UEP re-armed inside the same session during that run.
+
 ## Debloat with root
 
 Root's practical value on this set is control of the writable partitions plus
@@ -262,6 +272,11 @@ Verified facts:
 - **Bind mounts work** with full caps, which is the way to persist configuration on
   a read-only rootfs: `mount --bind /opt/hermes/hosts.block /etc/hosts`. The source
   file lives on rw `/opt`, so only the mount has to be re-applied per boot.
+  `/etc/hosts` itself is **read-only** (`Read-only file system` even as `uid=0` with
+  `CapEff ffffffffffffffff`, 148 bytes), so writing the sinkhole entries into it in
+  place — the fix floated in the launcher-curation doc — is not available on this build.
+  Worth checking whether the sinkhole is even needed: the LAN resolver already returns
+  `0.0.0.0` for `samsungads.com` / `samsungacr.com` / `smetrics.samsung.com`.
 - `iptables` is present (with Samsung's own `DPM-ALLOW` / `DPM-DENY` chains) but
   there is **no `xt_owner`** module, so rules cannot match a uid — destination
   IP/CIDR only.

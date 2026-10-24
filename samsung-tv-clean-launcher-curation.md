@@ -132,15 +132,25 @@ turned into a `smartsecurity` "user block" report (`SfTaskMessageReceiver`,
 `smartsecurity` pid 1669) — pure wasted CPU and log churn, and the most likely
 contributor to the reported Home-button lag.
 
-Fix (not applied yet): stop bind-mounting. `/etc/hosts` on this TV is a plain
-452-byte `-rw-rw-rw- root root` file that lives on the writable `/opt` mapping, so
-the sinkhole entries can be written into it directly, keeping its original label:
+The proposed fix was to stop bind-mounting and write the sinkhole straight into
+`/etc/hosts` ("a plain 452-byte `-rw-rw-rw-` file on the writable `/opt` mapping"). **That
+does not work on this build:** `/etc/hosts` is `-rw-r--r-- root root`, 148 bytes, and
+`cat >>` answers `Read-only file system` even from `uid=0` with `CapEff ffffffffffffffff`.
+Only `mount --bind` reaches it. Since the LAN resolver already blocks these domains (see
+below), the bind mount was dropped altogether instead.
 
-```sh
-cp /etc/hosts /opt/hermes/hosts.orig          # backup (once)
-umount /etc/hosts 2>/dev/null                 # drop the bind mount
-# then append "0.0.0.0 <domain>" lines directly into /etc/hosts
-```
+## After a cold boot (measured 2026-10-24)
+
+The `HIDE_IDS` edit is one of the two things on this TV that genuinely survives a mains
+power-cycle: after an unplug/replug the array still read 39 ids and the launcher was
+already running with it. Everything service-level had to be re-applied — see
+[samsung-tv-t6500-debloat-cold-boot-persistence.md](samsung-tv-t6500-debloat-cold-boot-persistence.md)
+for the layer-by-layer matrix and the re-apply sequence.
+
+Also worth knowing before using `app_launcher` as a status probe: **`app_launcher -s <id>`
+starts the app**. Pre-reboot it answered `not available for the user 0` for deactivated
+packages; post-reboot the same commands launched them, which both proved the
+`pkgcmd -D` state was gone *and* opened five apps on the panel.
 
 ## Gotchas worth remembering
 

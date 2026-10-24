@@ -39,6 +39,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-24 | [samsung-tv-t6500-debloat-cold-boot-persistence.md](samsung-tv-t6500-debloat-cold-boot-persistence.md) | troubleshooting |
 | 2026-10-24 | [samsung-tv-clean-launcher-curation.md](samsung-tv-clean-launcher-curation.md) | troubleshooting |
 | 2026-10-24 | [samsung-tv-custom-launcher-home-routing.md](samsung-tv-custom-launcher-home-routing.md) | investigation |
 | 2026-10-24 | [tizen-adfree-youtube-tizentube.md](tizen-adfree-youtube-tizentube.md) | investigation |
@@ -81,7 +82,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-18 | [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | how-to |
 | 2026-10-18 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
 | 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
-| 2026-10-12 | [ruijie-rg-es208gc-switch-audit-firmware-cve.md](ruijie-rg-es208gc-switch-audit-firmware-cve.md) | investigation |
 
 ### How-to / deployment
 
@@ -163,6 +163,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [samsung-tv-t6500-debloat-cold-boot-persistence.md](samsung-tv-t6500-debloat-cold-boot-persistence.md) | samsung, tizen, kants2, uep, debloat, cold-boot, persistence, sdb, t6500 | 2026-10-24 |
 | [samsung-tv-clean-launcher-curation.md](samsung-tv-clean-launcher-curation.md) | samsung, tizen, clean-launcher, tvunlock02, debloat, smack, app-list, kants2 | 2026-10-24 |
 | [diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md](diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md) | fiio, snowsky-disc, diskos, usb-dac, uac2, deadlock, usb-role, volume | 2026-10-22 |
 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | pipewire, wireplumber, firefox, usb-dac, fiio-ja11, stream-restore, fedora | 2026-10-22 |
