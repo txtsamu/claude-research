@@ -6,6 +6,8 @@ Working notes from Claude Code sessions on the homelab — deployment write-ups,
 
 Flat, no folders. Research says metadata beats hierarchy for a collection this size — a deep PARA/Zettelkasten-style folder tree is overkill for a few dozen docs and just adds navigation cost. Each file has YAML frontmatter instead:
 
+One exception: **`samsung-tv-kants2-exploit/`** holds the buildable exploit sources for the KantS2 TV root chain (`hr.c`, the `.NET` payloads, the kernel-dump scanners, the launcher/debloat scripts). Code cannot live in a flat markdown archive.
+
 ```yaml
 ---
 type: how-to | troubleshooting | investigation
@@ -37,6 +39,9 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-24 | [samsung-tv-clean-launcher-curation.md](samsung-tv-clean-launcher-curation.md) | troubleshooting |
+| 2026-10-24 | [samsung-tv-custom-launcher-home-routing.md](samsung-tv-custom-launcher-home-routing.md) | investigation |
+| 2026-10-24 | [tizen-adfree-youtube-tizentube.md](tizen-adfree-youtube-tizentube.md) | investigation |
 | 2026-10-24 | [samsung-tv-uep-bypass-and-kants2-root.md](samsung-tv-uep-bypass-and-kants2-root.md) | investigation |
 | 2026-10-23 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | how-to |
 | 2026-10-23 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | investigation |
@@ -158,6 +163,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [samsung-tv-clean-launcher-curation.md](samsung-tv-clean-launcher-curation.md) | samsung, tizen, clean-launcher, tvunlock02, debloat, smack, app-list, kants2 | 2026-10-24 |
 | [diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md](diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md) | fiio, snowsky-disc, diskos, usb-dac, uac2, deadlock, usb-role, volume | 2026-10-22 |
 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | pipewire, wireplumber, firefox, usb-dac, fiio-ja11, stream-restore, fedora | 2026-10-22 |
 | [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | android, iqoo, poweramp, adb, audio-focus, usb-dac, fingerprint, instagram | 2026-10-22 |
@@ -205,6 +211,8 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [samsung-tv-custom-launcher-home-routing.md](samsung-tv-custom-launcher-home-routing.md) | samsung, tizen, launcher, home-key, app-operation-api, uid-5001, kants2 | blocked: Home target is a per-user app-operation setting (`libcapi-appfw-app-operation-tv`, operation `.../operation/main`, stock `com.samsung.tv.csfs`) that must be written as uid 5001; payload runs as root but `setuid(5001)` is refused (errno capture built, not yet run); persistence across power cycle unverified | 2026-10-24 |
+| [tizen-adfree-youtube-tizentube.md](tizen-adfree-youtube-tizentube.md) | samsung, tizen, youtube, tizentube, ad-block, kants2, apps2samsung | current: TizenTube v2.1.1 `TizenTubeOld.wgt` supports Tizen 3/4/5/5.5 (this set is 5.5), install via Apps2Samsung with Force Samsung Certificate + Partner Signing; SmartTube is Android-TV-only and patching the signed Cobalt YouTube package is not viable; not installed on this unit yet | 2026-10-24 |
 | [samsung-tv-uep-bypass-and-kants2-root.md](samsung-tv-uep-bypass-and-kants2-root.md) | samsung, tizen, kants2, uep, kernel-exploit | current: root + UEP-off proven on device (152 ms fast path); boot persistence blocked | 2026-10-24 |
 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | android, redmi, miui, magisk, root, swap, zram, lmkd | current: root over adb works (Magisk 30.7); swap already on as 2.2 GB lz4 zram, swappiness 100, MIUI writeback loop device; magisk-swapspace installed but inactive; encore module flagged for removal | 2026-10-23 |
 | [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | samsung, tizen, tv, kernel, exploit, lpe, ntksys, sdp-mem, mali, kbase, uep, memfd, firmware, msd, armv7l | current: kernel routes surveyed — califio T5300 physmap chain matches platform but dies on 2026 mmap whitelist, /dev/sdp_mem is 0600 root (reachable only from root, unverified), Mali kbase CVEs still open and no KASLR; memfd beats UEP for native payloads; firmware MSDU will not decrypt (KantS2 passphrase unpublished) | 2026-10-23 |
