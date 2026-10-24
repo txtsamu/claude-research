@@ -300,6 +300,43 @@ Stopped units: `acr.service`, `acr.path` (automatic content recognition),
 `abnormal_user_behavior.service`, `emergency-log-transmitter.service`,
 `background-update.service`, `background-update.path`.
 
+### Quarantined app payloads (persistent)
+
+The service stops above are runtime-only, but the app payloads live on rw `/opt`, so
+quarantining them **does survive reboot** — this is the only part of the debloat that
+persists. Seven directories were renamed in place (nothing deleted):
+
+```
+adplatform.disabled
+com.samsung.tv.adplayer.disabled
+com.samsung.tv.ad-web-framework.disabled
+com.samsung.tv.coba.adagent.disabled
+emergency-log-transmitter.disabled
+kpi-logging.disabled
+sp-kpi.disabled
+```
+
+Post-quarantine state, from one atomic shell invocation:
+
+```
+MOUNTED_OPT=1
+DISABLED_COUNT=7        ACTIVE_COUNT=157
+ac.service=active       app-context-manager.service=active
+adagent-service.service=failed   acr.service=failed   kpi-logging.service=inactive
+RUNNING=110             HOSTS_MOUNT=1
+```
+
+TV stayed healthy throughout: ICMP 0 % loss, `:8001/api/v2/` HTTP 200 reporting
+`"PowerState":"on"`. Restore with `sh -c "$(cat /opt/hermes/quarantine.sh)" restore`
+(the script is idempotent and skips anything already renamed).
+
+**Diagnostic trap worth remembering:** `sdb capture` intermittently returns
+`ls: cannot access '/opt/usr/apps': No such file or directory` and self-contradicting
+counts (`disabled=0 active=0` in one call, 7 quarantined in the next). Do not act on
+a single capture. Rename-and-verify inside **one** invocation and print
+`grep -c ' /opt ' /proc/mounts` as a mount sanity flag — `MOUNTED_OPT=1` plus
+`DISABLED_COUNT` together are trustworthy; separate captures are not.
+
 ### Running scripts even while UEP is armed
 
 `sh /opt/hermes/debloat.sh`, `sh -s < script.sh` and plain execution all trip UEP —
