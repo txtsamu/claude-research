@@ -373,6 +373,54 @@ ac.service=active   app-context-manager.service=active
 ICMP 0% loss   :8001/api/v2/ HTTP 200   "PowerState":"on"
 ```
 
+### Feature bloat removal (user keep-list: YouTube)
+
+Twenty Samsung feature packages deactivated with `pkgcmd -D` (same mechanism as
+above, reversible with `pkgcmd -A`):
+
+- **Samsung TV Plus**: `com.samsung.tv.tvplus`, `tvs-tvplus`
+- **Universal Guide promos**: `tvs-guide`, `ug-promotion-tv`
+- **Bixby**: `com.samsung.tv.mybixby`, `com.samsung.tv.bixbycapsuleviewer`,
+  `com.samsung.tv.bixby-prov`, `com.samsung.tv.bixby-context-client`
+- **Voice**: `org.tizen.voice-app`, `org.tizen.voice-client`,
+  `com.samsung.tv.ondevice-voice`, `com.samsung.tv.cnvoice`,
+  `com.samsung.tv.cnvoice-assistant`,
+  `com.samsung.tv.utterance-recommender-service`
+- **Third-party assistants**: `com.samsung.tv.alexa-client`,
+  `com.samsung.tv.google-assistant`, `org.tizen.multi-assistant-service`
+- **SmartThings**: `com.samsung.tizen.smartthings-client`,
+  `com.samsung.tizen.smartthings-thing`
+- **Internet browser**: `org.tizen.browser`
+
+Deliberately kept: YouTube, Netflix and other installed streaming apps, the app
+store, the search app, the Privacy Choices app and the gallery. `com.samsung.tv.vif`
+(voice-interaction-framework) was also left alone: it is a framework other UI paths
+link against, not a leaky daemon.
+
+Verified after the change:
+
+```
+com.samsung.tv.tvplus            -> not available for the user 0
+com.samsung.tv.mybixby           -> not available for the user 0
+org.tizen.browser                -> not available for the user 0
+com.samsung.tizen.smartthings-client -> not available for the user 0
+org.tizen.multi-assistant-service    -> not available for the user 0
+9Ur5IzDKqV.TizenYouTube          -> successfully launched pid 3686   (kept)
+org.tizen.netflix-app            -> successfully launched pid 3474   (kept)
+ac.service=active   app-context-manager.service=active
+```
+
+**Two Tizen gotchas worth remembering:**
+
+1. **A Tizen app ID is not the package ID.** YouTube is package `9Ur5IzDKqV`, app
+   `9Ur5IzDKqV.TizenYouTube`. `pkgcmd` takes `-n <package>`, `app_launcher -s` takes
+   the app ID — passing the package to `app_launcher` reports "not available for the
+   user 0" even for a perfectly healthy app. Map IDs with
+   `pkgcmd -l | grep <id>` before concluding an app is gone.
+2. `pkgcmd -k` does not reliably terminate an already-running app instance; the
+   process keeps running until it exits. `-D` blocks future activation, which is what
+   matters for a reboot.
+
 ### Restore
 
 ```sh
