@@ -245,6 +245,83 @@ looked like "SUID blocked" but was actually bash waiting on an empty stdin.
   boot persistence means writing flash or the bootloader, which was deliberately
   out of scope.
 
+## Debloat with root
+
+Root's practical value on this set is control of the writable partitions plus
+systemd, and a few hard limits that shape what debloat can actually be.
+
+Verified facts:
+
+- **PID 1 is systemd** (`/usr/lib/systemd/systemd`). An earlier note in this repo
+  claiming the TV has no systemd is wrong.
+- `/` is vdfs **read-only and cannot be remounted** (`mount -o remount,rw /` ->
+  `cannot remount ... is write-protected`, rc 32). `/etc/systemd/system` is
+  read-only too, so units cannot be added, edited or persistently masked.
+  `systemctl stop` and `systemctl mask --runtime` work — the mask symlinks land in
+  `/run/systemd/system/* -> /dev/null` — but everything dies at reboot.
+- **Bind mounts work** with full caps, which is the way to persist configuration on
+  a read-only rootfs: `mount --bind /opt/hermes/hosts.block /etc/hosts`. The source
+  file lives on rw `/opt`, so only the mount has to be re-applied per boot.
+- `iptables` is present (with Samsung's own `DPM-ALLOW` / `DPM-DENY` chains) but
+  there is **no `xt_owner`** module, so rules cannot match a uid — destination
+  IP/CIDR only.
+- Apps split across partitions: `/usr/apps` (256 entries) is on the read-only
+  rootfs and cannot be deleted; `/opt/usr/apps` (164 entries, including
+  `adplatform`, `kpi-logging`, `sp-kpi`, `com.samsung.tv.adplayer`,
+  `com.samsung.tv.ad-web-framework`) is on rw `/opt` and can be removed or
+  quarantined.
+
+### Applied
+
+`/opt/hermes/debloat.sh` stops and runtime-masks the telemetry/ad/update units and
+bind-mounts an ad/ACR sinkhole over `/etc/hosts`. Result on the device:
+
+```
+== stopping telemetry/ad/update units ==
+acr.path=inactive           acr.service=failed
+adagent-service.service=failed   kpi-logging.service=inactive
+abnormal_user_behavior.service=inactive
+emergency-log-transmitter.service=inactive
+background-update.service=inactive   background-update.path=inactive
+== hosts sinkhole ==
+bind-mounted /opt/hermes/hosts.block over /etc/hosts
+running services: 110        (was 116)
+hosts mount: 1
+```
+
+`acr.service` and `adagent-service.service` report `failed` rather than `inactive`
+because they exit non-zero when stopped; they are not running. `ac.service`
+(application manager) was deliberately left alone. TV remained healthy throughout:
+ICMP 0 % loss, `:8001/api/v2/` HTTP 200, and `samsung.com` still resolves normally
+while `samsungads.com` / `samsungacr.com` resolve to the sinkhole.
+
+Stopped units: `acr.service`, `acr.path` (automatic content recognition),
+`adagent-service.service`, `kpi-logging.service`,
+`abnormal_user_behavior.service`, `emergency-log-transmitter.service`,
+`background-update.service`, `background-update.path`.
+
+### Running scripts even while UEP is armed
+
+`sh /opt/hermes/debloat.sh`, `sh -s < script.sh` and plain execution all trip UEP —
+Tizen's shell hooks script loading, so the file path alone triggers the check. The
+content-as-argument form does not, because nothing unsigned is ever executed:
+
+```sh
+sh -c "$(cat /opt/hermes/debloat.sh)"
+```
+
+This is the reliable way to keep shell tooling on `/opt`. Note also that **UEP
+re-armed itself inside a single session** (verified off and executing, then blocking
+again ~10 minutes later with no reboot), so UEP-off must never be assumed — re-check
+the state word if a native binary suddenly returns EPERM.
+
+### Not possible / deferred
+
+- Persistent unit masking or boot-time application of the debloat: blocked by the
+  read-only rootfs and `/etc`.
+- Deleting preinstalled apps from `/usr/apps`: read-only partition.
+- Per-uid firewall rules: no `xt_owner`.
+
 ## Security implication
 
 `/dev/ntkhdma` is `rw-rw-rw-` and its `mmap` accepts arbitrary PFNs. Any local
