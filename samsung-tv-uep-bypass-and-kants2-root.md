@@ -300,42 +300,111 @@ Stopped units: `acr.service`, `acr.path` (automatic content recognition),
 `abnormal_user_behavior.service`, `emergency-log-transmitter.service`,
 `background-update.service`, `background-update.path`.
 
-### Quarantined app payloads (persistent)
+### Package disable + persistent unit markers (v2)
 
-The service stops above are runtime-only, but the app payloads live on rw `/opt`, so
-quarantining them **does survive reboot** — this is the only part of the debloat that
-persists. Seven directories were renamed in place (nothing deleted):
+The first attempt renamed seven app directories under `/opt/usr/apps` to
+`*.disabled`. That was reverted: it works, but it leaves the package database
+believing the app is installed while its files are missing. Tizen has a proper
+mechanism, and it also covers apps on the read-only rootfs.
 
-```
-adplatform.disabled
-com.samsung.tv.adplayer.disabled
-com.samsung.tv.ad-web-framework.disabled
-com.samsung.tv.coba.adagent.disabled
-emergency-log-transmitter.disabled
-kpi-logging.disabled
-sp-kpi.disabled
-```
+**1. `pkgcmd -D` — deactivate a package for a user.** From `pkgcmd --help`:
+`--uid  Specify target user's id. This only affect app activation/deactivation.`
+Nothing is uninstalled, no data is cleared, and app directories stay intact:
 
-Post-quarantine state, from one atomic shell invocation:
-
-```
-MOUNTED_OPT=1
-DISABLED_COUNT=7        ACTIVE_COUNT=157
-ac.service=active       app-context-manager.service=active
-adagent-service.service=failed   acr.service=failed   kpi-logging.service=inactive
-RUNNING=110             HOSTS_MOUNT=1
+```sh
+pkgcmd -D -t app -n com.samsung.tv.pisa-service --uid 5001
 ```
 
-TV stayed healthy throughout: ICMP 0 % loss, `:8001/api/v2/` HTTP 200 reporting
-`"PowerState":"on"`. Restore with `sh -c "$(cat /opt/hermes/quarantine.sh)" restore`
-(the script is idempotent and skips anything already renamed).
+Verified functionally — `app_launcher` now refuses the disabled package:
 
-**Diagnostic trap worth remembering:** `sdb capture` intermittently returns
-`ls: cannot access '/opt/usr/apps': No such file or directory` and self-contradicting
-counts (`disabled=0 active=0` in one call, 7 quarantined in the next). Do not act on
-a single capture. Rename-and-verify inside **one** invocation and print
-`grep -c ' /opt ' /proc/mounts` as a mount sanity flag — `MOUNTED_OPT=1` plus
-`DISABLED_COUNT` together are trustworthy; separate captures are not.
+```
+app_launcher -s com.samsung.tv.pisa-service
+  -> The app with ID: com.samsung.tv.pisa-service is not available for the user 0
+```
+
+Thirteen packages deactivated: `adplatform`, `com.samsung.tv.adplayer`,
+`com.samsung.tv.ad-web-framework`, `com.samsung.tv.coba.adagent`,
+`com.samsung.tv.adagent-service`, `com.samsung.tv.contents-recognition-dbmgr`,
+`com.samsung.tv.pisa-service`, `org.tizen.pisa-control-service`,
+`com.samsung.tv.canalysis-service`, `com.samsung.tizen.samsung-analytics`,
+`mediaanalytics`, `com.samsung.tv.vision-data-recognition-service`,
+`org.tizen.acr-service-app`.
+
+**2. `ConditionPathExists` markers — the only genuinely persistent part.**
+Two of the most important telemetry daemons gate their own unit files on a path
+that lives on writable `/opt`:
+
+```
+/usr/lib/systemd/system/pisa-service.service:      ConditionPathExists=!/opt/usr/share/systemd/system/pisa-service
+/usr/lib/systemd/system/canalysis-service.service: ConditionPathExists=!/opt/usr/share/systemd/system/canalysis-daemon
+```
+
+Because the condition is negated, **creating an empty file there disables the unit
+across reboots**:
+
+```sh
+mkdir -p /opt/usr/share/systemd/system
+: > /opt/usr/share/systemd/system/pisa-service
+: > /opt/usr/share/systemd/system/canalysis-daemon
+```
+
+Proven by trying to start them anyway — systemd evaluates the condition and refuses:
+
+```
+pisa-service.service      is-active=failed  ConditionResult=no
+canalysis-service.service is-active=failed  ConditionResult=no
+```
+
+**3. Runtime stops/masks** cover the rest (gone at reboot): `acr.path`,
+`acr.service`, `adagent-service.service`, `kpi-logging.service`,
+`abnormal_user_behavior.service`, `emergency-log-transmitter.service`,
+`background-update.service`, `background-update.path`,
+`canalysis-service.service`, `contents-recognition-service.service`,
+`vision-data-recognition-service.service`, `media-analytics-service.service`,
+`org.tizen.tv.sp-kpi.service`, `pisa-service.path`, `pisa-service.service`,
+`dlogutil.path`, `dlogutil.timer`.
+
+Result on the device:
+
+```
+running services: 116 -> 104
+live telemetry processes (canalysis|pisa|adagent|recognition|analytics): 0
+ac.service=active   app-context-manager.service=active
+ICMP 0% loss   :8001/api/v2/ HTTP 200   "PowerState":"on"
+```
+
+### Restore
+
+```sh
+# re-enable packages
+for p in adplatform com.samsung.tv.adplayer com.samsung.tv.ad-web-framework \
+         com.samsung.tv.coba.adagent com.samsung.tv.adagent-service \
+         com.samsung.tv.contents-recognition-dbmgr com.samsung.tv.pisa-service \
+         org.tizen.pisa-control-service com.samsung.tv.canalysis-service \
+         com.samsung.tizen.samsung-analytics mediaanalytics \
+         com.samsung.tv.vision-data-recognition-service org.tizen.acr-service-app; do
+    pkgcmd -A -t app -n "$p" --uid 5001
+done
+rm -f /opt/usr/share/systemd/system/pisa-service /opt/usr/share/systemd/system/canalysis-daemon
+# masks die at reboot; to undo now:
+systemctl unmask --runtime <unit> && systemctl start <unit>
+```
+
+### Audit notes
+
+- The obfuscated ten-character directory names are **user-installed apps**, not
+  bloat: `9Ur5IzDKqV`=YouTube, `rJeHak5zRg`=Spotify, `CmeyUlnhYY`=Amazon Luna,
+  `ZmmGjO6VKO`=Sling TV, `30IKH0OX8U`=Aria video/Apple TV component,
+  `tv6pbVMQFF`=Privacy Choices. Do not touch them. (`samudntest01` is our own
+  sideload from the root work.)
+- `/usr/apps` (256 packages, read-only) vs `/opt/usr/apps` (164, writable) is not a
+  meaningful split for debloat: `pkgcmd` deactivates either kind.
+- Reference material that established this approach:
+  `github.com/berteotti/custom-tv` (`docs/3-privacy.md` — the ten-unit list, the
+  `ConditionPathExists` markers and the `pkgcmd -D --uid 5001` idiom) and
+  `github.com/arlogilbert/tizen-app-id` (package-ID mapping used to identify dirs).
+  ACR's purpose is documented by Samsung: viewing-history collection via content
+  signatures.
 
 ### Running scripts even while UEP is armed
 
