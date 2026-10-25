@@ -158,8 +158,11 @@ an already-running unit — only prevent the next start. Upstream's kit solves i
 at uptime 31 s; two passes plus a settle beat the triggers here.
 
 `debloat3.sh` itself is **not boot-safe**: its verification section calls `app_launcher -s
-<pkg>`, which *launches* the app rather than querying it, so the boot variant drops that half
-and only does `pkgcmd -k` + `pkgcmd -D`.
+<pkg>`, which *launches* the app rather than querying it, and it also issues `pkgcmd -k`
+kills. The boot variant (`debloat3_boot.sh`) drops both: **deactivate only, never kill**. A boot
+payload runs on a TV someone may be watching, and killing packages visibly reloads the UI / kicks
+the foreground app back to the launcher — killing once by hand is the right moment if you ever
+need it.
 
 ### The guard bug that bit immediately: `/run` is per-namespace
 
