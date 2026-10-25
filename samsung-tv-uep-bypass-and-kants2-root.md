@@ -2,7 +2,7 @@
 type: investigation
 tags: [samsung, tizen, kants2, uep, kernel-exploit, armv7, physical-memory, root]
 created: 2026-10-24
-last_verified: 2026-10-24
+last_verified: 2026-10-25
 status: current
 ---
 
@@ -240,10 +240,14 @@ looked like "SUID blocked" but was actually bash waiting on an empty stdin.
 - **UEP re-arms and cred patches vanish on every boot.** After a reboot the chain
   must be re-run: copy the payload into the app dir and invoke the signed launcher
   once (~150 ms of payload work).
-- There is no boot-time auto-start: `/etc` is read-only, `/opt/systemrw` refuses
-  writes even as root, and no writable path is executed by init. Achieving true
-  boot persistence means writing flash or the bootloader, which was deliberately
-  out of scope.
+- **Solved on 2026-10-25 — see
+  [samsung-tv-t6500-persistent-root-boot-hook.md](samsung-tv-t6500-persistent-root-boot-hook.md).**
+  The blocker was never "no writable path executed by init" so much as "no writable *file*
+  executed by init": the read-only `/` still has a writable **block device**, and
+  `tizen-system-env.service` *sources* every `/etc/profile.d/*.sh` as root. Patching the
+  vendor `bash_prompt_custom.sh` in place at the raw-block level, at exactly the same byte
+  length, gives root ~1 s after every power-on with no host, no sdb and no exploit. The
+  route was taken from [`cfloinc/samsung-q70t-tizen-root`](https://github.com/cfloinc/samsung-q70t-tizen-root).
 
 Measured after an actual unplug/replug (2026-10-24, `/proc/uptime` 203 s), layer by layer:
 launcher `HIDE_IDS` and the `ConditionPathExists` markers survive because they are files on
@@ -515,10 +519,14 @@ On the TV:
 - `/opt/hermes/hr` — native helper
 - `/opt/hermes_root` — SUID copy of `/bin/sh` (mode `4755`, label `_`)
 
-## Next step (deferred)
+## Next step — DONE (2026-10-25)
 
-Boot-time persistence. The only remaining lever is making UEP-off or a root shell
-happen before `init` can enforce signatures, which requires either a writable early
-boot path or flash modification — both a deliberate non-goal for this device. Until
-then the recovery cost after a reboot is one signed-launcher invocation (~150 ms of
-work) plus copying the payload into the app dir.
+Boot-time persistence is in place and verified on a real cold boot: a same-size raw-block
+patch of `/etc/profile.d/bash_prompt_custom.sh` on `/dev/mmcblk0p18` (512-block 1023384)
+makes `tizen-system-env.service` run `/opt/hermes/boot.sh` as `uid=0` at uptime 1 s, which
+re-applies the whole debloat and can run anything else as root. `/opt/hermes/rollback.sh`
+restores the vendor bytes. Full write-up, hashes, the boot log and the remaining gotchas:
+[samsung-tv-t6500-persistent-root-boot-hook.md](samsung-tv-t6500-persistent-root-boot-hook.md).
+
+The `~150 ms` FastRoot invocation is now only needed for **interactive** root (the boot hook
+already ran as root; the sdb injection still lands as `uid=901`).

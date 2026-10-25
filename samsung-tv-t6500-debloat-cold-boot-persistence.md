@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [samsung, tizen, kants2, uep, debloat, cold-boot, persistence, sdb, t6500]
 created: 2026-10-24
-last_verified: 2026-10-24
+last_verified: 2026-10-25
 status: current
 ---
 
@@ -88,9 +88,17 @@ The hosts sinkhole was deliberately **not** re-applied — see below.
   `~/samsung-tv-root-src/.venv/bin/python`, `sys.path.insert(0, "/home/moo/samsung-tv-root-src/src")`).
   The TV→host log path needs `192.168.50.31` in firewalld's trusted zone (it is).
 
-## Consequence for expectations
+## Consequence for expectations — superseded 2026-10-25
 
-A cold boot costs one launcher invocation (~1 min today, ~0.4 s once the probe check is
-fixed) plus two commands. Nothing on this box can make it automatic: `/etc` is read-only,
-`/opt/systemrw` refuses writes even as root, and no writable path is executed by init —
-real boot persistence would mean writing flash or the bootloader, which stays out of scope.
+This matrix is what a cold boot still looks like **by hand**, but it no longer happens by
+hand. A same-size raw-block patch of `/etc/profile.d/bash_prompt_custom.sh` on
+`/dev/mmcblk0p18` makes `tizen-system-env.service` (which sources `/etc/profile.d/*.sh` as
+root) run `/opt/hermes/boot.sh` at **uptime 1 s**: the unit markers are rewritten, the 13
+`pkgcmd -D` deactivations are re-applied, and the `/run/systemd/system` masks are re-created
+by two delayed stop passes, all with no computer attached. Verified on a real cold boot —
+running services came back at 103 instead of 115, `/run/systemd/system` held 18 masks again,
+the launcher stayed functional, and the only failed unit was the vendor `vdca-update.service`.
+
+Anything not covered by the hook (UEP state, interactive root, `/etc/hosts` bind mount) still
+needs the manual path described above. See
+[samsung-tv-t6500-persistent-root-boot-hook.md](samsung-tv-t6500-persistent-root-boot-hook.md).

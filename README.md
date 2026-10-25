@@ -39,6 +39,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-25 | [samsung-tv-t6500-persistent-root-boot-hook.md](samsung-tv-t6500-persistent-root-boot-hook.md) | how-to |
 | 2026-10-24 | [samsung-tv-t6500-debloat-cold-boot-persistence.md](samsung-tv-t6500-debloat-cold-boot-persistence.md) | troubleshooting |
 | 2026-10-24 | [samsung-tv-clean-launcher-curation.md](samsung-tv-clean-launcher-curation.md) | troubleshooting |
 | 2026-10-24 | [samsung-tv-custom-launcher-home-routing.md](samsung-tv-custom-launcher-home-routing.md) | investigation |
@@ -87,6 +88,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [samsung-tv-t6500-persistent-root-boot-hook.md](samsung-tv-t6500-persistent-root-boot-hook.md) | samsung, tizen, kants2, t6500, persistence, root, profile.d, raw-block, uep | 2026-10-25 |
 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | android, xiaomi, redmi, fm-radio, adb, wireless-debugging, apk-backup | 2026-10-23 |
 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | android, xiaomi, redmi, miui, adb, debloat, telemetry, ads | 2026-10-23 |
 | [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora | 2026-10-23 |
