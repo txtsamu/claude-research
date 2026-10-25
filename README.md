@@ -39,22 +39,13 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
-| 2026-10-25 | [samsung-tv-t6500-persistent-root-boot-hook.md](samsung-tv-t6500-persistent-root-boot-hook.md) | how-to |
+| 2026-10-25 | [samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) | investigation |
+| 2026-10-25 | [samsung-tv-t6500-debloat-and-launcher.md](samsung-tv-t6500-debloat-and-launcher.md) | troubleshooting |
+| 2026-10-25 | [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md) | how-to |
 | 2026-10-25 | [samsung-tv-t6500-power-states-and-remote-control.md](samsung-tv-t6500-power-states-and-remote-control.md) | investigation |
-| 2026-10-24 | [samsung-tv-t6500-debloat-cold-boot-persistence.md](samsung-tv-t6500-debloat-cold-boot-persistence.md) | troubleshooting |
-| 2026-10-24 | [samsung-tv-clean-launcher-curation.md](samsung-tv-clean-launcher-curation.md) | troubleshooting |
-| 2026-10-24 | [samsung-tv-custom-launcher-home-routing.md](samsung-tv-custom-launcher-home-routing.md) | investigation |
-| 2026-10-24 | [tizen-adfree-youtube-tizentube.md](tizen-adfree-youtube-tizentube.md) | investigation |
-| 2026-10-24 | [samsung-tv-uep-bypass-and-kants2-root.md](samsung-tv-uep-bypass-and-kants2-root.md) | investigation |
 | 2026-10-23 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | how-to |
 | 2026-10-23 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | investigation |
 | 2026-10-23 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | how-to |
-| 2026-10-23 | [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | investigation |
-| 2026-10-23 | [samsung-tv-dotnet-launcher-standalone-invocation.md](samsung-tv-dotnet-launcher-standalone-invocation.md) | investigation |
-| 2026-10-23 | [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | investigation |
-| 2026-10-23 | [samsung-tv-archive-root-dotnet-launcher-route.md](samsung-tv-archive-root-dotnet-launcher-route.md) | investigation |
-| 2026-10-23 | [samsung-tv-root-exploit-compatibility-probe.md](samsung-tv-root-exploit-compatibility-probe.md) | investigation |
-| 2026-10-23 | [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | how-to |
 | 2026-10-22 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | troubleshooting |
 | 2026-10-22 | [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | troubleshooting |
 | 2026-10-22 | [truenas-music-dedupe-and-tag-cleanup.md](truenas-music-dedupe-and-tag-cleanup.md) | how-to |
@@ -81,7 +72,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-19 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | investigation |
 | 2026-10-19 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | how-to |
 | 2026-10-18 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | how-to |
-| 2026-10-18 | [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | how-to |
 | 2026-10-18 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
 | 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
 
@@ -89,11 +79,10 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
-| [samsung-tv-t6500-persistent-root-boot-hook.md](samsung-tv-t6500-persistent-root-boot-hook.md) | samsung, tizen, kants2, t6500, persistence, root, profile.d, raw-block, uep | 2026-10-25 |
+| [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora, clean-home, youtube, tizentube, ad-block | 2026-10-25 |
 | [samsung-tv-t6500-power-states-and-remote-control.md](samsung-tv-t6500-power-states-and-remote-control.md) | samsung, tizen, kants2, t6500, power, standby, wol, ex-link, mdc, suspend, sdb | 2026-10-25 |
 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | android, xiaomi, redmi, fm-radio, adb, wireless-debugging, apk-backup | 2026-10-23 |
 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | android, xiaomi, redmi, miui, adb, debloat, telemetry, ads | 2026-10-23 |
-| [samsung-tv-tizen-clean-home-sideload-fedora.md](samsung-tv-tizen-clean-home-sideload-fedora.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora | 2026-10-23 |
 | [diskos-stock-plus-round-screen-features-and-flash.md](diskos-stock-plus-round-screen-features-and-flash.md) | fiio, snowsky-disc, diskos, lvgl, round-display, flash, usbboot | 2026-10-23 |
 | [immich-effect-v4-stage1-repositories.md](immich-effect-v4-stage1-repositories.md) | immich, fork, effect, effect-ts, nestjs, kysely, subagents, git-subtree | 2026-10-21 |
 | [immich-strip-ai-machine-learning-fork.md](immich-strip-ai-machine-learning-fork.md) | immich, fork, machine-learning, postgres, migration, pnpm, podman | 2026-10-21 |
@@ -103,7 +92,6 @@ One combined view across all three tables below, so the latest work is visible a
 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-19 |
 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | android, iqoo, vivo, originos, adb, debloat, uad-ng | 2026-10-19 |
 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | tiktok-bot, home, anoa, camofox, scraping, cdp, gallery-dl | 2026-10-18 |
-| [samsung-tizen-tv-sdb-debug-debloat.md](samsung-tizen-tv-sdb-debug-debloat.md) | samsung, smart-tv, tizen, sdb, developer-mode, debloat | 2026-10-18 |
 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | technitium, dns, blocklist, samsung, smart-tv, advanced-blocking, hagezi | 2026-10-18 |
 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | android, bitchord, usb-dac, bit-perfect, uac, usbfs, media3, redmi, mediatek, android-sdk | 2026-10-14 |
 | [k3s-workload-upgrade-pinned-tags-2026-10-09.md](k3s-workload-upgrade-pinned-tags-2026-10-09.md) | k3s, home, upgrade, helm, democratic-csi, truenas, nextcloud, immich, forgejo, snapshotter, api-key-rotation, version-pinning, subagents | 2026-10-09 |
@@ -167,8 +155,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
-| [samsung-tv-t6500-debloat-cold-boot-persistence.md](samsung-tv-t6500-debloat-cold-boot-persistence.md) | samsung, tizen, kants2, uep, debloat, cold-boot, persistence, sdb, t6500 | 2026-10-24 |
-| [samsung-tv-clean-launcher-curation.md](samsung-tv-clean-launcher-curation.md) | samsung, tizen, clean-launcher, tvunlock02, debloat, smack, app-list, kants2 | 2026-10-24 |
+| [samsung-tv-t6500-debloat-and-launcher.md](samsung-tv-t6500-debloat-and-launcher.md) | samsung, tizen, tv, sdb, debloat, kants2, uep, cold-boot, persistence, clean-launcher, tvunlock02, app-list, home-key, uid-5001, t6500, blocked | 2026-10-25 |
 | [diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md](diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md) | fiio, snowsky-disc, diskos, usb-dac, uac2, deadlock, usb-role, volume | 2026-10-22 |
 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | pipewire, wireplumber, firefox, usb-dac, fiio-ja11, stream-restore, fedora | 2026-10-22 |
 | [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | android, iqoo, poweramp, adb, audio-focus, usb-dac, fingerprint, instagram | 2026-10-22 |
@@ -216,14 +203,8 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [samsung-tv-custom-launcher-home-routing.md](samsung-tv-custom-launcher-home-routing.md) | samsung, tizen, launcher, home-key, app-operation-api, uid-5001, kants2 | blocked: Home target is a per-user app-operation setting (`libcapi-appfw-app-operation-tv`, operation `.../operation/main`, stock `com.samsung.tv.csfs`) that must be written as uid 5001; payload runs as root but `setuid(5001)` is refused (errno capture built, not yet run); persistence across power cycle unverified | 2026-10-24 |
-| [tizen-adfree-youtube-tizentube.md](tizen-adfree-youtube-tizentube.md) | samsung, tizen, youtube, tizentube, ad-block, kants2, apps2samsung | current: TizenTube v2.1.1 `TizenTubeOld.wgt` supports Tizen 3/4/5/5.5 (this set is 5.5), install via Apps2Samsung with Force Samsung Certificate + Partner Signing; SmartTube is Android-TV-only and patching the signed Cobalt YouTube package is not viable; not installed on this unit yet | 2026-10-24 |
-| [samsung-tv-uep-bypass-and-kants2-root.md](samsung-tv-uep-bypass-and-kants2-root.md) | samsung, tizen, kants2, uep, kernel-exploit | current: root + UEP-off proven on device (152 ms fast path); boot persistence blocked | 2026-10-24 |
+| [samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) | samsung, tizen, tv, root, kants2, uep, kernel-exploit, armv7l, dotnet-launcher, remotepc, cifs, smack, ghidra, persistence, raw-block | current: merges the full root journey (negative compat probe -> Remote PC/CIFS -> archive-root -> dotnet-launcher invocation solved from source -> kernel-exploit survey -> UEP bypass, 152ms fast path -> boot-persistent root via raw-block profile.d patch); the one open thread is a custom launcher as Home target (see the debloat-and-launcher doc), blocked on setuid(5001) | 2026-10-25 |
 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | android, redmi, miui, magisk, root, swap, zram, lmkd | current: root over adb works (Magisk 30.7); swap already on as 2.2 GB lz4 zram, swappiness 100, MIUI writeback loop device; magisk-swapspace installed but inactive; encore module flagged for removal | 2026-10-23 |
-| [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) | samsung, tizen, tv, kernel, exploit, lpe, ntksys, sdp-mem, mali, kbase, uep, memfd, firmware, msd, armv7l | current: kernel routes surveyed — califio T5300 physmap chain matches platform but dies on 2026 mmap whitelist, /dev/sdp_mem is 0600 root (reachable only from root, unverified), Mali kbase CVEs still open and no KASLR; memfd beats UEP for native payloads; firmware MSDU will not decrypt (KantS2 passphrase unpublished) | 2026-10-23 |
-| [samsung-tv-dotnet-launcher-standalone-invocation.md](samsung-tv-dotnet-launcher-standalone-invocation.md) | samsung, tizen, tv, root, dotnet, dotnet-launcher, aul, capabilities, tizen-source, armv7l | current: invocation contract solved from Tizen 5.5 src RPMs — `--standalone <dll>` plus AUL_APPID/AUL_ROOT_PATH env short-circuits both fatal aul calls, no setuid so file caps survive; netcoreapp3.0 probe built; unpublished upstream | 2026-10-23 |
-| [samsung-tv-remotepc-cifs-root-route.md](samsung-tv-remotepc-cifs-root-route.md) | samsung, tizen, tv, root, remotepc, cifs, smack, ghidra, reverse-engineering | current: Remote PC/CIFS route mapped end to end, ps_agent credential policy reversed (anchored boost::regex_match, one reachable caller pair), full credential inventory tabulated, RDP+SMB lab verified, awaiting the TV-side Shared Folder trigger | 2026-10-23 |
-| [samsung-tv-root-exploit-compatibility-probe.md](samsung-tv-root-exploit-compatibility-probe.md) | samsung, tizen, tv, root, sdb, dotnet, armv7l | historical: superseded by the Remote PC/CIFS write-up; blocked: entry-point bug fires on this older armv7l/Tizen 5.5 model, but all 3 escalation routes fail (wrong CPU arch, wrong kernel, missing runtime capability bits) | 2026-10-23 |
 | [snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md](snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md) | fiio, snowsky-disc, usb-dac, uac2, android, ghidra, reverse-engineering, firmware | current | 2026-10-22 |
 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance | current | 2026-10-21 |
 | [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md) | kt02h20, ktmicro, jcally, fiio-ja11, usb-dac, firmware, reverse-engineering, hid, cdc-acm | current: protocol decoded (HID 0x54 unlock -> 8888:cdc0 CDC bootloader), cross-platform CLI built + tested, JA11 V2.2 flashed OK (now 2972:0102 JadeAudio JA11); no software backup possible | 2026-10-20 |

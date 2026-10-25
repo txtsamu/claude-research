@@ -104,7 +104,7 @@ power off does.
 must be approved on screen. On this T6500 the `ms.channel.connect` handshake never completes, so no
 key is ever delivered — that is why the obvious "turn it off over the network" route never worked
 here, and it means KEY_POWER is not available to us either (see
-`samsung-tv-uep-bypass-and-kants2-root.md` for the token attempts).
+[samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) for the token attempts).
 
 **WoL magic packet** — `64:E7:D8:EC:38:EE`, UDP 9/7 broadcast; works **from standby only**, and
 only with network standby/"Power on with Mobile" enabled.
