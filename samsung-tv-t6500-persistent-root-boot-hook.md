@@ -258,6 +258,12 @@ Control host (`moo@fedora`, also committed under `samsung-tv-kants2-exploit/pers
 `build-patch.py`, `hook-fragment.sh`, `apply_hook.sh`, `boot.sh`, `debloat3_boot.sh`,
 `rollback.sh`, `vendor-bash_prompt_custom.sh`.
 
+## See also
+
+Power states and how to turn the set off without stranding it: [`samsung-tv-t6500-power-states-and-remote-control.md`](samsung-tv-t6500-power-states-and-remote-control.md).
+Short version: `systemctl poweroff` from the root shell is **one-way** on this build — it
+kills the NIC and WoL cannot recover it, so a cold boot always needs the IR remote.
+
 ## References
 
 - [cfloinc/samsung-q70t-tizen-root](https://github.com/cfloinc/samsung-q70t-tizen-root) — the
