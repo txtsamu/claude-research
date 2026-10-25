@@ -161,6 +161,37 @@ at uptime 31 s; two passes plus a settle beat the triggers here.
 <pkg>`, which *launches* the app rather than querying it, so the boot variant drops that half
 and only does `pkgcmd -k` + `pkgcmd -D`.
 
+### The guard bug that bit immediately: `/run` is per-namespace
+
+The first version guarded on `/run/.tvroot-boot`, the way the Q70T kit guards on
+`/run/.tvroot-hook`. That is **not sufficient on this build**: a unit with a private mount
+namespace sees its own empty `/run`, so every process that sources `/etc/profile` inside such a
+namespace re-fires the hook. Measured: after one boot the log held **14 runs of `boot.sh`**, one
+every ~65 s, each with a fresh `/run` view and `ctx=System`; each run re-ran the whole
+`pkgcmd -k`/`-D` set, and one of those kill passes took the third-party launcher with it
+(`launcher_procs=0`, i.e. the Clean Home UI was gone until it was relaunched with
+`app_launcher -s tvunlock02.Launcher`).
+
+Fix — guard on the kernel boot id with an atomic `mkdir` lock on **`/opt`**, which is shared
+across namespaces:
+
+```sh
+BOOTID=$(awk '/^btime/{print $2}' /proc/stat)
+LOCK=/opt/hermes/.boot-lock-$BOOTID
+for d in /opt/hermes/.boot-lock-*; do [ "$d" = "$LOCK" ] || rm -rf "$d" 2>/dev/null; done
+mkdir "$LOCK" 2>/dev/null || exit 0          # atomic: only one winner per boot
+[ -e /run/.tvroot-boot ] && exit 0           # cheap fast path, still useful
+```
+
+Verified after the fix: 150 s of continuous monitoring with nothing sourcing `/etc/profile`
+produced **zero** additional runs, and the launcher came back as a single process. Also added
+`systemctl reset-failed` over the masked unit list at the end, so the census does not report
+our own intentionally-stopped units as failed.
+
+Two consequences worth remembering: `boot.log` grows by ~3 KB per boot (rotate it if you care),
+and any kill/remove operation in a boot payload runs on a live TV — keep it idempotent, and
+prefer deactivation over killing.
+
 ## Cold-boot proof (first boot after the write, no host involved)
 
 ```
