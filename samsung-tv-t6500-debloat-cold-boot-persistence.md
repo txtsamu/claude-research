@@ -8,6 +8,8 @@ status: current
 
 # What actually survives a cold boot on the T6500 (debloat + root)
 
+> **Path relocated (2026-10-25):** `~/samsung-tv-root-src` → `~/archive/samsung-tv-t6500-2026-10/tooling/samsung-tv-root-src`.
+
 The question this answers: the TV was unplugged from the wall and powered back on —
 which parts of the debloat and root work are still in place? Short version: the two
 things stored as **files on rw `/opt`** are; everything that lives in the kernel or in

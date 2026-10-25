@@ -2,11 +2,13 @@
 type: how-to
 tags: [samsung, tizen, tv, sideload, sdb, tizen-studio, fedora, clean-home]
 created: 2026-10-23
-last_verified: 2026-10-23
+last_verified: 2026-10-25
 status: current
 ---
 
 # Sideloading Clean Home on a 2020 Samsung Tizen TV from Fedora
+
+> **Paths relocated (2026-10-25):** `~/cleanmysamsungtv-src` → `~/archive/samsung-tv-t6500-2026-10/tooling/cleanmysamsungtv-src`; `~/SamsungCertificate` → `~/archive/samsung-tv-t6500-2026-10/tooling/SamsungCertificate`; `~/tizen-studio` and `~/tizen-studio-data` → `~/archive/samsung-tv-t6500-2026-10/tooling/`; `~/tizen-dl` (installer) → `~/archive/samsung-tv-t6500-2026-10/duplicates/tizen-dl`; `~/Backups/cleanmysamsungtv` → `~/archive/samsung-tv-t6500-2026-10/device-data/backup-cleanmysamsungtv`.
 
 Goal: follow `DavidNgugi/samsung-tv-unlock` ("Clean Home" launcher) on a Samsung UA43T6500 (2020, `20_KANTS2_FHD`, Tizen 5.5). Note the repo is **not a root guide**: its table lists root as "No" for Tizen 6.0 and "Unknown" for Tizen 4/5; real root (`samsung-tv-root`) only covers Tizen 6.5+. Tizen 5.5 is not an officially supported row, but the web-app install worked. Part 2 of the repo (Home-button / boot vconf rewrite) was **not** attempted: `sdb shell id` returns nothing on this TV, so there is no readable baseline to restore.
 

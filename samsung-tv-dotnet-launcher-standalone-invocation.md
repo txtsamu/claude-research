@@ -2,11 +2,13 @@
 type: investigation
 tags: [samsung, tizen, tv, root, dotnet, dotnet-launcher, aul, capabilities, tizen-source, armv7l, reverse-engineering]
 created: 2026-10-23
-last_verified: 2026-10-23
+last_verified: 2026-10-25
 status: current
 ---
 
 # Samsung TV root: the `dotnet-launcher` standalone invocation, solved from Tizen source
+
+> **Path relocated (2026-10-25):** `~/tv-src` → `~/archive/samsung-tv-t6500-2026-10/exploit-src/tv-src`.
 
 Device: Samsung **UA43T6500AKXXD** (2020 T6500, `20_KANTS2_FHD`, Tizen 5.5, armv7l,
 kernel `4.1.10`, build `T-KTS2UABC-REL-202607281700`), 192.168.50.31.

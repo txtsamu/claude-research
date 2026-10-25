@@ -8,6 +8,8 @@ status: current
 
 # Root and UEP bypass on Samsung UA43T6500AKXXD (KantS2 / NT72172)
 
+> **Paths relocated (2026-10-25):** `~/tv-src` → `~/archive/samsung-tv-t6500-2026-10/exploit-src/tv-src`; `~/kdump_srv.py` and `~/uep_scan2.py` → `~/archive/samsung-tv-t6500-2026-10/scripts/`; `~/kerneldump.bin` → `~/archive/samsung-tv-t6500-2026-10/duplicates/kerneldump.bin`.
+
 Companion docs: [samsung-tv-dotnet-launcher-standalone-invocation.md](samsung-tv-dotnet-launcher-standalone-invocation.md) (the signed-launcher invocation contract this chain depends on), [samsung-tv-kernel-exploit-and-firmware-options.md](samsung-tv-kernel-exploit-and-firmware-options.md) (earlier route survey, written before root was achieved).
 
 ## Summary

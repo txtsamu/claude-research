@@ -2,11 +2,13 @@
 type: investigation
 tags: [samsung, tizen, tv, root, sdb, dotnet, archive-root, capabilities, smack, uep, reverse-engineering]
 created: 2026-10-23
-last_verified: 2026-10-23
+last_verified: 2026-10-25
 status: in-progress
 ---
 
 # Samsung TV root: the archive-root (dotnet-launcher) route is viable on Tizen 5.5
+
+> **Paths relocated (2026-10-25):** `~/kants2-exploit` → `~/archive/samsung-tv-t6500-2026-10/exploit-src/kants2-exploit`; `~/samsung-tv-root-src` → `~/archive/samsung-tv-t6500-2026-10/tooling/samsung-tv-root-src`.
 
 Device: Samsung **UA43T6500AKXXD** (2020 T6500, `20_KANTS2_FHD`, Tizen 5.5, armv7l,
 kernel `4.1.10`, build `T-KTS2UABC-REL-202607281700`), 192.168.50.31.

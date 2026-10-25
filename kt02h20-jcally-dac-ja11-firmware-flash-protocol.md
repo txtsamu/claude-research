@@ -2,11 +2,13 @@
 type: investigation
 tags: [kt02h20, ktmicro, jcally, fiio-ja11, usb-dac, firmware, reverse-engineering, hid, cdc-acm, wine, capstone, fedora]
 created: 2026-10-20
-last_verified: 2026-10-20
+last_verified: 2026-10-25
 status: current   # FLASHED 2026-10-20: dongle now enumerates as 2972:0102 "FiiO JadeAudio JA11"; no software backup was possible (stock image not obtained)
 ---
 
 # Jcally (KTMicro KT02H20) USB-C DAC: flashing FiiO JA11 firmware — protocol RE + cross-platform CLI
+
+> **Path relocated (2026-10-25):** `~/kt02h20-flasher` moved to `~/archive/samsung-tv-t6500-2026-10/tooling/kt02h20-flasher` (housekeeping move, content unchanged).
 
 **Goal:** flash `JadeAudio JA11 Firmware V2.2.zip` (FiiO JA11 firmware) onto a Jcally USB-C DAC adapter from Fedora (no Windows), backing up the original first, and build a multiplatform CLI.
 

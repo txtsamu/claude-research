@@ -2,11 +2,13 @@
 type: investigation
 tags: [samsung, tizen, tv, root, remotepc, cifs, smack, ghidra, reverse-engineering]
 created: 2026-10-23
-last_verified: 2026-10-23
+last_verified: 2026-10-25
 status: current
 ---
 
 # Samsung TV root: the Remote PC / CIFS route, and the binary policy that gates it
+
+> **Paths relocated (2026-10-25):** `~/kants2-exploit` → `~/archive/samsung-tv-t6500-2026-10/exploit-src/kants2-exploit`; `~/tvlab` → `~/archive/samsung-tv-t6500-2026-10/infra/tvlab`; `~/tvtest` → `~/archive/samsung-tv-t6500-2026-10/infra/tvtest`. The `~/ghidra_12.1.4_PUBLIC` referenced below was a duplicate install, now at `~/archive/samsung-tv-t6500-2026-10/duplicates/ghidra_12.1.4_PUBLIC` — the live Ghidra install to actually use is `~/tools/ghidra_12.1.4_PUBLIC` (`GHIDRA_INSTALL_DIR` in `~/tools/rea-env.sh`).
 
 Device: Samsung **UA43T6500AKXXD** (2020 T6500, `20_KANTS2_FHD`, Tizen 5.5, armv7l,
 kernel `4.1.10` build `T-KTS2UABC-REL-202607281700`), 192.168.50.31.

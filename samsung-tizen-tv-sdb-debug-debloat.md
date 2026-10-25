@@ -2,11 +2,13 @@
 type: how-to
 tags: [samsung, smart-tv, tizen, sdb, developer-mode, debloat, mikrotik, nmap]
 created: 2026-10-18
-last_verified: 2026-10-18
+last_verified: 2026-10-25
 status: current
 ---
 
 # Samsung Tizen TV: developer mode, sdb connection, and what debloating is actually possible
+
+> **Paths relocated (2026-10-25):** `~/tizen-sdb` → `~/archive/samsung-tv-t6500-2026-10/tooling/tizen-sdb`; `~/samsung-tv-backup` → `~/archive/samsung-tv-t6500-2026-10/device-data/samsung-tv-backup`.
 
 Device: Samsung **UA43T6500AKXXD** (2020 T6500, Tizen 5.5), 192.168.50.31, MAC `64:E7:D8:EC:38:EE`, dynamic DHCP lease on the MikroTik.
 Host PC: fedora, 192.168.50.20.
