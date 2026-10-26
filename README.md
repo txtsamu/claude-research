@@ -39,6 +39,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-26 | [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | how-to |
 | 2026-10-25 | [samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) | investigation |
 | 2026-10-25 | [samsung-tv-t6500-debloat-and-launcher.md](samsung-tv-t6500-debloat-and-launcher.md) | troubleshooting |
 | 2026-10-25 | [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md) | how-to |
@@ -79,6 +80,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | tanchjim, fission, ktmicro, dsp, peq, hid, squig-link, iem, eq, fedora | 2026-10-26 |
 | [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora, clean-home, youtube, tizentube, ad-block | 2026-10-25 |
 | [samsung-tv-t6500-power-states-and-remote-control.md](samsung-tv-t6500-power-states-and-remote-control.md) | samsung, tizen, kants2, t6500, power, standby, wol, ex-link, mdc, suspend, sdb | 2026-10-25 |
 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | android, xiaomi, redmi, fm-radio, adb, wireless-debugging, apk-backup | 2026-10-23 |
