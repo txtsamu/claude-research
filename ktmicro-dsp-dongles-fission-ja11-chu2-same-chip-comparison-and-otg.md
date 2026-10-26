@@ -109,6 +109,24 @@ Firmware build stamps (registers `0x04`, `0x08–0x0D`) show three different bui
 - **Flash memory** — storage that keeps data without power (as opposed to RAM). Holds the firmware and saved settings; the vendor SAVE `0x53` copies the current register values into flash, which is what made the EQ survive unplugging. Limited write cycles; these chips have ~256 KB internal flash and no software read-back.
 - **Firmware** — the program the chip runs (stored in flash): presents the USB audio device, drives the DAC, applies EQ, answers register commands. Changing EQ bands is a settings change; flashing firmware replaces the program and is risky (no backup possible in software).
 
+## Other devices that share the Chu II's chip family (searched 2026-10-27)
+
+Source of truth for "speaks the same KTMicro `0x4B` register protocol": [jeromeof/devicePEQ `usbDeviceConfig.js`](https://github.com/jeromeof/devicePEQ/blob/master/devicePEQ/usbDeviceConfig.js) (VID `0x31B2` block), cross-checked with [BunnyDSPLinux](https://github.com/onbot7/BunnyDSPLinux) and [kt0231h CHIPS.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/CHIPS.md).
+
+| Device | Brand | Evidence | Chip claim |
+|---|---|---|---|
+| **Tanchjim Bunny DSP** | Tanchjim | BunnyDSPLinux: hardware-tested, USB `31b2:1112`, "KTMicro KT0210" | **KT0210 (explicit)** — the only device I found with the KT0210 label. CHIPS.md also lists its EQ-enable as `0x24`: `0x03` = custom on, `0x02` = bypass — the same encoding the Chu II shows (`0x24 = 3`) |
+| **Moondrop CDSP** (cable) | Moondrop | devicePEQ entry, same config as Chu2 DSP | not stated; same maker/protocol |
+| **Moondrop Chu2 DSP** | Moondrop | devicePEQ + chu2-studio hardware tests | KT0210-class (inferred) |
+| Tanchjim One DSP | Tanchjim | devicePEQ (`baseRegisterOffset 0x26`) | not stated |
+| Tanchjim Fission / Fission DSP | Tanchjim | devicePEQ; our dump | not stated |
+| Kiwi Ears Allegro PRO / Allegro Mini | Kiwi Ears | devicePEQ (5 bands from `0x26`, `disconnectOnSave`) | not stated |
+| Kiwi Ears KT_0211L / KT_1132L / KT_3016L | Kiwi Ears | devicePEQ, matched by productId; names suggest KT0211L / KT1132L / KT3016L parts | KT0211L-class etc. (names only) |
+| JCally "KT02H20 HIFI Audio" (JM12), Moondrop KT02 dongle, FiiO JA11, Tanchjim DSP S | various | flasher projects, CHIPS.md | KT02H20 / KT0211L (related, different part numbers) |
+| Space Gaming IEM (`31b2:0001`) | — | devicePEQ marks it experimental; it does **not** answer the `0x4B` protocol | unknown |
+
+Caveats: no teardown names the chip in any of these cabinets except the Bunny DSP (KT0210, via the Linux driver's hardware testing); the rest is "same vendor ID + same protocol + same maker pipeline". KTMicro's [KT0210 page](https://www.ktmicro.com/?usb_104/301.html) lists no customers. A KZ Duet USB-C listing claims a "built-in DSP sound card" but names no chip, so I did not count it.
+
 ## OTG on Xiaomi (what the internet says)
 
 - Xiaomi's own FAQ: HyperOS/MIUI has a separate OTG switch (Settings → Additional settings → OTG) to be turned on before connecting a third-party device, and it **turns itself off after about 10 minutes of inactivity**.
@@ -118,6 +136,9 @@ Firmware build stamps (registers `0x04`, `0x08–0x0D`) show three different bui
 - No source found explaining why one specific dongle needs the toggle. Untested ideas: `adb shell dumpsys usb` with OTG off to see whether the phone enumerates the Chu II at all; test with a different cable; check whether the toggle's 10-minute auto-off is what looks like "needs OTG".
 
 ## References
+
+- [jeromeof/devicePEQ usbDeviceConfig.js](https://github.com/jeromeof/devicePEQ/blob/master/devicePEQ/usbDeviceConfig.js) — list of VID `0x31B2` devices and their handlers
+- [onbot7/BunnyDSPLinux](https://github.com/onbot7/BunnyDSPLinux) — Tanchjim Bunny DSP = KTMicro KT0210, `31b2:1112`
 
 - [kt0231h CHIPS.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/CHIPS.md) and [PROTOCOL.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/PROTOCOL.md) — Helios-class chip table, per-chip register differences, the "Chu 2 DSP not KTMicro" claim
 - [jcharvet/chu2-studio PROTOCOL.md](https://github.com/jcharvet/chu2-studio/blob/main/docs/PROTOCOL.md) — hardware-tested Chu 2 DSP (`31b2:0113`) protocol, KT0210-class attribution
