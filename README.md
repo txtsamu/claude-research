@@ -6,6 +6,8 @@ Working notes from Claude Code sessions on the homelab — deployment write-ups,
 
 Flat, no folders. Research says metadata beats hierarchy for a collection this size — a deep PARA/Zettelkasten-style folder tree is overkill for a few dozen docs and just adds navigation cost. Each file has YAML frontmatter instead:
 
+Another code folder: **`kt0211l-flasher/`** holds the Linux flasher (`ktflash_kt0211l.py`, tests, README) for KTMicro KT02H20/KT0211L dongles, documented in `fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md`.
+
 One exception: **`samsung-tv-kants2-exploit/`** holds the buildable exploit sources for the KantS2 TV root chain (`hr.c`, the `.NET` payloads, the kernel-dump scanners, the launcher/debloat scripts). Code cannot live in a flat markdown archive.
 
 ```yaml
@@ -39,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-27 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | how-to |
 | 2026-10-27 | [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | investigation |
 | 2026-10-27 | [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | how-to |
 | 2026-10-26 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | how-to |
@@ -83,6 +86,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | tanchjim, fission, ktmicro, kt0211l, firmware, flash, rea, ghidra, reverse-engineering, fedora | 2026-10-27 |
 | [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | moondrop, chu-ii-dsp, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, tin-hifi | 2026-10-27 |
 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | fiio, ja11, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, tin-hifi | 2026-10-26 |
 | [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | tanchjim, fission, ktmicro, dsp, peq, hid, squig-link, iem, eq, fedora | 2026-10-26 |

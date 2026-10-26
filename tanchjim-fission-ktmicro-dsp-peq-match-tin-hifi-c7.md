@@ -193,9 +193,9 @@ sudo ./venv/bin/python -I save_c7.py restore    # write factory bands back + sav
 
 Verified 2026-10-26: RAM read-back OK, SAVE ack `0x03`, bands intact after the self-reboot, and after a manual unplug/replug `readstate.py` still showed 60/593/2575/3118/6471 Hz. Audio drops for ~1–2 s during the reboot. Factory bands are in `eq_backup.json` (also listed in the table above).
 
-## Official firmware for this dongle exists (found 2026-10-27, not applied)
+## Firmware upgraded (2026-10-27) — then the C7 EQ re-applied
 
-Tanchjim publishes a **"FISSION-Rational HiFi Edition Firmware upgrade"** (Windows, 3.35 MB; changelog: "Resolve microphone occupancy issue") on [tanchjim.com/en/services](https://tanchjim.com/en/services/) and [tanchjimaudio.com/app-services](https://www.tanchjimaudio.com/app-services). This dongle reports firmware version `1.0.1`, build date May 6 2025 (registers `0x04`, `0x08`). Whether that build already includes the fix is unknown, and a firmware update would probably reset the saved EQ (re-run `save_c7.py` afterwards). Not applied.
+The official "FISSION-Rational HiFi Edition Firmware upgrade" (build Jun 10 2025) was flashed from Linux with a flasher built by reverse-engineering the vendor tool; build May 6 2025 -> Jun 10 2025. The upgrade resets the DAC bands to the new factory ones (230/310/3000/9200 Hz), so the C7 EQ was re-applied with `save_c7.py` (RAM read-back OK, SAVE `0x03`, bands intact after the reboot). Full story: [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md). The chip is a KT0211L. `restore` now uses `eq_backup.json` = the new firmware's factory bands (`eq_backup_fw-20250506.json` has the old ones).
 
 ## Gotchas hit
 
