@@ -237,6 +237,16 @@ else:
 4. `save`: ACK `0x03`, dongle returned with the C7 bands.
 5. Manual unplug/replug, `read`: still 108/287/2555/3250/9649 Hz → **persists**.
 
+## Firmware update? (searched 2026-10-27: none found)
+
+- This unit reports version string `1.0.1` (register `0x04..`), `bcdDevice` 0.03, product `Chu2 DSP`, serial default `2020-02-20-0000-0000-0000`.
+- Moondrop's official [download page](https://www.moondroplab.com/en/download) lists firmware only for the MOONRIVER2:TI and DAWN PRO USB DAC/AMPs; **no Chu II DSP entry**. Its [Moondrop Link page](https://www.moondroplab.com/en/moondrop-link) mentions OTA firmware upgrades in the app but its supported-device list (SPARXIE, EDGE2, MIRAGE, U.C.T.S., PUDDING, KLUKAI, DHA15, MOONRIVER3, GOLDEN AGES 2, SPACE TRAVEL 2 ULTRA) does not include the Chu II DSP; no version numbers given.
+- [chu2-studio](https://github.com/jcharvet/chu2-studio/blob/main/docs/PROTOCOL.md) decompiled both official Android apps and found no Chu 2 / KT0210 / `0x31B2` device-matching code, i.e. the current official apps don't support this cable at all (the older "Moondrop Link 2.0" apparently did; Pragmatic Audio called it Android-only, and a forum user said the iOS version hides the firmware update button).
+- Retailers/reviews ([Pragmatic Audio](https://www.pragmaticaudio.com/reviews/2024/04/moondrop-chu-ii-dsp/), headphonezone, hifigo) mention no firmware changelog. A low-quality buying guide claims users can self-update with "compatible software" — not credible.
+- The CHIPS.md note refers to a community-extracted `Moondrop_CHU2_DSP_firmware_v1.0.0.bin`; this unit says 1.0.1, so it is probably not older than what is publicly known.
+- Not attempted: flashing. The KTMicro flash tools can brick these dongles and a stock image cannot be backed up (see [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md)); no vendor-sanctioned update exists to justify it.
+- How to check the vendor way if wanted: install the Android "MOONDROP" / Link app from the links on the Moondrop Link page and see whether it detects the cable and offers an OTA update (the apps may not recognise this device).
+
 ## Gotchas
 
 - Claude Code's auto-mode classifier blocks `sudo` on HID scripts; the user ran each with `! sudo ...`. Write scripts with the Write tool, not a heredoc inside the (blocked) command.
@@ -250,4 +260,6 @@ else:
 - [Pragmatic Audio: EQ measurements of the Moondrop Chu II DSP](https://www.pragmaticaudio.com/reviews/2024/04/moondrop-chu-ii-dsp/) — 5 filters, 40 Hz minimum, −12..+3 dB; DSP cable at 0 gain = analog cable
 - [Audio Science Review: Moondrop Chu II DSP EQ review](https://www.audiosciencereview.com/forum/index.php?threads/moondrop-chu-ii-dsp-eq-review.53470/) — "No DSP" ≈ original Chu II, Default profile differs
 - [CSI-Zone squig.link](https://csi-zone.squig.link/) — C7 and Chu 2 measurements
+- [Moondrop downloads](https://www.moondroplab.com/en/download) and [Moondrop Link page](https://www.moondroplab.com/en/moondrop-link) — firmware/app availability (no Chu II DSP)
+- [jcharvet/chu2-studio PROTOCOL.md](https://github.com/jcharvet/chu2-studio/blob/main/docs/PROTOCOL.md) — official apps don't match this device
 - [gxcreator/ktmicro-tools](https://github.com/gxcreator/ktmicro-tools) and [kt0231h PROTOCOL.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/PROTOCOL.md) — register map, SAVE `0x53` (confirmed there on Tanchjim Bunny DSP)
