@@ -195,7 +195,7 @@ Verified 2026-10-26: RAM read-back OK, SAVE ack `0x03`, bands intact after the s
 
 ## Firmware upgraded (2026-10-27) — then the C7 EQ re-applied
 
-The official "FISSION-Rational HiFi Edition Firmware upgrade" (build Jun 10 2025) was flashed from Linux with a flasher built by reverse-engineering the vendor tool; build May 6 2025 -> Jun 10 2025. The upgrade resets the DAC bands to the new factory ones (230/310/3000/9200 Hz), so the C7 EQ was re-applied with `save_c7.py` (RAM read-back OK, SAVE `0x03`, bands intact after the reboot). Full story: [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md). The chip is a KT0211L. `restore` now uses `eq_backup.json` = the new firmware's factory bands (`eq_backup_fw-20250506.json` has the old ones).
+The official "FISSION-Rational HiFi Edition Firmware upgrade" (build Jun 10 2025) was flashed from Linux with a flasher built by reverse-engineering the vendor tool; build May 6 2025 -> Jun 10 2025. The upgrade resets the DAC bands to the new factory ones (230/310/3000/9200 Hz), so the C7 EQ was re-applied with `save_c7.py` (RAM read-back OK, SAVE `0x03`, bands intact after the reboot and after an unplug/replug). Full story: [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md). The chip is a KT0211L. `restore` now uses `eq_backup.json` = the new firmware's factory bands (`eq_backup_fw-20250506.json` has the old ones).
 
 ## Gotchas hit
 

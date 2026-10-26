@@ -93,7 +93,7 @@ sudo ./venv/bin/python -I dump_regs.py 31b2 0101 fission                        
 
 ## 5. Re-applying the C7 EQ
 
-The flash resets the DAC bands to the new factory ones, so the Tin HiFi C7 EQ had to be re-applied and saved: `sudo ./venv/bin/python -I save_c7.py` → RAM read-back OK, SAVE ack `0x03`, bands intact after the self-reboot (`60/593/2575/3118/6471 Hz`). Backups: `eq_backup.json` (new-firmware factory bands, used by `restore`), `eq_backup_fw-20250506.json` (old-firmware bands), `data/regs_fission_preflash_fw-20250506.json` (full 256-register dump before the flash).
+The flash resets the DAC bands to the new factory ones, so the Tin HiFi C7 EQ had to be re-applied and saved: `sudo ./venv/bin/python -I save_c7.py` → RAM read-back OK, SAVE ack `0x03`, bands intact after the self-reboot (`60/593/2575/3118/6471 Hz`), and still intact after a manual unplug/replug (`readstate.py`; register `0x08` still reads `Jun ` = the new build) — so both the firmware and the saved EQ persist. Backups: `eq_backup.json` (new-firmware factory bands, used by `restore`), `eq_backup_fw-20250506.json` (old-firmware bands), `data/regs_fission_preflash_fw-20250506.json` (full 256-register dump before the flash).
 
 ## 6. Gotchas
 
