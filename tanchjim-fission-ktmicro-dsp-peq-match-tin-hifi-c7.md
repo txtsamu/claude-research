@@ -3,7 +3,7 @@ type: how-to
 tags: [tanchjim, fission, ktmicro, dsp, peq, hid, hidraw, squig-link, iem, eq, fedora, tin-hifi]
 created: 2026-10-26
 last_verified: 2026-10-26
-status: current   # applies and reads back OK, but is VOLATILE: reverts to factory bands on unplug/replug
+status: current   # C7 PEQ applied AND saved to flash via vendor SAVE 0x53; verified surviving unplug/replug
 ---
 
 # Tanchjim FISSION (Rational HiFi Edition) DSP dongle: PEQ-match a Tin HiFi C7 from squig.link data
@@ -124,6 +124,73 @@ sudo ./venv/bin/python -I apply_c7.py restore    # undo (factory Default bands a
 
 Result: all 5 writes ACKed (`status 0x03`) and read back identical; DAC EQ still enabled. Register protocol: 11-byte HID reports, `0x52` read / `0x57` write, DAC EQ bands at `0x26 + 2n` (A: `freq<<16 | gain×10`; B: `type<<16 | Q×1000`).
 
+## Making it survive unplug: vendor SAVE (`0x53`)
+
+`apply_c7.py` alone is volatile: after unplug/replug `readstate.py` showed the factory bands again (36/604/6000/10954/18860 Hz). Plain `0x57` writes only touch live DSP RAM.
+
+Found via web search: the vendor Windows app (`KT_USB_APP.exe`) has a SAVE command that commits live RAM to flash and reboots the dongle. Frame (11-byte HID report, report ID 0x4B):
+
+```
+TX: 4B 00 00 00 00 53 00 00 00 00 00
+RX: 4B 00 00 00 00 53 00 03 00 00 00     # status 0x03 = ok on KT02H20-era firmware (0x4F on newer)
+```
+
+Observed here: reply `4b00000000530003000000`, device leaves the bus and re-enumerates within a couple of seconds. Warnings from the sources: never write `0x66` (preamp, can lock out volume buttons) or `0x11` (reconstruction filter), never send `0x43` or `0x54`. Nothing in the community notes had been tested on PID `0101` before this; it worked. A conflicting claim in the kt0231h notes ("no run-mode save, persistence = reflash patched firmware") applies to the KT0231H chip, not this KT02H20-family dongle.
+
+`save_c7.py` = apply + verify RAM + SAVE + wait for return + re-read:
+
+```python
+import json, os, struct, sys, time
+sys.path.insert(0, 'ktm')
+from kt02h20 import KT02H20
+BACKUP = 'eq_backup.json'
+C7 = [(60,+1.2,0.51),(593,-1.8,1.06),(2575,+2.6,0.69),(3118,-3.2,1.94),(6471,-4.7,2.90)]
+
+def open_dev(timeout=15.0):
+    end = time.time() + timeout
+    while time.time() < end:
+        d = KT02H20(0x31B2, 0x0101)
+        try:
+            if d._hid.open() and d.read(0x5B) == 0x010131B2: return d
+        except Exception: pass
+        try: d._hid.close()
+        except Exception: pass
+        time.sleep(0.5)
+
+def same(a, b):
+    return a['freq']==b[0] and abs(a['gain']-b[1])<0.05 and abs(a['q']-b[2])<0.002 and a['ftype']==b[3]
+
+restore = len(sys.argv) > 1 and sys.argv[1] == 'restore'
+d = open_dev(3) or sys.exit("dongle not found")
+if restore:
+    want = [(b['freq'], b['gain'], b['q'], b['ftype']) for b in json.load(open(BACKUP))]
+else:
+    cur = [d.get_eq_band('dac', i) for i in range(5)]
+    assert all(cur)
+    if not os.path.exists(BACKUP): json.dump(cur, open(BACKUP, 'w'), indent=1)
+    want = [(f, g, q, 0) for f, g, q in C7]
+for i, (f, g, q, t) in enumerate(want):
+    d.set_eq_band('dac', i, freq=f, gain=g, ftype=t, q=q)
+rb = [d.get_eq_band('dac', i) for i in range(5)]
+if not all(b and same(b, w) for b, w in zip(rb, want)): sys.exit("RAM mismatch, NOT saving")
+d._hid.write_report(bytes([0x4B]) + struct.pack('<I', 0) + bytes([0x53,0,0,0,0,0]))
+try: print("SAVE reply:", (d._hid.read_report(1500) or b'').hex())
+except Exception as e: print("no reply:", e)
+try: d._hid.close()
+except Exception: pass
+time.sleep(2)
+d2 = open_dev(20) or sys.exit("dongle did not come back")
+after = [d2.get_eq_band('dac', i) for i in range(5)]
+print("matches after reboot:", all(a and same(a, w) for a, w in zip(after, want)))
+```
+
+```bash
+sudo ./venv/bin/python -I save_c7.py            # apply + save to flash
+sudo ./venv/bin/python -I save_c7.py restore    # write factory bands back + save
+```
+
+Verified 2026-10-26: RAM read-back OK, SAVE ack `0x03`, bands intact after the self-reboot, and after a manual unplug/replug `readstate.py` still showed 60/593/2575/3118/6471 Hz. Audio drops for ~1–2 s during the reboot. Factory bands are in `eq_backup.json` (also listed in the table above).
+
 ## Gotchas hit
 
 - The Claude Code auto-mode classifier blocked `sudo` execution of the cloned third-party Python (twice, even after the user said go ahead, and it also swallowed the `cat > file` in the same command, so the file never got created). Workaround that respects the block: write the script with the Write tool, let the user run it via `! sudo ...` in the session.
@@ -131,7 +198,7 @@ Result: all 5 writes ACKed (`status 0x03`) and read back identical; DAC EQ still
 
 ## Not verified / open
 
-- **Persistence: checked 2026-10-26 — NOT persistent.** After unplug/replug `readstate.py` showed the factory bands again (36/604/6000/10954/18860 Hz); `0x24` still 1. Plain `0x57` register writes are RAM-only on this firmware (PID 0101). Re-run `apply_c7.py` after every connect. Untested: whether a commit/save command exists (JM12 stock firmware reportedly uses `0x53`, per Chronosauros/contour PR #1) — not tried because a wrong write to an unknown command on a flashable chip is risky.
+- Persistence: solved, see next section. No listening A/B or re-measurement was done.
 - No listening A/B or re-measurement; this is a measurement-based approximation. The FISSION "Rational HiFi Edition" may differ slightly from the standard FISSION measured on squig.link.
 - Other known register map variants (JM12 stock firmware with commit `0x53`, FiiO JA11 framing `AA 0A`/`BB 0B`) were not needed here; plain `0x57` writes took effect immediately.
 
@@ -139,6 +206,8 @@ Result: all 5 writes ACKed (`status 0x03`) and read back identical; DAC EQ still
 
 - [gxcreator/ktmicro-tools](https://github.com/gxcreator/ktmicro-tools) — KT02H20 HID tool + `KT_USB_PROTOCOL.md` register map
 - [eyad-elghareeb/kt0231h](https://github.com/eyad-elghareeb/kt0231h) — fork documenting the same HID protocol and register ranges
+- [Chronosauros/contour PR #1 (JM12 stock firmware, SAVE sequence)](https://github.com/Chronosauros/contour/pull/1) — read/write/commit `0x52/0x57/0x53`, RAM read-back before commit, survived 10 s unplug
+- [kt0231h PROTOCOL.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/PROTOCOL.md) — SAVE `0x53` frame, status `0x03`/`0x4F`, registers to avoid
 - [jeromeof/devicePEQ](https://github.com/jeromeof/devicePEQ) — multi-vendor DSP PEQ handlers (incl. KTMicro)
 - [Tanchjim FISSION Rational HiFi Edition](https://tanchjim.com/en/products/earphones/iem/fission-rational-hifi/) — product page (DSP in USB-C plug)
 - [CSI-Zone squig.link, Tin C7](https://csi-zone.squig.link/?share=Tin_C7) — C7 and Fission measurement data
