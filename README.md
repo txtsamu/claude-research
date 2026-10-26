@@ -39,6 +39,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-27 | [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | how-to |
 | 2026-10-26 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | how-to |
 | 2026-10-26 | [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | how-to |
 | 2026-10-25 | [samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) | investigation |
@@ -81,6 +82,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | moondrop, chu-ii-dsp, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, tin-hifi | 2026-10-27 |
 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | fiio, ja11, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, tin-hifi | 2026-10-26 |
 | [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | tanchjim, fission, ktmicro, dsp, peq, hid, squig-link, iem, eq, fedora | 2026-10-26 |
 | [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora, clean-home, youtube, tizentube, ad-block | 2026-10-25 |
