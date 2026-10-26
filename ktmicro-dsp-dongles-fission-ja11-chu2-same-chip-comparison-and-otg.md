@@ -3,7 +3,7 @@ type: investigation
 tags: [ktmicro, helios, kt02h20, fission, ja11, chu2-dsp, usb-audio, uac, otg, xiaomi, hidraw, fedora]
 created: 2026-10-27
 last_verified: 2026-10-27
-status: current   # family match established; exact die NOT provable without a bootloader chip-ID read (deliberately not done); OTG cause unresolved
+status: current   # JA11=KT02H20 (firmware chip ID), Chu II=KT0210-class (chu2-studio), Fission chip unconfirmed; same KTMicro family/protocol, not provably identical parts; OTG cause unresolved
 ---
 
 # Are the Fission, JA11 and Chu II DSP dongles the same chip? (and why only the Chu II needs OTG on)
@@ -69,8 +69,12 @@ All 256 registers answered on all three, including the JA11 on FiiO firmware (it
 
 - **Same family, yes.** All three speak the same Helios-class KTMicro register protocol with an identical band layout (DAC bands `0x26–0x2F`), `REG:` marker and mic-EQ factory defaults. The JA11 (FiiO firmware flashed onto a KT02H20, see [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md)) shows the **same DAC band values through the `0x4B` registers that were written through FiiO's report-ID-2 protocol**, so both channels address one DSP state.
 - **Chu II and JA11 are the most alike**: same model flag (`0x200` = single-DAC, per ktmicro-tools protocol notes), same `0x18`, `0x65`, `0x66` values and the same SDK-default serial string. The Fission is configured differently (`0x01 = 0x1`, simple `0x24` bit0 enable).
-- **Same *die* is not provable** without a bootloader chip-ID read (`0x54`-class commands that can put the dongle into flash mode) — not done on purpose. The differences above could be firmware configuration alone.
-- **A source claims the Chu 2 DSP is "not KTMicro at all" (Bestechnic ARM Cortex-M).** The user's unit contradicts that: USB manufacturer "KTMicro" under VID `31b2`, the `REG:` register map, Helios mic-EQ defaults, and the vendor SAVE `0x53` all worked. That claim may describe another Chu 2 variant or be wrong; treat it as unverified.
+- **Same *die* is not provable from the device, but the internet answers most of it** (searched 2026-10-27; no teardown/die photo exists for any of the three):
+  - **JA11 = KTMicro KT02H20.** FiiO never names the chip, but the community flasher projects report the chip-ID handshake returns `KT02H20B` ([SMIPE444 toolkit](https://github.com/SMIPE444/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit), [txtsamu/kt02h20-flasher](https://github.com/txtsamu/kt02h20-flasher)); the same silicon is in the JCALLY JM12 and Moondrop KT02 dongles. Firmware-derived, not a teardown.
+  - **Chu II DSP = "KT0210-class".** [jcharvet/chu2-studio](https://github.com/jcharvet/chu2-studio) (`docs/PROTOCOL.md`) tested this exact `31b2:0113` unit on hardware: identity registers `PerfCfg:`, `KTMicro`, `Chu2 DSP`, `2020-02-20-0000-0000-0000`, VID/PID `31b2:0113`; read/write/commit `0x52/0x57/0x53` work, commit restarts the dongle, an unsaved write is lost on unplug — all matching what we saw. The "KT0210" label is their inference from KTMicro's marketing pages plus [devicePEQ](https://github.com/jeromeof/devicePEQ)'s `ktmicroUsbHidHandler.js` (which lists "Chu2 DSP", 5 bands ±12 dB, shelves allowed). Also noted there: shelf types 3/4 (low/high) work on this device.
+  - **Fission: no public chip ID found.** Reviews only say "DSP in the USB-C plug". Our register dump matches the same Helios-class map.
+  - So they are **probably two different KTMicro part numbers (KT02H20 in the JA11, KT0210-class in the Chu II), in one family with one HID protocol**, not literally one identical part. KTMicro's own comparison of KT0210/KT0211/KT0211L ([warmseaic](https://warmseaic.com/kt-article/quantum-micro-kt0210-kt0211-kt0211l-comparison)): similar core architecture, KT0210 and KT0211 share a QFN40 package and differ mainly in DSP feature set (KT0211L is QFN32 with built-in DC/DC); all 2-ch DAC 24-bit/96 kHz, 1 ADC, UAC 1.0. KT02H20 is not covered on either KTMicro-side page, so its relationship to KT0210 is not documented. [kt0231h CHIPS.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/CHIPS.md) lists KT02H20 and KT0210 as separate rows with the same protocol.
+- **"Chu 2 DSP is not KTMicro / is Bestechnic" (CHIPS.md) is contradicted** by chu2-studio's hardware testing and by our own device (KTMicro manufacturer string under VID `31b2`, `REG:` map, SAVE `0x53` works). Treat the CHIPS.md claim as wrong or about a different variant.
 - **UAC version does not explain the OTG behaviour.** JA11 (UAC 2.0) and Fission (UAC 1.0) work without the toggle; Chu II (UAC 1.0, same as the Fission) does not. The USB descriptors of Fission and Chu II are near-identical (UAC1, 4 interfaces, 1-ch mic, HID iface 3, ~100 mA), and the register config of Chu II equals JA11's, which also works without OTG. So neither audio class, descriptor shape, power draw nor register config separates the Chu II. The cause is more likely phone-side (per-device handling on MIUI/HyperOS, cable, or the OTG switch timing).
 
 ## OTG on Xiaomi (what the internet says)
@@ -84,6 +88,10 @@ All 256 registers answered on all three, including the JA11 on FiiO firmware (it
 ## References
 
 - [kt0231h CHIPS.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/CHIPS.md) and [PROTOCOL.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/PROTOCOL.md) — Helios-class chip table, per-chip register differences, the "Chu 2 DSP not KTMicro" claim
+- [jcharvet/chu2-studio PROTOCOL.md](https://github.com/jcharvet/chu2-studio/blob/main/docs/PROTOCOL.md) — hardware-tested Chu 2 DSP (`31b2:0113`) protocol, KT0210-class attribution
+- [jeromeof/devicePEQ](https://github.com/jeromeof/devicePEQ) — `ktmicroUsbHidHandler.js`, lists "Chu2 DSP"
+- [KTMicro KT0210 product page](https://www.ktmicro.com/?usb_104/301.html) and [warmseaic KT0210/KT0211/KT0211L comparison](https://warmseaic.com/kt-article/quantum-micro-kt0210-kt0211-kt0211l-comparison)
+- [SMIPE444 KT02H20 toolkit](https://github.com/SMIPE444/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit) and [txtsamu/kt02h20-flasher](https://github.com/txtsamu/kt02h20-flasher) — JA11 chip ID `KT02H20B`
 - [gxcreator/ktmicro-tools](https://github.com/gxcreator/ktmicro-tools) — register map incl. `0x01` bit9 = single-DAC model
 - [Xiaomi support FAQ: OTG on Redmi Note 14 Pro+](https://www.mi.com/global/support/faq/details/KA-529828/)
 - [techbone: Xiaomi USB-OTG](https://www.techbone.net/xiaomi/smartphone/usb-otg)
