@@ -8,6 +8,8 @@ status: current   # C7 PEQ applied AND saved to flash via vendor SAVE 0x53; veri
 
 # Tanchjim FISSION (Rational HiFi Edition) DSP dongle: PEQ-match a Tin HiFi C7 from squig.link data
 
+> **Files:** scripts, backups, measurement data and venv for both dongles live in `~/sessions/2026-10-26-iem-dsp-eq/` (see its `README.md`); run the commands below from that folder. Factory-band backups: `eq_backup.json` (Fission) and `ja11_backup.json` (JA11) — keep them, `restore` depends on them.
+
 Goal: the user plugged in their USB-C DSP IEM and asked to "set the EQ to Tin HiFi C7". Interpreted as: make the FISSION sound like the C7 by fitting the 5 on-dongle PEQ bands to `C7 − FISSION`. Result is an approximation (coupler measurements, one IEM standing in for the other).
 
 ## Device identification
