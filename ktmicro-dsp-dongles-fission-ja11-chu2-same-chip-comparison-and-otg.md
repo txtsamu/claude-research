@@ -77,6 +77,38 @@ All 256 registers answered on all three, including the JA11 on FiiO firmware (it
 - **"Chu 2 DSP is not KTMicro / is Bestechnic" (CHIPS.md) is contradicted** by chu2-studio's hardware testing and by our own device (KTMicro manufacturer string under VID `31b2`, `REG:` map, SAVE `0x53` works). Treat the CHIPS.md claim as wrong or about a different variant.
 - **UAC version does not explain the OTG behaviour.** JA11 (UAC 2.0) and Fission (UAC 1.0) work without the toggle; Chu II (UAC 1.0, same as the Fission) does not. The USB descriptors of Fission and Chu II are near-identical (UAC1, 4 interfaces, 1-ch mic, HID iface 3, ~100 mA), and the register config of Chu II equals JA11's, which also works without OTG. So neither audio class, descriptor shape, power draw nor register config separates the Chu II. The cause is more likely phone-side (per-device handling on MIUI/HyperOS, cable, or the OTG switch timing).
 
+## Register-by-register diff: JA11 vs Chu II (2026-10-27)
+
+From the saved dumps (`data/regs_ja11.json`, `data/regs_chu2.json`, `data/regs_fission.json` in the session folder):
+
+```bash
+python3 - <<'PY'
+import json
+a=json.load(open('data/regs_ja11.json')); b=json.load(open('data/regs_chu2.json'))
+diff=[k for k in a if a[k]!=b[k]]
+print(len(a)-len(diff), 'identical of', len(a))
+for k in diff: print(k, a[k], b[k])
+PY
+```
+
+**229 of 256 registers identical; 27 differ**, all explained: version string (`0x04–0x05`: 2.2.0 vs 1.0.1), build date/time + hash (`0x08–0x11`), DAC EQ enable (`0x24`) and the five DAC bands (`0x26–0x2F`, set by us to the C7 fits), mic PGA (`0x3A`: 4 vs 3), USB manufacturer/product strings and VID/PID (`0x40–0x4B`, `0x5B`). Everything else matches, including model flag `0x01 = 0x200`, mic EQ bank and defaults, and gain regs `0x65/0x66`. Fission matches the Chu II on 218/256 and the JA11 on 215/256 (it differs additionally in `0x01`, `0x18`, `0x65`, `0x66`), so JA11 and Chu II are the closest pair, but most of the map is shared factory defaults.
+
+Firmware build stamps (registers `0x04`, `0x08–0x0D`) show three different builds:
+
+| Dongle | Version | Build date | Build time |
+|---|---|---|---|
+| Chu II DSP | 1.0.1 | Aug 28 2023 | 10:41:48 |
+| Fission | 1.0.1 | May 6 2025 | 13:37:56 |
+| JA11 | 2.2.0 | Jul 8 2025 | 19:24:29 |
+
+"Layout" here means register layout; physical board/chip layout cannot be determined from software (needs a teardown).
+
+## Glossary (plain-language)
+
+- **Register** — a numbered slot inside the chip holding one setting or readout (e.g. `0x24` = EQ enable, `0x26–0x2F` = the five EQ bands). Read with `0x52`, written with `0x57`. A write changes RAM only.
+- **Flash memory** — storage that keeps data without power (as opposed to RAM). Holds the firmware and saved settings; the vendor SAVE `0x53` copies the current register values into flash, which is what made the EQ survive unplugging. Limited write cycles; these chips have ~256 KB internal flash and no software read-back.
+- **Firmware** — the program the chip runs (stored in flash): presents the USB audio device, drives the DAC, applies EQ, answers register commands. Changing EQ bands is a settings change; flashing firmware replaces the program and is risky (no backup possible in software).
+
 ## OTG on Xiaomi (what the internet says)
 
 - Xiaomi's own FAQ: HyperOS/MIUI has a separate OTG switch (Settings → Additional settings → OTG) to be turned on before connecting a third-party device, and it **turns itself off after about 10 minutes of inactivity**.
