@@ -39,6 +39,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-27 | [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | investigation |
 | 2026-10-27 | [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | how-to |
 | 2026-10-26 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | how-to |
 | 2026-10-26 | [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | how-to |
@@ -209,6 +210,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | ktmicro, helios, fission, ja11, chu2-dsp, uac, otg, xiaomi, hidraw | 2026-10-27 |
 | [samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) | samsung, tizen, tv, root, kants2, uep, kernel-exploit, armv7l, dotnet-launcher, remotepc, cifs, smack, ghidra, persistence, raw-block | current: merges the full root journey (negative compat probe -> Remote PC/CIFS -> archive-root -> dotnet-launcher invocation solved from source -> kernel-exploit survey -> UEP bypass, 152ms fast path -> boot-persistent root via raw-block profile.d patch); the one open thread is a custom launcher as Home target (see the debloat-and-launcher doc), blocked on setuid(5001) | 2026-10-25 |
 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | android, redmi, miui, magisk, root, swap, zram, lmkd | current: root over adb works (Magisk 30.7); swap already on as 2.2 GB lz4 zram, swappiness 100, MIUI writeback loop device; magisk-swapspace installed but inactive; encore module flagged for removal | 2026-10-23 |
 | [snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md](snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md) | fiio, snowsky-disc, usb-dac, uac2, android, ghidra, reverse-engineering, firmware | current | 2026-10-22 |
