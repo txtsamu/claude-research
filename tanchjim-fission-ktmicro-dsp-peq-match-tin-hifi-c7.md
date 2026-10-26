@@ -3,7 +3,7 @@ type: how-to
 tags: [tanchjim, fission, ktmicro, dsp, peq, hid, hidraw, squig-link, iem, eq, fedora, tin-hifi]
 created: 2026-10-26
 last_verified: 2026-10-26
-status: current   # applied and read back OK on the dongle; persistence across unplug NOT checked
+status: current   # applies and reads back OK, but is VOLATILE: reverts to factory bands on unplug/replug
 ---
 
 # Tanchjim FISSION (Rational HiFi Edition) DSP dongle: PEQ-match a Tin HiFi C7 from squig.link data
@@ -131,7 +131,7 @@ Result: all 5 writes ACKed (`status 0x03`) and read back identical; DAC EQ still
 
 ## Not verified / open
 
-- Persistence: unknown whether the bands survive unplug/replug. If not, re-run `apply_c7.py` after reconnect.
+- **Persistence: checked 2026-10-26 — NOT persistent.** After unplug/replug `readstate.py` showed the factory bands again (36/604/6000/10954/18860 Hz); `0x24` still 1. Plain `0x57` register writes are RAM-only on this firmware (PID 0101). Re-run `apply_c7.py` after every connect. Untested: whether a commit/save command exists (JM12 stock firmware reportedly uses `0x53`, per Chronosauros/contour PR #1) — not tried because a wrong write to an unknown command on a flashable chip is risky.
 - No listening A/B or re-measurement; this is a measurement-based approximation. The FISSION "Rational HiFi Edition" may differ slightly from the standard FISSION measured on squig.link.
 - Other known register map variants (JM12 stock firmware with commit `0x53`, FiiO JA11 framing `AA 0A`/`BB 0B`) were not needed here; plain `0x57` writes took effect immediately.
 
