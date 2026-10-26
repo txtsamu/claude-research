@@ -193,6 +193,10 @@ sudo ./venv/bin/python -I save_c7.py restore    # write factory bands back + sav
 
 Verified 2026-10-26: RAM read-back OK, SAVE ack `0x03`, bands intact after the self-reboot, and after a manual unplug/replug `readstate.py` still showed 60/593/2575/3118/6471 Hz. Audio drops for ~1–2 s during the reboot. Factory bands are in `eq_backup.json` (also listed in the table above).
 
+## Official firmware for this dongle exists (found 2026-10-27, not applied)
+
+Tanchjim publishes a **"FISSION-Rational HiFi Edition Firmware upgrade"** (Windows, 3.35 MB; changelog: "Resolve microphone occupancy issue") on [tanchjim.com/en/services](https://tanchjim.com/en/services/) and [tanchjimaudio.com/app-services](https://www.tanchjimaudio.com/app-services). This dongle reports firmware version `1.0.1`, build date May 6 2025 (registers `0x04`, `0x08`). Whether that build already includes the fix is unknown, and a firmware update would probably reset the saved EQ (re-run `save_c7.py` afterwards). Not applied.
+
 ## Gotchas hit
 
 - The Claude Code auto-mode classifier blocked `sudo` execution of the cloned third-party Python (twice, even after the user said go ahead, and it also swallowed the `cat > file` in the same command, so the file never got created). Workaround that respects the block: write the script with the Write tool, let the user run it via `! sudo ...` in the session.
