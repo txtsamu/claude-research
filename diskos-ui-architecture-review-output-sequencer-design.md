@@ -198,6 +198,31 @@ Callers keep: the pause/seek/resume ritual, `0715` volume, the Local-and-not-BT 
 
 **Prompt to resume** (paste into a new session): "Continue the diskOS outseq refactor. Read `~/claude-research/diskos-ui-architecture-review-output-sequencer-design.md` section 7 and `GLOSSARY.md` in `/home/moo/diskos/diskos`, then do Step 1 only and stop for my device test."
 
+## 8. Result: Step 1 landed (2026-10-27), waiting for the device test
+
+Branch `refactor/outseq` (from `9b3a7c7`), commit `2c1feb0` (local, not pushed). New `ui/outseq.{c,h}`, `modes.c` rewired (`OUT_SEQ`, `OUT_WORKMODE`, `out_seq_send` deleted; `modes_local_init` is now a shim), `ui/Makefile` `APP_SRCS`, `ui/tests/outseq_test.c` + target.
+
+Checks run on the Fedora box:
+
+```bash
+cd /home/moo/diskos/diskos/ui/tests
+make -B outseq_test CFLAGS='-g -O1 -Wall -Wextra' && ./outseq_test      # outseq_test: 12 sequences ok
+# mutation check: strip the 65 ms settle from a copy of outseq.c and rebuild the test against it -> Assertion `gap >= 0.065' failed
+cd .. && gcc -fsyntax-only -std=gnu11 -D_GNU_SOURCE -DLV_CONF_INCLUDE_SIMPLE -I. -Ilvgl \
+   -Ithird_party/freetype-2.13.3/include -Wall modes.c                   # also with -DDISKOS_TEST_OUTPUTS; clean
+grep -n 'OUT_SEQ\|out_seq_send' modes.c                                 # nothing
+```
+
+**Not done, because the box can't:** (1) `make -C ui/tests run` fails to link on this machine even for the old `config_test`: `/usr/lib64/libasan.so.8.0.0` and `libubsan.so.1.0.0` are missing (the `libasan.so` is under `/usr/lib/gcc/x86_64-redhat-linux/15/` but `-static-libasan` also fails, no `libasan.a`), so the ASan/UBSan run in the acceptance list was skipped; the test builds and passes without sanitizers. (2) No `docker` here (only `podman`), so the device build was not run; `modes.c` and `outseq.c` do pass a host `-fsyntax-only` with the vendored LVGL.
+
+Things that came up while doing it:
+
+- The `_Static_assert` comparing the two anonymous enums triggers `-Wenum-compare`; cast both sides to `int`.
+- The test's golden table is `{n, soft_from, moved_idx, settle_after}` per row; a first regex edit scrambled the columns and the test (correctly) failed with "1 frames sent, want 3". Rewrote the table by hand.
+- `outseq_local_preamble` is `void`, so `modes_local_init(0)` now returns 0 instead of -1 on a failed send; both callers (`main.c:1574, 1637`) ignore it.
+
+**Next:** the user deploys (`tools/diskos-deploy.sh`) and checks boot into Local playback, play from idle, and switching Working Mode between Local / USB DAC / BT Receiving / USB Storage (SPDIF and USB Audio only in a `-DDISKOS_TEST_OUTPUTS` build). Then Step 2 (`source_send` to `outseq_source`).
+
 ## References
 
 - [12 Common C Errors (edm2.com)](https://www.edm2.com/index.php/12_Common_C_Errors)
