@@ -73,6 +73,26 @@ ssh disc 'killall -9 mq_ui; DISKOS_THEME_RELOAD=1 DISKOS_RELOAD_ROUTE=2 DISKOS_R
 
 Not fixed (pre-existing, same frames as before the refactor): tapping a song while paused or stopped sends the local-play preamble (`outseq_local_preamble`: `0666 3`, `0642 5`, `0657 8` on the USB route) because the UI treats "not playing" as "stopped", which re-initialises the USB output and restarts that song. Not tested with a real theme change on the screen.
 
+## 6. USB Audio fails right after a boot, works on retry (fixed: wait 20 s)
+
+After flashing and booting, switching to USB Audio "fails, then succeeds when I try again". Evidence is in the player log (`/usr/data/fiio/log/fiio_player.log`, timestamped; the UI's `diskos_boot.log` only has the UI side and mixes sessions):
+
+```bash
+ssh disc 'grep -E "^\[2026-10-27 15:2[5-9]" /usr/data/fiio/log/fiio_player.log | grep -E "usb_event|set out device|USB_DAC|work mode NULL|audio_track_stop"'
+# 15:27:10.98  set out device USB_HOST_NULL      <- the switch starts (0666 3 / 0642 5)
+# 15:27:18.160 usb_event:on_usb_audio_add        <- the DAC enumerates, 8.2 s later (cold boot: the player's mode thread is still settling)
+# 15:27:18.171 set out device USB_HOST
+# 15:27:18.312 set out device I2S3_OUT           <- 0.14 s later: the UI's 8 s wait expired and sent the fallback to the internal DAC
+# 15:27:20.179 usb_event:on_usb_audio_remove     <- the fallback's 0642 0 dropped the host role, so the DAC vanished again
+# 15:27:25.87 ... 15:27:28.0 add + USB_HOST, no I2S3_OUT  <- the retry: enumerated in ~2.5 s, no timeout, success
+```
+
+Cause: `OUT_USB_WAIT_MS 8000` in `ui/modes.c` (`usbw_tick`: the DAC has to show `/proc/asound/card1/usbid` within 8 s of the switch, else fall back to internal). Fix: 20000 (commit `59ff99c`); a DAC that is really absent still falls back, only later. The boot-time restore (`usb_audio_on=1`, 15 s after UI start) hits this window every time. Not confirmed on a real cold boot after the fix.
+
+Same commit: the Working Mode row description "Play through an external USB DAC" was truncated by the 202 px sub-label (`LV_LABEL_LONG_DOT`; the other rows are 28 characters or fewer, this one 32): now "Play to an external USB DAC". And `modes_output_adopt` now calls `modes_ui_refresh()`: with the deep link `mq_ui workmode` the picker was painted before the carried-over route was adopted, so it showed the check on Local Playback while the player was on USB (a stale mark, the route itself was right).
+
+Also seen while there: after a flash, `/usr/data/mq_ui` (the earlier hot-loaded binary) is still present and was what ran; it matched the flashed build here, but a stale hot-load in `/usr/data` could hide a newer flashed UI, so check `md5sum /usr/data/mq_ui` against the flashed manifest after flashing.
+
 ## Not diagnosed
 
 "No sound on USB DAC mode" was reported while running the wrong-base build; the frames sent for that mode were identical to the pre-refactor code (checked by diff), and the user's next message turned out to be about the USB Audio row. After moving to `dev` it was not re-tested, so whether the missing Oct 22 USB DAC volume fix explains it is unknown.
