@@ -61,6 +61,10 @@ ssh disc 'sed -i "/^pdbg_/d" /usr/data/diskos.conf'                   # restore 
 
 Result: both halves worked. Not done: a real reboot with this build flashed; looking at the Debug Mode screen (the layout was placed by arithmetic for the 360x360 round panel, never seen); a run without `pdbg_wifi` set (it would switch Wi-Fi off and cut the SSH link).
 
+## Follow-up in the same session
+
+Working Mode picker (`ui/modes.c`, commit `1891442`): the USB Audio row (test-outputs builds only) now sits directly under Local Playback. Display order only: `lv_obj_move_to_index(g_row[ROW_USB_AUDIO], 1)` after the rows are built, because the row index is the mode id for `ui_set_source_mode`, `SWITCH_MSG`, `shown_mode` and the selected marks. Reordering the `MODES[]` table instead would have shifted every id.
+
 ## Notes
 
 - Security: with `pdbg_ssh` on, root password SSH over Wi-Fi is up on every boot until Disable is pressed. The file header comment in `debug_ui.c` says so. Key-only SSH on port 2222 (`S98diskos_sshkey`) is separate and unaffected by ssh-on/off.
