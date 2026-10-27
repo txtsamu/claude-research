@@ -42,6 +42,7 @@ One combined view across all three tables below, so the latest work is visible a
 | Date | Doc | Type |
 |---|---|---|
 | 2026-10-27 | [diskos-build-diskos-bin-image-locally.md](diskos-build-diskos-bin-image-locally.md) | how-to |
+| 2026-10-27 | [diskos-loudness-spdif-ja11-and-main-release.md](diskos-loudness-spdif-ja11-and-main-release.md) | investigation |
 | 2026-10-27 | [diskos-pet-tamagotchi-app-digimon-agents.md](diskos-pet-tamagotchi-app-digimon-agents.md) | how-to |
 | 2026-10-27 | [diskos-screenshots-over-key-ssh-and-terminal-home-layout.md](diskos-screenshots-over-key-ssh-and-terminal-home-layout.md) | how-to |
 | 2026-10-27 | [diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md](diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md) | how-to |
@@ -227,6 +228,7 @@ One combined view across all three tables below, so the latest work is visible a
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
 | [diskos-build-diskos-bin-image-locally.md](diskos-build-diskos-bin-image-locally.md) | diskos, snowsky-disc, installer, firmware, image, squashfs, bin | current | 2026-10-27 |
+| [diskos-loudness-spdif-ja11-and-main-release.md](diskos-loudness-spdif-ja11-and-main-release.md) | diskos, snowsky-disc, volume, gain, loudness, usb-audio, spdif, ja11, wifi-interference, flash, release | current | 2026-10-27 |
 | [diskos-pet-tamagotchi-app-digimon-agents.md](diskos-pet-tamagotchi-app-digimon-agents.md) | diskos, snowsky-disc, pet, tamagotchi, digimon, apps, lvgl, subagents, canvas, screenshots | current | 2026-10-27 |
 | [diskos-screenshots-over-key-ssh-and-terminal-home-layout.md](diskos-screenshots-over-key-ssh-and-terminal-home-layout.md) | diskos, snowsky-disc, screenshot, framebuffer, terminal-theme, layout, round-screen, lvgl | current | 2026-10-27 |
 | [diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md](diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md) | diskos, snowsky-disc, lastfm, terminal-theme, cursor, lvgl, subagents, worktree, git | current | 2026-10-27 |
