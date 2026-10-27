@@ -3,7 +3,7 @@ type: how-to
 tags: [tanchjim, fission, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, crinear-nightfall, cross-rig, fedora]
 created: 2026-10-27
 last_verified: 2026-10-27
-status: applied to RAM only (SAVE 0x53 pending user listen test)   # update when saved
+status: current   # applied and saved to flash via SAVE 0x53 (ACK 0x03), bands intact after the self-reboot
 ---
 
 # Tanchjim FISSION-Rational HiFi dongle: PEQ-match CrinEar Nightfall (target on a different squig.link rig)
@@ -45,7 +45,7 @@ Replaced the C7 bands (60/593/2575/3118/6471). Nothing is fitted above 8 kHz.
 ## Apply
 ```bash
 sudo ./venv/bin/python -I nightfall_fission.py apply     # RAM, read-back verified (done: all 5 ACK, match True)
-sudo ./venv/bin/python -I nightfall_fission.py save      # SAVE 0x53 -> flash, after listening
+sudo ./venv/bin/python -I nightfall_fission.py save      # SAVE 0x53 -> flash (done 2026-10-27, reply 4b00000000530003000000)
 sudo ./venv/bin/python -I nightfall_fission.py restore   # factory bands from eq_backup.json -> RAM, then 'save'
 ```
 
