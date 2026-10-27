@@ -49,6 +49,30 @@ git -C ~/diskos/diskos branch --show-current && git -C ~/diskos/diskos log --one
 
 Resolution and the single-branch rule: [[diskos-fork-consolidated-into-dev-branch]].
 
+## 5. Theme change in USB Audio mode: music paused, then USB Audio and the song restart
+
+Symptom (user): on the USB Audio route, changing the theme pauses the player; pressing play then restarts USB Audio and the song. A theme change re-execs the UI (`ui_theme_reload`, `main.c`), keeping the player running. Three separate causes, found by reading `diskos_boot.log`, `fiio_player.log` and the code:
+
+```bash
+ssh disc 'tail -40 /usr/data/diskos_boot.log'                       # "diskos main start argc=2" (the relaunch), "boot: paused the player's resume autoplay", NO "theme reload: kept route"
+ssh disc 'tail -n 600 /usr/data/fiio/log/fiio_player.log | grep -E "PAUSE|START|set out device|USB_HOST|NO_WORK_MODE"'
+#   [PAUSE] ... 2 s later "set out device USB_HOST!" + "[audio_track_stop] NO_WORK_MODE" + new "[START]"  = the UI re-sent 0666 3 before the play
+```
+
+1. **The route was never kept.** The adoption of `DISKOS_RELOAD_ROUTE/SRC` sat in the main loop's `ipc_take_reconnected()` branch. That flag (`ipc.c`: `g_reconnected = 1`) is set only when `/ui` is re-attached after a player restart, and `ipc_generation()` only moves then too; a plain relaunch has generation 0 and never gets the event. So the new UI believed the route was internal. (Commit `270c7b4` had this untested; it said so.)
+2. **Saved-preference restore re-ran the switch.** `modes_output_boot_restore` -> `bootusb_tick` (`modes.c`) re-selects USB Audio 15 s after any UI start when `usb_audio_on=1` and the route is not USB: pause, `0666 3`, `0642 5`: the player closes and reopens its output and restarts the song. With the route adopted the tick sees `OUT_USB` and stops.
+3. **Autoplay pause ran again.** `boot_autoplay_pause_cb` ("Resume Playback: keep the restored song, paused", pauses if playing and no transport command was sent yet) is meant for cold boot but also ran in the relaunched process.
+
+Fix (dev, `ui/main.c`): adopt route and source mode at startup (log `theme reload: kept route 2, source mode 0 (gen 0)`), and skip the autoplay-pause timer when `DISKOS_THEME_RELOAD` is set. Tested on the Disc without touching the screen by emulating the relaunch:
+
+```bash
+ssh disc 'killall -9 mq_ui; DISKOS_THEME_RELOAD=1 DISKOS_RELOAD_ROUTE=2 DISKOS_RELOAD_SRC=0 setsid /usr/data/mq_ui home </dev/null >/usr/data/diskos_boot.log 2>&1 &'
+# after 30 s: log has "kept route 2", no "paused the player's resume autoplay", no "Restoring USB Audio";
+# the player log has no "set out device USB_HOST" or output re-init after the relaunch
+```
+
+Not fixed (pre-existing, same frames as before the refactor): tapping a song while paused or stopped sends the local-play preamble (`outseq_local_preamble`: `0666 3`, `0642 5`, `0657 8` on the USB route) because the UI treats "not playing" as "stopped", which re-initialises the USB output and restarts that song. Not tested with a real theme change on the screen.
+
 ## Not diagnosed
 
 "No sound on USB DAC mode" was reported while running the wrong-base build; the frames sent for that mode were identical to the pre-refactor code (checked by diff), and the user's next message turned out to be about the USB Audio row. After moving to `dev` it was not re-tested, so whether the missing Oct 22 USB DAC volume fix explains it is unknown.
