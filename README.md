@@ -42,6 +42,7 @@ One combined view across all three tables below, so the latest work is visible a
 | Date | Doc | Type |
 |---|---|---|
 | 2026-10-27 | [diskos-ui-architecture-review-output-sequencer-design.md](diskos-ui-architecture-review-output-sequencer-design.md) | investigation |
+| [diskos-persistent-debug-checkboxes](diskos-persistent-debug-checkboxes.md) | how-to | diskOS Debug Mode "Persistent debug" checkboxes: Wi-Fi and SSH come back at boot; build with podman, test the boot path without rebooting |
 | 2026-10-27 | [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md) | evomem search timeouts: real cause was a per-query full word_index vocabulary scan (not a vector scan); fixed with a cached vocabulary, ~5 s -> ~0.3 s |
 | 2026-10-27 | [8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md](8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md) | how-to |
 | 2026-10-27 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | how-to |
