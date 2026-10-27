@@ -231,6 +231,10 @@ Commit `e6687ce` on `refactor/outseq` (local), stacked on Step 1 **before** the 
 
 Local commit on `refactor/outseq` after `e6687ce`. `route_analog` (`main.c:592`) now does `if(outseq_analog() != OUTSEQ_OK) return -1;` in place of the two raw frames; pause/seek/resume and the `g_route_mac` cleanup stay in the caller. `ANALOG[]` = `0666 6` MUST, `0657 8` MUST, no route-moved step, so failures are always REFUSED. `outseq_test` at 17 sequences, green; `main.c` host `-fsyntax-only` clean. Device check: with a BT sink routed, switch back to the internal DAC (and the startup-recovery path at `main.c:1328`, `route_analog(1)`). Next: Step 4, `ui_route_bt` -> `outseq_bt_sink`, which first needs the `ui_bt_codec_frame` (`bt.c:340`) can't-fail check.
 
+### Step 4 landed (2026-10-27): `ui_route_bt` -> `outseq_bt_sink`
+
+Local commit on `refactor/outseq` after `8e2f672`. The can't-fail check was done first: `main.c:553-558` admits only 17-char uppercase hex with `:` at i%3==2 (a subset of `bt_mac_valid`, `bt.c:470`), and `bt_codec_frame_value` writes 29 chars into the 48-byte `f`, so `ui_bt_codec_frame` (`bt.c:340`) cannot fail there. The frame is now built after the `ui_player_settling()` check and before the pause (the one intentional behaviour change). `outseq.c` gained an `IGNORE` policy (failure doesn't affect the result, unlike `SOFT`) and `outseq_bt_sink(codec_frame)` with the seven frames from the golden table, the dynamic codec frame as the last MUST step. Dedicated test `check_bt_sink` (failure at each index: REFUSED at 0 and 4, OK at 1-3 and 5, MOVED at 6; NULL/empty frame sends nothing); the test log's frame buffer had to grow from 16 to 48 bytes. Host `-fsyntax-only` of `main.c` shows 4 `-Wmisleading-indentation` warnings that are also present on the untouched tree. Device check: route to a BT sink from Local (playing and paused), then back to analog, and the BT auto-route on connect. Next: Step 5, bare `0657 8` re-asserts and the `modes_local_init` callers, then delete the shim.
+
 ## References
 
 - [12 Common C Errors (edm2.com)](https://www.edm2.com/index.php/12_Common_C_Errors)
