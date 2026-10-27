@@ -246,6 +246,18 @@ Open checks, answered:
 
 Final state: 6 code commits on `refactor/outseq` (`2c1feb0`, `e6687ce`, `8e2f672`, `48d2fb2`, `00d257c`, `29c5fc4`), **local, not pushed, not device-tested** (the user chose to continue without testing between steps). Not run on this machine: ASan/UBSan (runtime libs missing) and the Docker device build (no `docker`, only `podman`). Before merging: build with the Docker builder, deploy with `tools/diskos-deploy.sh`, and check boot into Local, play from idle, Working Mode Local / USB DAC / BT Receiving / USB Storage and back, BT route and back to analog, plus SPDIF/USB Audio in a `-DDISKOS_TEST_OUTPUTS` build. If something misbehaves, the per-step commits make `git bisect` straightforward; each commit message has the old/new frame table. Next in the plan: candidate 1 (one Working Mode module, absorbing candidate 3), then 4, then 6.
 
+### Where the work lives now (2026-10-27, later the same day)
+
+**The `outseq` commits are on the fork's `dev` branch, not on `refactor/outseq`.** The whole refactor had been done on the older `fix/usb-dac-workmode` line, which did not contain the Oct 22 `stock-plus-disco` fixes that were flashed to the Disc (see [[diskos-fork-consolidated-into-dev-branch]]). `dev` was built from `stock-plus-disco` and `feat/persistent-debug` (which holds all six `outseq` commits plus later work) was merged in, so the original SHAs (`2c1feb0` ... `29c5fc4`) are still in `dev`'s history. `refactor/outseq`, `fix/usb-dac-workmode`, `stock-plus-disco` and `disco-with-fixes` no longer exist on GitHub. Work from `dev` from now on; the "Prompt to resume" above should say `dev`, not `refactor/outseq`.
+
+What changed in the module when it met `stock-plus-disco`:
+
+- One more routing frame appeared: `dac_exit_begin` (USB DAC ordered exit) sends `0642 0` first. The guard test caught it; it is now `outseq_gadget_none()` (one MUST step, REFUSED on failure), commit `8aebeab`. `outseq_test` is at 18 sequences plus the Bluetooth sink.
+- The other frames in `modes.c`/`main.c` were byte-identical on `stock-plus-disco`, so the golden table in section 7 still holds.
+- Merge conflicts were list unions only (`ui/Makefile` APP_SRCS, `ui/tests/Makefile`, the includes in `main.c`).
+
+Device status: the dev build (`fe2ab28e...`, with `-DDISKOS_TEST_OUTPUTS`) is hot-loaded; not flashed, so it is not yet verified through a reboot. Still open from this doc: `-Wextra -Wformat=2`, candidates 1, 4 and 6.
+
 ## References
 
 - [12 Common C Errors (edm2.com)](https://www.edm2.com/index.php/12_Common_C_Errors)

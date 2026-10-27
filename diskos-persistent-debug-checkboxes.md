@@ -8,7 +8,7 @@ status: current
 
 # diskOS "Persistent debug": Wi-Fi and SSH come back by themselves after a reboot
 
-Repo `/home/moo/diskos/diskos`, branch `feat/persistent-debug` (from `refactor/outseq`), commit `5ae06f9`. Request: during a debug session every reboot meant re-enabling Wi-Fi and Debug Mode by hand. Companion docs: [[fiio-snowsky-disc-diskos-flash-fedora]] (flash and key-only SSH), [[diskos-ui-architecture-review-output-sequencer-design]] (the `outseq` work this branch sits on).
+Repo `/home/moo/diskos/diskos`, fork branch `dev` (commit `5ae06f9` was made on `feat/persistent-debug` and is part of `dev`'s history; see [[diskos-fork-consolidated-into-dev-branch]]). Request: during a debug session every reboot meant re-enabling Wi-Fi and Debug Mode by hand. Companion docs: [[fiio-snowsky-disc-diskos-flash-fedora]] (flash and key-only SSH), [[diskos-ui-architecture-review-output-sequencer-design]] (the `outseq` work this branch sits on).
 
 ## What it does
 
