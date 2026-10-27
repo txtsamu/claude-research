@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-27 | [diskos-ui-architecture-review-output-sequencer-design.md](diskos-ui-architecture-review-output-sequencer-design.md) | investigation |
 | 2026-10-27 | [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md) | evomem search timeouts: real cause was a per-query full word_index vocabulary scan (not a vector scan); fixed with a cached vocabulary, ~5 s -> ~0.3 s |
 | 2026-10-27 | [8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md](8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md) | how-to |
 | 2026-10-27 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | how-to |
@@ -217,6 +218,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [diskos-ui-architecture-review-output-sequencer-design.md](diskos-ui-architecture-review-output-sequencer-design.md) | diskos, snowsky-disc, ui, c, architecture, refactor, working-mode, output-route, ipc, outseq, c-audit | current | 2026-10-27 |
 | [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | ktmicro, helios, fission, ja11, chu2-dsp, uac, otg, xiaomi, hidraw | current | 2026-10-27 |
 | [samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) | samsung, tizen, tv, root, kants2, uep, kernel-exploit, armv7l, dotnet-launcher, remotepc, cifs, smack, ghidra, persistence, raw-block | current: merges the full root journey (negative compat probe -> Remote PC/CIFS -> archive-root -> dotnet-launcher invocation solved from source -> kernel-exploit survey -> UEP bypass, 152ms fast path -> boot-persistent root via raw-block profile.d patch); the one open thread is a custom launcher as Home target (see the debloat-and-launcher doc), blocked on setuid(5001) | 2026-10-25 |
 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | android, redmi, miui, magisk, root, swap, zram, lmkd | current: root over adb works (Magisk 30.7); swap already on as 2.2 GB lz4 zram, swappiness 100, MIUI writeback loop device; magisk-swapspace installed but inactive; encore module flagged for removal | 2026-10-23 |
