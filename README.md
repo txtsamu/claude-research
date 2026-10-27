@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-27 | [8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md](8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md) | how-to |
 | 2026-10-27 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | how-to |
 | 2026-10-27 | [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | investigation |
 | 2026-10-27 | [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | how-to |
