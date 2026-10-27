@@ -293,6 +293,10 @@ Results 2026-10-26:
 - apply: RAM read-back OK, save sent, dongle answered again within the 2 s wait, `preset 3` with all five C7 bands.
 - After a manual unplug/replug: `read` still shows preset 3 with the C7 bands → **persists**.
 
+## Firmware status check (2026-10-27): already on the latest
+
+The dongle reports firmware `2.2.0` (register dump: build Jul 8 2025 19:24:29, hash `75503ea`; USB `bcdDevice` 2.20, UAC 2.0). FiiO's [JA11 firmware post](https://forum.fiio.com/note/showNoteContent.do?id=202406211150090736905) lists V2.2 (2025-07-09) as the newest: fixes lost in-line control after pausing on some phones, optimised mic input gain (V2.1 2024-10-29 ticking fix; V2.0 2024-08-05 UAC1.0 fix; V1.9 2024-07-29 web PEQ + online upgrade; V1.7 2024-06-21 channel-balance fix). [FiiO's V2.2 announcement](https://www.fiio.com/newsinfo/1065234.html) and a search for V2.3/V2.4 found nothing newer. Official upgrade paths: web at fiiocontrol.fiio.com (Windows/macOS, WebHID browser) or a local tool from the forum post. Note this unit is a cross-flashed JCALLY JM12 (KT02H20); FiiO's tools are meant for genuine JA11s, so an official upgrade on it is untested.
+
 ## Gotchas hit
 
 - Claude Code's auto-mode classifier blocks `sudo` on scripts that open HID devices as root, even my own and even after approval; the file creation inside the blocked command is skipped too. Write the script with the Write tool and let the user run it with `! sudo ...`. A udev rule (`SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2972", ATTRS{idProduct}=="0102", TAG+="uaccess"`) would avoid root; not installed.
@@ -300,6 +304,8 @@ Results 2026-10-26:
 - Not done: no listening A/B or re-measurement. The C7 and Fission were measured on a coupler; the Rational edition may differ.
 
 ## References
+
+- [FiiO forum: JA11 firmware download and history](https://forum.fiio.com/note/showNoteContent.do?id=202406211150090736905), [FiiO: V2.2 announcement](https://www.fiio.com/newsinfo/1065234.html)
 
 - [faxesystem/ja11-eq](https://github.com/faxesystem/ja11-eq) — `lib/fiioUsbHidHandler.js` and `lib/ja11Config.js`: frame layout, report ID 2, USER1 slot 3, save `0x19`, awaited-save fix
 - [jeromeof/devicePEQ](https://github.com/jeromeof/devicePEQ) — upstream FiiO HID handler (0BSD)
