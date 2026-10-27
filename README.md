@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-27 | [evomem-search-timeout-serialized-brute-force-scan.md](evomem-search-timeout-serialized-brute-force-scan.md) | troubleshooting |
 | 2026-10-27 | [8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md](8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md) | how-to |
 | 2026-10-27 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | how-to |
 | 2026-10-27 | [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | investigation |
@@ -167,6 +168,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [evomem-search-timeout-serialized-brute-force-scan.md](evomem-search-timeout-serialized-brute-force-scan.md) | evomem, mcp, timeout, search, latency, sqlite, embeddings | 2026-10-27 |
 | [samsung-tv-t6500-debloat-and-launcher.md](samsung-tv-t6500-debloat-and-launcher.md) | samsung, tizen, tv, sdb, debloat, kants2, uep, cold-boot, persistence, clean-launcher, tvunlock02, app-list, home-key, uid-5001, t6500, blocked | 2026-10-25 |
 | [diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md](diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md) | fiio, snowsky-disc, diskos, usb-dac, uac2, deadlock, usb-role, volume | 2026-10-22 |
 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | pipewire, wireplumber, firefox, usb-dac, fiio-ja11, stream-restore, fedora | 2026-10-22 |
