@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-27 | [diskos-fork-consolidated-into-dev-branch.md](diskos-fork-consolidated-into-dev-branch.md) | how-to |
 | 2026-10-27 | [diskos-persistent-debug-checkboxes.md](diskos-persistent-debug-checkboxes.md) | how-to |
 | 2026-10-27 | [diskos-ui-architecture-review-output-sequencer-design.md](diskos-ui-architecture-review-output-sequencer-design.md) | investigation |
 | 2026-10-27 | [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md) | evomem search timeouts: real cause was a per-query full word_index vocabulary scan (not a vector scan); fixed with a cached vocabulary, ~5 s -> ~0.3 s |
@@ -219,6 +220,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [diskos-fork-consolidated-into-dev-branch.md](diskos-fork-consolidated-into-dev-branch.md) | diskos, snowsky-disc, git, branches, fork, merge, hot-load, wrong-base | current | 2026-10-27 |
 | [diskos-persistent-debug-checkboxes.md](diskos-persistent-debug-checkboxes.md) | diskos, snowsky-disc, debug-mode, ssh, wifi, boot, lvgl, hot-load, podman | current | 2026-10-27 |
 | [diskos-ui-architecture-review-output-sequencer-design.md](diskos-ui-architecture-review-output-sequencer-design.md) | diskos, snowsky-disc, ui, c, architecture, refactor, working-mode, output-route, ipc, outseq, c-audit | current | 2026-10-27 |
 | [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | ktmicro, helios, fission, ja11, chu2-dsp, uac, otg, xiaomi, hidraw | current | 2026-10-27 |
