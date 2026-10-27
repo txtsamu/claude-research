@@ -223,6 +223,10 @@ Things that came up while doing it:
 
 **Next:** the user deploys (`tools/diskos-deploy.sh`) and checks boot into Local playback, play from idle, and switching Working Mode between Local / USB DAC / BT Receiving / USB Storage (SPDIF and USB Audio only in a `-DDISKOS_TEST_OUTPUTS` build). Then Step 2 (`source_send` to `outseq_source`).
 
+### Step 2 landed (2026-10-27): `source_send` -> `outseq_source`
+
+Commit `e6687ce` on `refactor/outseq` (local), stacked on Step 1 **before** the user had device-tested Step 1 (the user said "continue"). `source_send` (`main.c:727`) is now `rc = outseq_source(mode); if(rc != OUTSEQ_REFUSED) modes_output_reset(); return rc < 0 ? -1 : 0;`. Four `SRC_*` step tables in `outseq.c` (all MUST, route-moved = the first `0666 6`). `outseq_test` is at 16 sequences, green (no sanitizers, see above); `main.c` and `modes.c` pass the host `-fsyntax-only`. Deviation: an invalid mode now sends nothing and does not reset the route. Device check: switch Working Mode Local / USB DAC / BT Receiving / USB Storage and back (the storage return path also goes through `source_send`). Next: Step 3, `route_analog` -> `outseq_analog()`.
+
 ## References
 
 - [12 Common C Errors (edm2.com)](https://www.edm2.com/index.php/12_Common_C_Errors)
