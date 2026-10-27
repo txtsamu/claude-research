@@ -109,6 +109,14 @@ Firmware build stamps (registers `0x04`, `0x08–0x0D`) show three different bui
 - **Flash memory** — storage that keeps data without power (as opposed to RAM). Holds the firmware and saved settings; the vendor SAVE `0x53` copies the current register values into flash, which is what made the EQ survive unplugging. Limited write cycles; these chips have ~256 KB internal flash and no software read-back.
 - **Firmware** — the program the chip runs (stored in flash): presents the USB audio device, drives the DAC, applies EQ, answers register commands. Changing EQ bands is a settings change; flashing firmware replaces the program and is risky (no backup possible in software).
 
+## Where the three dongles stand (2026-10-27)
+
+| Dongle | Chip (evidence) | Firmware | C7 EQ |
+|---|---|---|---|
+| Tanchjim FISSION-Rational HiFi Edition `31b2:0101` | KT0211L (firmware file name + bootloader CHP `0211LC02`) | upgraded May 6 2025 -> **Jun 10 2025** from Linux ([how-to](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md)) | saved, survives replug |
+| FiiO JadeAudio JA11 `2972:0102` (cross-flashed JM12) | KT02H20 (`KT02H20B` from flasher projects) | V2.2 (2.2.0, build Jul 8 2025) = latest FiiO release | saved, survives replug |
+| Moondrop Chu II DSP `31b2:0113` | KT0210-class (inferred, chu2-studio) | 1.0.1 (build Aug 28 2023); no update published | saved, survives replug |
+
 ## Other devices that share the Chu II's chip family (searched 2026-10-27)
 
 Source of truth for "speaks the same KTMicro `0x4B` register protocol": [jeromeof/devicePEQ `usbDeviceConfig.js`](https://github.com/jeromeof/devicePEQ/blob/master/devicePEQ/usbDeviceConfig.js) (VID `0x31B2` block), cross-checked with [BunnyDSPLinux](https://github.com/onbot7/BunnyDSPLinux) and [kt0231h CHIPS.md](https://github.com/eyad-elghareeb/kt0231h/blob/master/CHIPS.md).

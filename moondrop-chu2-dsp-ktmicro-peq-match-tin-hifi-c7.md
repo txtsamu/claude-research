@@ -236,6 +236,7 @@ else:
 3. `apply`: all 5 writes ACKed, read-back identical, EQ enable still `0x3`, backup saved.
 4. `save`: ACK `0x03`, dongle returned with the C7 bands.
 5. Manual unplug/replug, `read`: still 108/287/2555/3250/9649 Hz → **persists**.
+6. Re-checked 2026-10-27 after the dongle had been disconnected and reconnected again (`chu2_c7.py read`): bands and `0x24 = 3` unchanged; USB still `31b2:0113`, `bcdDevice` 0.03, UAC 1.0, 98 mA.
 
 ## Firmware update? (searched 2026-10-27: none found)
 
