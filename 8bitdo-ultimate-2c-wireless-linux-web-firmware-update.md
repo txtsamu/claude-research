@@ -16,6 +16,7 @@ Checked whether the controller (8BitDo Ultimate 2C Wireless, 2.4 GHz dongle) had
 - Linux can't read the real firmware version: `bcdDevice` in sysfs is the dongle's USB revision (`1.14` here) and does not map to 8BitDo's v1.0x numbering. The version is only visible in the updater UI.
 - Flashing worked through https://web.8bitdo.com in Brave (Chromium) after granting udev access. Page reported "update complete"; the device re-enumerated and still works (`js0` present, XInput via `xpad`).
 - The before/after version shown by the updater was not recorded in this session.
+- Post-update input test: all face buttons, bumpers, triggers, d-pad, sticks, Start/Back and Home work with no drift or phantom Home press. L3/R3 clicks were not detected (see step 6).
 
 ## Steps
 
@@ -87,6 +88,74 @@ journalctl -k --since "-15min" | grep -i -E "2dc8|8bitdo|xpad"
 ```
 
 The kernel log shows the controller re-enumerating (`input: 8BitDo Ultimate 2C Wireless Controller`, new hidraw nodes) and the gamepad node `js0` still present. Dongle `bcdDevice` still `0114` (the update changed the controller, not the dongle's USB revision).
+
+### 6. Post-update input test
+
+`evtest` was not installed, so a small Python script reads the evdev node directly (no packages needed) and summarises which buttons and axes were exercised. Usage: `python3 -I padtest.py /dev/input/eventN SECONDS`.
+
+Look the node up each time: replugging the dongle moves it (it went `event20` -> `event23` here, and between plugs the by-id symlink is gone):
+
+```bash
+node=$(readlink -f /dev/input/by-id/*8BitDo*Wireless*-event-joystick | head -1)
+python3 -I padtest.py "$node" 45
+```
+
+`padtest.py`:
+
+```python
+#!/usr/bin/env python3
+"""Read an evdev gamepad node and report which buttons/axes were exercised.
+usage: padtest.py /dev/input/eventN SECONDS"""
+import struct, sys, time, select, os
+
+KEYS = {0x130:"A",0x131:"B",0x133:"X",0x134:"Y",0x136:"LB",0x137:"RB",
+        0x13a:"Back/View",0x13b:"Start/Menu",0x13c:"Guide/Home",0x13d:"L3",0x13e:"R3",
+        0x132:"BTN_C",0x135:"BTN_Z",0x138:"BTN_TL2",0x139:"BTN_TR2",0x13f:"BTN_THUMBR2",
+        0x2c0:"TRIGGER_HAPPY1",0x2c1:"TRIGGER_HAPPY2",0x2c2:"TRIGGER_HAPPY3",0x2c3:"TRIGGER_HAPPY4"}
+ABS = {0:"LeftX",1:"LeftY",2:"LT",3:"RightX",4:"RightY",5:"RT",16:"DpadX",17:"DpadY"}
+EVFMT = "llHHi"; SZ = struct.calcsize(EVFMT)
+dev, secs = sys.argv[1], float(sys.argv[2])
+fd = os.open(dev, os.O_RDONLY | os.O_NONBLOCK)
+btn = {}; axis = {}
+end = time.time() + secs
+while time.time() < end:
+    r,_,_ = select.select([fd],[],[],0.2)
+    if not r: continue
+    try: data = os.read(fd, SZ*64)
+    except BlockingIOError: continue
+    for i in range(0, len(data)-SZ+1, SZ):
+        _,_,t,c,v = struct.unpack(EVFMT, data[i:i+SZ])
+        if t == 1:
+            n = KEYS.get(c, f"KEY_{c:#x}")
+            btn.setdefault(n, [0,0]); btn[n][0 if v else 1] += 1
+            print(f"{'down' if v else 'up  '} {n}", flush=True)
+        elif t == 3:
+            n = ABS.get(c, f"ABS_{c}")
+            lo,hi = axis.get(n,(v,v)); axis[n] = (min(lo,v),max(hi,v))
+print("\n=== SUMMARY ===")
+print("buttons pressed:", ", ".join(sorted(btn)) or "none")
+print("axes (min..max):")
+for n,(lo,hi) in sorted(axis.items()): print(f"  {n}: {lo}..{hi}")
+```
+
+Results (after the firmware update):
+
+| Test | Result |
+|---|---|
+| A, B, X, Y, LB, RB | OK, clean down/up pairs, no chatter |
+| Back/View, Start/Menu | OK |
+| Guide/Home | OK (3 clean presses) |
+| D-pad (all 4 directions) | OK |
+| LT / RT | full `0..255` |
+| Both sticks | full `-32768..32767` on both axes (needs a full push; partial pushes show e.g. `24045`) |
+| Drift / phantom Home, 15 s hands off | **no events at all**, consistent with the v1.09 phantom-Home fix working |
+| L3 / R3 (stick clicks) | **not detected** in the 30 s test, no event and no unmapped key code. Unknown whether not pressed firmly enough or a hardware fault; focused retest pending |
+
+Gotchas hit while testing:
+
+- The first "drift" run was invalid: the command started before the controller was put down, so it recorded button presses and full stick sweeps. Wait for an explicit "hands off" before starting a drift capture.
+- Mid-test the dongle was unplugged (`usb 1-4: USB disconnect` in the kernel log), the event node vanished and `open()` returned `FileNotFoundError`. Check `lsusb | grep 2dc8` and the by-id symlink before blaming the controller.
+- Brave (open on web.8bitdo.com via the Gamepad API) and `cosmic-osk` had the node open. That's read-only and does not block other readers, so it was not the cause of the empty first capture (nothing was being pressed).
 
 ## Dead ends / notes
 
