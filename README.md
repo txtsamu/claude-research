@@ -42,6 +42,7 @@ One combined view across all three tables below, so the latest work is visible a
 | Date | Doc | Type |
 |---|---|---|
 | 2026-10-27 | [diskos-build-diskos-bin-image-locally.md](diskos-build-diskos-bin-image-locally.md) | how-to |
+| 2026-10-27 | [diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md](diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md) | how-to |
 | 2026-10-27 | [diskos-persistent-clock-timekeep.md](diskos-persistent-clock-timekeep.md) | troubleshooting |
 | 2026-10-27 | [diskos-hotload-gotchas-test-outputs-usb-storage-reboot.md](diskos-hotload-gotchas-test-outputs-usb-storage-reboot.md) | troubleshooting |
 | 2026-10-27 | [diskos-fork-consolidated-into-dev-branch.md](diskos-fork-consolidated-into-dev-branch.md) | how-to |
@@ -224,6 +225,7 @@ One combined view across all three tables below, so the latest work is visible a
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
 | [diskos-build-diskos-bin-image-locally.md](diskos-build-diskos-bin-image-locally.md) | diskos, snowsky-disc, installer, firmware, image, squashfs, bin | current | 2026-10-27 |
+| [diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md](diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md) | diskos, snowsky-disc, lastfm, terminal-theme, cursor, lvgl, subagents, worktree, git | current | 2026-10-27 |
 | [diskos-persistent-clock-timekeep.md](diskos-persistent-clock-timekeep.md) | diskos, snowsky-disc, rtc, clock, hwclock, ntp, timezone, boot, timekeep | current | 2026-10-27 |
 | [diskos-hotload-gotchas-test-outputs-usb-storage-reboot.md](diskos-hotload-gotchas-test-outputs-usb-storage-reboot.md) | diskos, snowsky-disc, hot-load, usb-audio, test-outputs, usb-storage, reboot, podman, ssh | current | 2026-10-27 |
 | [diskos-fork-consolidated-into-dev-branch.md](diskos-fork-consolidated-into-dev-branch.md) | diskos, snowsky-disc, git, branches, fork, merge, hot-load, wrong-base | current | 2026-10-27 |
