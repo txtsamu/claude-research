@@ -6,20 +6,18 @@ last_verified: 2026-10-27
 status: current
 ---
 
-# diskOS "Persistent debug": Wi-Fi and SSH come back by themselves after a reboot
+# diskOS "Persistent debug": one checkbox brings Wi-Fi and SSH back after a reboot
 
 Repo `/home/moo/diskos/diskos`, fork branch `dev` (commit `5ae06f9` was made on `feat/persistent-debug` and is part of `dev`'s history; see [[diskos-fork-consolidated-into-dev-branch]]). Request: during a debug session every reboot meant re-enabling Wi-Fi and Debug Mode by hand. Companion docs: [[fiio-snowsky-disc-diskos-flash-fedora]] (flash and key-only SSH), [[diskos-ui-architecture-review-output-sequencer-design]] (the `outseq` work this branch sits on).
 
 ## What it does
 
-Debug Mode (Settings > System, or the Quick Settings Debug tile) has a "Persistent debug" block with two checkboxes, both off by default:
+Debug Mode (Settings > System, or the Quick Settings Debug tile) has one checkbox, **Persistent debug** ("Wi-Fi and SSH on at every boot"), off by default, stored as cfg key `pdbg` (`CFG_PDBG` in `ui/screens.h`). When set, at every boot:
 
-| Checkbox | cfg key | Effect at boot |
-|---|---|---|
-| Auto-connect Wi-Fi at boot | `pdbg_wifi` | Wi-Fi intent stays on (`wifi_on=1`); the keepalive starts it and joins a saved network |
-| Enable Debug at boot | `pdbg_ssh` | SSH is enabled again with a fresh random password (read it on Debug Mode) |
+- Wi-Fi intent stays on (`wifi_on=1`); the keepalive starts it and joins a saved network.
+- SSH is enabled again with a fresh random password (read it on Debug Mode), about 6 s after the UI starts.
 
-No password or key is stored beyond the existing `/usr/data/sshd/current_pw`. SSH password is regenerated each boot.
+(It started as two checkboxes, `pdbg_wifi` and `pdbg_ssh`, commit `5ae06f9`; they were merged into one, commit `5d9f895`, on request. The old keys are no longer read.) No password or key is stored beyond the existing `/usr/data/sshd/current_pw`.
 
 ## Why it did not work before (facts read from the code)
 
@@ -29,9 +27,9 @@ No password or key is stored beyond the existing `/usr/data/sshd/current_pw`. SS
 
 ## Changes
 
-- `ui/debug_ui.c`: `enable_core()` (widget-free enable: random password, `crypt` hash, `diskos-debug.sh ssh-on <hash>` and `serial-on`, then trust the real state); `enable_dbg()` is now a thin wrapper; `debug_boot_restore()` (skips when dropbear is already running or the shadow overlay is mounted, so a UI restart does not rotate the password); two `lv_checkbox`es (`pdbg_checkbox()`), layout moved up and the button is 190x44.
-- `ui/main.c`: `wifi_on` is set to `pdbg_wifi ? 1 : 0` in the once-per-boot reset; a one-shot `lv_timer` 6 s after startup calls `debug_boot_restore()` when `pdbg_ssh` is set.
-- `ui/wifi.c`: the reconcile's `wifi_reco_decide(...)` is skipped while `pdbg_wifi` is set.
+- `ui/debug_ui.c`: `enable_core()` (widget-free enable: random password, `crypt` hash, `diskos-debug.sh ssh-on <hash>` and `serial-on`, then trust the real state); `enable_dbg()` is now a thin wrapper; `debug_boot_restore()` (skips when dropbear is already running or the shadow overlay is mounted, so a UI restart does not rotate the password); one `lv_checkbox` (`pdbg_checkbox()`) with a muted sub-label, layout moved up and the button is 190x44.
+- `ui/main.c`: `wifi_on` is set to `pdbg ? 1 : 0` in the once-per-boot reset; a one-shot `lv_timer` 6 s after startup calls `debug_boot_restore()` when `pdbg` is set.
+- `ui/wifi.c`: the reconcile's `wifi_reco_decide(...)` is skipped while `pdbg` is set.
 - `ui/screens.h`: `debug_boot_restore()` declaration.
 
 ## Build and deploy (no Docker on the box: podman with the existing builder image)
@@ -49,17 +47,17 @@ A UI hot-load only lasts until the next reboot (the flashed `mq_ui` returns). So
 ## Test on the device (boot path without a reboot)
 
 ```bash
-ssh disc '/usr/project/diskos-debug.sh ssh-off; printf "pdbg_wifi=1\npdbg_ssh=1\n" >> /usr/data/diskos.conf;
+ssh disc '/usr/project/diskos-debug.sh ssh-off; printf "pdbg=1\n" >> /usr/data/diskos.conf;
           rm -f /tmp/.diskos_radios_reset /usr/data/sshd/current_pw'
 # redeploy/restart mq_ui, wait ~14 s
 ssh disc '/usr/project/diskos-debug.sh status; ls -l /usr/data/sshd/current_pw; grep "persistent debug" /usr/data/diskos_boot.log'
 #  -> SSH=on, new current_pw, "persistent debug: SSH enabled at boot"
 # Wi-Fi half: put wifi_on=0 in diskos.conf, clear the marker, restart the UI
 #  -> wifi_on back to 1, wlan0 keeps its IP
-ssh disc 'sed -i "/^pdbg_/d" /usr/data/diskos.conf'                   # restore afterwards
+ssh disc 'sed -i "/^pdbg/d" /usr/data/diskos.conf'                   # restore afterwards
 ```
 
-Result: both halves worked. Not done: a real reboot with this build flashed; looking at the Debug Mode screen (the layout was placed by arithmetic for the 360x360 round panel, never seen); a run without `pdbg_wifi` set (it would switch Wi-Fi off and cut the SSH link).
+Result: both halves worked. Re-run with the single `pdbg=1` after the merge into one checkbox (`wifi_on=0` saved, SSH off, marker cleared): `wifi_on` back to 1, wlan0 kept its IP, SSH back with a new `current_pw`, log line `persistent debug: SSH enabled at boot`. Not done: a real reboot with this build flashed; looking at the Debug Mode screen (the layout was placed by arithmetic for the 360x360 round panel, never seen); a run without `pdbg` set (it would switch Wi-Fi off and cut the SSH link).
 
 ## Follow-up in the same session
 
@@ -67,5 +65,5 @@ Working Mode picker (`ui/modes.c`, commit `1891442`): the USB Audio row (test-ou
 
 ## Notes
 
-- Security: with `pdbg_ssh` on, root password SSH over Wi-Fi is up on every boot until Disable is pressed. The file header comment in `debug_ui.c` says so. Key-only SSH on port 2222 (`S98diskos_sshkey`) is separate and unaffected by ssh-on/off.
+- Security: with Persistent debug on, root password SSH over Wi-Fi is up on every boot until Disable is pressed. The file header comment in `debug_ui.c` says so. Key-only SSH on port 2222 (`S98diskos_sshkey`) is separate and unaffected by ssh-on/off.
 - The USB Storage return path restarts the Disc by design (`storage_resume_local`, `main.c`), which also drops a hot-loaded build.
