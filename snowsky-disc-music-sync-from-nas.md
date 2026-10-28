@@ -2,7 +2,7 @@
 type: how-to
 tags: [fiio, snowsky-disc, diskos, music, rsync, nas, nfs, fat32, fsck, dedup, flac]
 created: 2026-10-19
-last_verified: 2026-10-22
+last_verified: 2026-10-28
 status: current
 ---
 
@@ -81,3 +81,33 @@ beet write 'albumartist:=RAN'; /usr/bin/find . -depth -type d -empty -delete
 (`rtk find` rejects `-empty -delete`; call `/usr/bin/find`.) Then rerun the sync: card 804 audio files = NAS 804 (minus Yiruma), `fsck.vfat -n` clean.
 
 Leftover on the card: `Music/[Hi-Res][211201]YOASOBI - THE BOOK 2.../` holding only three excluded `*.url` ad shortcuts, so rsync cannot remove the dir (excluded files are kept). Harmless; delete by hand if the stock scanner trips on it.
+
+## 2026-10-28 incremental sync + Dua Lipa duplicate
+
+Disc in USB Storage mode showed up as `/dev/sda1` (`STB-STORAGE`), unmounted. Flow that worked, ~5 min:
+
+1. `~/diskos/snowsky-sync.sh` (dry run) -> 13 adds (12 Hindia *Menari Dengan Bayangan* tracks + `RADWIMPS/.../Sparkle.dsf`), 0 deletes. Card had 35 GB free (60G, 26G used).
+2. Case-collision check on the source (the Python snippet above) -> none. Always do it; FAT collisions broke the 10-22 sync.
+3. `~/diskos/snowsky-sync.sh --apply` -> 443 MB at ~17 MB/s. Counts: card 817 audio files = NAS 839 minus the 22 `*Yiruma*` (`find -ipath '*yiruma*'`: NAS 22, card 0).
+4. `udisksctl unmount -b /dev/sda1`; then on the Disc Working Mode -> Local Playback, Settings -> Rescan library.
+- `Sparkle.dsf` is still the truncated download (93 MB, header says 728 MB): plays ~69 s. Left on the card.
+- Gotcha: `rtk` rewrites some `rsync`/`find` output; use `/usr/bin/rsync` and `/usr/bin/find`. Stacking `du`/`xargs` over a 1,300-line listing blew up the output - summarize with `grep -c '^>f'` / `'^\*deleting'` instead.
+
+### Dua Lipa "Don't Start Now" x3 (keep the highest bitrate)
+Three files, none byte-identical, none same-audio:
+
+| File | Format | Avg bitrate | Vendor |
+|---|---|---|---|
+| `Future Nostalgia (2020)/02 - Don't Start Now.flac` | 24-bit/44.1 | 1709 kbps | Lavf60 (ffmpeg re-encode) |
+| `Future Nostalgia [Clean] (2020)/02 - Don't Start Now.flac` | 16-bit/44.1 | 1015 kbps | libFLAC 1.4.3 |
+| `Future Nostalgia (2020)/02 - Don't Start Now.1.flac` | 16-bit/44.1 | 992 kbps | libFLAC 1.3.1 |
+
+```bash
+python3 -I - <<'PY'      # mutagen: i=FLAC(p).info; i.bits_per_sample, i.length, size*8/length, f.tags.vendor
+PY
+# is the 24-bit file really 24-bit? decode 60 s to s32 and test the low byte
+ffmpeg -v error -i "02 - Don't Start Now.flac" -t 60 -f s32le - | python3 -I -c "import sys,array; a=array.array('i'); a.frombytes(sys.stdin.buffer.read()); print(all((x&0xFF)==0 for x in a))"
+# decoded-16-bit hash per file (differs for all 3 => different masters, not re-encodes)
+ffmpeg -v error -i "$f" -map 0:a -f s16le - | md5sum
+```
+Result: the 24-bit file is 16-bit audio zero-padded to 24 (low 8 bits all zero), so its "higher bitrate" is padding, not quality. User's rule was "keep higher bitrate", so it was kept; the other two were moved (not deleted) to `~/nfs_photos/music-archives/dup-removed-2026-10-28/Dua Lipa/`. Resync dry run showed exactly those two `*deleting`, applied. Side effect: the `[Clean]` album folder has no track 02 (08 was already missing). To prefer a true-16-bit copy instead, restore from the archive dir and archive the 24-bit one.
