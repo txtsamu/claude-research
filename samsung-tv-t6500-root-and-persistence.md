@@ -2,7 +2,7 @@
 type: investigation
 tags: [samsung, tizen, tv, root, kants2, uep, kernel-exploit, armv7l, dotnet, dotnet-launcher, aul, capabilities, remotepc, cifs, smack, ghidra, reverse-engineering, persistence, profile.d, raw-block, sdb]
 created: 2026-10-23
-last_verified: 2026-10-25
+last_verified: 2026-10-28
 status: current
 ---
 
@@ -988,6 +988,38 @@ UEP is built into the kernel, not a loadable module: `/sys/module/uep` exposes o
 `version` (`0.0.1`), no parameters, no `.text`/`.data` sections, and `/proc/kallsyms` and
 `/proc/modules` give nothing usable.
 
+#### Mechanism, measured 2026-10-28: two layers, and the verdict is per-inode
+
+Re-checked live on this set (`UA43T6500AKXXD`, kernel 4.1.10 built 2026-07-28, UEP enforcing):
+
+- `/bin/sh` (read-only vdfs, label `_`) executes.
+- A **byte-identical** copy of it (md5 `db5dfbb6504f70853a57af8967c6cd85` on both files) on the
+  writable vdfs `/opt` gives `Operation not permitted`, with the kernel verdict in dmesg:
+  `[E][UEP]: [SfdUepHandleVerificationResult] file …/sh_copy is not signed. Sign it.(fsname:vdfs, mnt_flags:1020)`.
+- The same copy on tmpfs (`/tmp`) gets an identical refusal, `(fsname:tmpf, mnt_flags:1020)`: the
+  flag word does not differ between the two filesystems, so mount flags are not what decides.
+- `/opt/hermes_root`, the SUID copy of `/bin/sh` — same md5, and `chsmack` reports the **same label
+  `_`** as the original — is still refused, still "not signed". Label and payload are both
+  eliminated; what is missing is state attached to the inode.
+- `LD_PRELOAD=/usr/lib/libvconf.so.0.3.1 /bin/true` loads; a copy of that signed library in `/opt`
+  or `/tmp` gives `failed to map segment from shared object`, logged by the **same**
+  `SfdUepHandleVerificationResult` handler.
+
+The verdict is therefore not a function of the file's bytes, path, label or mount: it is per-inode
+signature metadata that no copy carries. `execve` and `PROT_EXEC` mappings reach the same kernel
+handler, so "copy a signed binary somewhere writable" is closed wherever you copy it.
+
+The `[uep][bash]` line above comes from a **different, user-space** layer: `/bin/sh` and `/bin/bash`
+both contain the strings `the file is NOT signed`, `verifyFile` and `/usr/lib/libkUEPUser.so`, and
+that library (`/usr/lib/libkUEPUser.so`, 43 KB, refs `verifyFile`) is what the shell calls to vet a
+script *path* before opening it. That is also why content-as-argument never trips it:
+`sh -c "$(cat f)"` never opens `f` as a script.
+
+This settles a reading published by a third party from the same observations
+([cfloinc/samsung-q70t-tizen-root](https://github.com/cfloinc/samsung-q70t-tizen-root), raised in
+issue #29): "the gate is the path" does not hold here. A copy that keeps the path-visible
+attributes (same bytes, same label `_`) is still refused, and the kernel calls it "not signed".
+
 ### Primitive: `/dev/ntkhdma`
 
 The Novatek HDMA driver is the whole entry point. It is world-writable, and two bugs compose:
@@ -1091,9 +1123,11 @@ uid=901(sdk) euid=0(root)          -> /opt/hermes_root -p -c id      (SUID trans
 ```
 
 So a cold boot costs: one signed-launcher invocation to flip the word (~150 ms plus launcher
-start), then any command through `/opt/hermes_root -p`. The cred patch remains worthwhile only
-when a process needs **full** capability sets (`CapEff ffffffffffffffff`) rather than the SUID
-bounding set (`0000000300200040`), or when the SUID file is unavailable.
+start), then any command through `/opt/hermes_root -p`. Measured 2026-10-28 with UEP armed:
+`/opt/hermes_root -p -c id` gives `Operation not permitted` — the SUID copy is refused exactly
+like any other copy, so this path is strictly a UEP-off path. The cred patch remains worthwhile
+only when a process needs **full** capability sets (`CapEff ffffffffffffffff`) rather than the
+SUID bounding set (`0000000300200040`), or when the SUID file is unavailable.
 
 Cred patch mechanics, for reference: scan 1 MB chunks for `struct cred` — word 0 `usage` in `(0,
 0x1000]` and `uid=euid=suid=fsuid=901`; constrain on uid only (gid fields may differ, and
@@ -1383,10 +1417,12 @@ not, because nothing unsigned is ever executed:
 sh -c "$(cat /opt/hermes/debloat.sh)"
 ```
 
-This is the reliable way to keep shell tooling on `/opt`. Note also that **UEP re-armed itself
-inside a single session** (verified off and executing, then blocking again ~10 minutes later with
-no reboot), so UEP-off must never be assumed — re-check the state word if a native binary
-suddenly returns EPERM.
+This is the reliable way to keep shell tooling on `/opt`. Two different failures look identical: a
+*copy* being refused (always true while UEP enforces, whatever its label or mount) versus the
+state word flipping back to `1` — only the latter explains a native binary that ran a minute ago
+starting to return EPERM. Note also that **UEP re-armed itself inside a single session** (verified
+off and executing, then blocking again ~10 minutes later with no reboot), so UEP-off must never be
+assumed — re-check the state word if a native binary suddenly returns EPERM.
 
 #### Not possible / deferred
 
