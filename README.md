@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-10-28 | [boox-poke3-adb-debloat-telemetry-and-firmware-check.md](boox-poke3-adb-debloat-telemetry-and-firmware-check.md) | how-to |
 | 2026-10-27 | [diskos-build-diskos-bin-image-locally.md](diskos-build-diskos-bin-image-locally.md) | how-to |
 | 2026-10-27 | [diskos-loudness-spdif-ja11-and-main-release.md](diskos-loudness-spdif-ja11-and-main-release.md) | investigation |
 | 2026-10-27 | [diskos-pet-tamagotchi-app-digimon-agents.md](diskos-pet-tamagotchi-app-digimon-agents.md) | how-to |
@@ -102,6 +103,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [boox-poke3-adb-debloat-telemetry-and-firmware-check.md](boox-poke3-adb-debloat-telemetry-and-firmware-check.md) | boox, onyx, poke3, android10, e-ink, adb, debloat, telemetry, firmware, koreader | 2026-10-28 |
 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | tanchjim, fission, ktmicro, kt0211l, firmware, flash, rea, ghidra, reverse-engineering, fedora | 2026-10-27 |
 | [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | moondrop, chu-ii-dsp, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, tin-hifi | 2026-10-27 |
 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | fiio, ja11, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, tin-hifi | 2026-10-26 |
