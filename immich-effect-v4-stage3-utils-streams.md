@@ -56,3 +56,16 @@ Remove the Promise adapters and the mock-lifting `bridge.ts`, inject Effect serv
 - Stage 1 and stage 2 write-ups above, `agent-patterns/effect-*.md` in the repo.
 - Effect v4 migration guide: https://github.com/Effect-TS/effect-smol/blob/main/migration/v3-to-v4.md
 - Effect 4.0.0 release: https://github.com/Effect-TS/effect/releases/tag/effect%404.0.0
+
+## Stage 4a: mock lifting moved out of production code (2026-10-28)
+
+Branch `effect-v4-stage4` (off `effect-v4`, commit after `4e3780a21`). A full stage 4 (delete the Promise
+adapters) is not possible without rewriting the medium specs (`new key(db)`) and ~45 controllers/guards/
+middleware/workers that call the Promise repositories, so only the part that is safe was done:
+
+- `src/effect/bridge.ts`: `lift` is gone. `effectOf` serves the registered Effect service (via `guard`), and for
+  an unregistered object calls a hook installed with `setEffectFallback`, throwing if none is set.
+- `test/lift.ts` holds the Proxy that wraps a mock's functions in `Effect.tryPromise`; `test/setup.ts` installs it;
+  both vitest configs got `setupFiles: ['test/setup.ts']`. No `*.spec.ts` was edited.
+- Verified: tsc/eslint/prettier clean, unit `3 failed | 2122 passed | 1 expected fail`, medium 35 failures
+  (34 baseline + the flaky stacked-asset test), OpenAPI unchanged, `nest build` ok.
