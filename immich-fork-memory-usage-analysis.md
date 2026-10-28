@@ -2,7 +2,7 @@
 type: investigation
 tags: [immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance]
 created: 2026-10-21
-last_verified: 2026-10-21
+last_verified: 2026-10-28
 status: current
 ---
 
@@ -71,7 +71,7 @@ RSS was read from `/proc/<pid>/status` every 0.3 s for the API process, the main
 ## What to do about it
 
 Settings only (Admin > Jobs, or the config file):
-- `job.thumbnailGeneration.concurrency` 3 to 1: biggest win for the peak.
+- `job.thumbnailGeneration.concurrency` 3 to 1: biggest win for the peak. **Applied 2026-10-28** as the new default in the fork (`strip-ai` commit `61f79d1f0`: `server/src/dtos/config.dto.ts`, the docs example, and the default hard-coded in `system-config.service.spec.ts`). Only the default changed, so an install that saved its own value in the admin job settings keeps it. Unit suite unchanged (2122 pass, same 3 Node 22 failures); the lower peak itself was **not re-measured**.
 - `job.metadataExtraction.concurrency` 5 to 2: fewer exiftool processes.
 - A container memory limit (for example `mem_limit: 1g`) so a burst cannot grow unbounded. Not tested, may make a burst fail instead of just being slow.
 
