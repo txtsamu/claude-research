@@ -70,7 +70,9 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-22 | [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | troubleshooting |
 | 2026-10-22 | [truenas-music-dedupe-and-tag-cleanup.md](truenas-music-dedupe-and-tag-cleanup.md) | how-to |
 | 2026-10-22 | [immich-lan-unreachable-oom-crashloop-and-stale-caddy-ca.md](immich-lan-unreachable-oom-crashloop-and-stale-caddy-ca.md) | troubleshooting |
-| 2026-10-21 | [immich-effect-v4-stage2-services.md](immich-effect-v4-stage2-services.md) | how-to |
+| 2026-10-28 | [immich-effect-v4-stage3-utils-streams.md](immich-effect-v4-stage3-utils-streams.md) | how-to |
+| 2026-10-21 | [immich-effect-v4-stage3-utils-streams.md](immich-effect-v4-stage3-utils-streams.md) | immich, fork, effect, effect-ts, nestjs, streams, subagents, podman | 2026-10-28 |
+| [immich-effect-v4-stage2-services.md](immich-effect-v4-stage2-services.md) | how-to |
 | 2026-10-21 | [immich-effect-v4-stage2-services.md](immich-effect-v4-stage2-services.md) | immich, fork, effect, effect-ts, nestjs, services, subagents, vitest, podman | 2026-10-21 |
 | [immich-effect-v4-stage1-repositories.md](immich-effect-v4-stage1-repositories.md) | how-to |
 | 2026-10-21 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | investigation |
