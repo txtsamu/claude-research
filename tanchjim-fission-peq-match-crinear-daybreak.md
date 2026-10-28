@@ -92,7 +92,7 @@ The csi-zone Fission file used above (`AtSDdf`) is the **S** nozzle on the DSP j
 - Fifth T-nozzle source (Daybreak default L+R minus Fission nickel/Atmosphere L+R, `analyze_t5.py`): needed correction +3.0 @60, -1.9 @2k, -3.5 @5k, -2.5 @6.5k, -3.5 @8k. The EQ applied from the first four sites scores **0.62 dB RMS on this unseen site vs 1.44 with no EQ** (a genuine out-of-sample check). Refit on all five: 66 Hz +3.0 Q2.44, 561 Hz +1.4 Q1.74, 2235 Hz -2.2 Q1.75, 3108 Hz +1.3 Q2.61, 7631 Hz -2.3 Q0.71; mean RMS 0.55, identical to the applied EQ, so nothing was changed.
 - Insertion depth matters a lot: on Super* Review, Daybreak shallow vs default insertion differ by 1.66 dB RMS, deep by 0.77. This is a likely source of between-site disagreement.
 
-## Same EQ on the FiiO JA11 (analog) (2026-10-28)
+## Same EQ on the FiiO JA11 (analog) (2026-10-28) - superseded by the Chu II correction below
 Request: "I just connected my DAC, check claude-research and apply CrinEar Daybreak EQ, but research again if there is EQ reference for my device". Connected: JA11 (`lsusb` 2972:0102, ALSA card `JA11`, PipeWire sink `alsa_output.usb-FIIO_JadeAudio_JA11...analog-stereo` RUNNING). It held the C7 bands in USER1 (preset 3).
 
 - The JA11 is a flat DAC and the baseline used above (Fission T nozzle, Atmosphere, **analog 3.5 mm**, EQ-off) is exactly the signal path through the JA11, so the T-nozzle bands transfer unchanged (no factory-band subtraction needed, unlike the Tanchjim DSP dongle). Assumption: the IEM on it is the Fission with the T nozzle (the JA11 doc's "which IEM" caveat still applies).
@@ -104,6 +104,15 @@ sudo -n ./venv/bin/python -I ja11_daybreak.py           # apply + verify + save 
 sudo -n ./venv/bin/python -I ja11_c7.py restore         # JA11 factory USER1 back (ja11_backup.json)
 ```
 - Applied and read back after the save: 66 Hz +3.0 Q2.24, 549 Hz +1.3 Q1.70, 2216 Hz -2.3 Q1.83, 3214 Hz +1.3 Q2.32, 7073 Hz -2.0 Q0.74, preset 3 active. Not yet re-checked after an unplug/replug. Same +3 dB no-preamp clipping caveat (JA11 global gain `0x17` deliberately untouched).
+
+### Correction: the IEM on the JA11 is the Moondrop Chu II (2026-10-28)
+The user then said the earphone on the JA11 is the **Moondrop Chu II** (3.5 mm cable version, not the DSP USB-C one), so the Fission T-nozzle bands above are wrong for the JA11 and were replaced. Because the JA11 is a flat DAC, the baseline is the plain analog Chu II measurement (Pragmatic Audio found the DSP cable at 0 dB DSP gain identical to analog, see [the Chu II doc](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md)).
+
+Sources: re-ran the all-site scan with a Chu regex (`scan_chu2.py` = `scan_sites3.py` with `chu\s*(2|ii|two)\b|chu2`, and the root site `https://squig.link/` URL fixed). 21 databases list both Daybreak and a Chu II; `fetch_chu2.py` downloaded Daybreak + plain "Moondrop Chu 2/II" (L+R where present) from 15 of them (hangout.audio, banzai1122, timmyv, boizoff, sl0the missed on file-name guesses, not retried). Pitfall: build the URL with `%20`, not a literal space (the first run returned nothing). soundignity is a byte mirror of csi-zone, so it was dropped; 14 sites remain (csi-zone, atechreviews, audioamigo, aden, aftersound, bassaudio, foxtoldmeso (5128), gadgetrytech, lown-fi, pw, sai, treblewellxtended, squig.link Super*Review, fernandagunsan). Each site's rig is internally consistent, so per site: needed = Daybreak - Chu II, both normalised at 1 kHz.
+
+`analyze_chu2.py` (per-site table, median, 5-band fit 60 Hz-9.5 kHz, gain -8..+3, Q 0.4-3, leave-one-site-out). Median needed correction: -1.1 @60, -1.8 @100, -1.3 @200, **+1.3 @500**, -1.1 @2k, -1.0 @3k, -1.4 @4k, -1.7 @5k, -1.2 @6k, -1.8 @8k. Between-site std is under 1 dB up to 4 kHz (0.2 dB at 500 Hz) but 1.4-2.3 dB above 5 kHz, so the treble bands are the least certain. Fit: mean RMS over sites 1.54 dB with no EQ, 0.90 dB with the fit (worst 1.34); leave-one-site-out mean 0.97 (worst 1.43).
+
+**Applied and saved to JA11 USER1 (read back after save, preset 3):** 141 Hz -2.4 Q0.56, 447 Hz +2.1 Q0.72, 2098 Hz -1.1 Q0.77, 4693 Hz -1.4 Q1.98, 8464 Hz -1.6 Q3.0. Max boost +1.4 dB (low clipping risk). Script `ja11_daybreak_chu2.py` (same as `ja11_daybreak.py` with the new band list); undo with `ja11_c7.py restore`. Not yet re-checked after replug; no listening A/B. Coupler data above ~8 kHz is unreliable (csi-zone shows -5.3 dB at 9 kHz where others show +1), so the 8.5 kHz notch is a weak guess.
 
 ## Caveats
 - Approximation: coupler data, R-vs-L, one unit standing in for another; no listening A/B or re-measurement.
