@@ -104,6 +104,7 @@ One combined view across all three tables below, so the latest work is visible a
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
+| [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-28 |
 |---|---|---|
 | [boox-poke3-adb-debloat-telemetry-and-firmware-check.md](boox-poke3-adb-debloat-telemetry-and-firmware-check.md) | boox, onyx, poke3, android10, e-ink, adb, debloat, telemetry, firmware, koreader | 2026-10-28 |
 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | tanchjim, fission, ktmicro, kt0211l, firmware, flash, rea, ghidra, reverse-engineering, fedora | 2026-10-27 |
@@ -123,7 +124,6 @@ One combined view across all three tables below, so the latest work is visible a
 | [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md) | fiio, snowsky-disc, rsync, nas, fat32, fsck, dedup, flac | 2026-10-28 |
 | [xiaomi-phone-music-library-sync-adb.md](xiaomi-phone-music-library-sync-adb.md) | xiaomi, android, adb, music, nas, sync | 2026-10-28 |
 | [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md) | pipewire, fedora, cosmic, usb-dac, sample-rate, bit-perfect, volume-keys | 2026-10-19 |
-| [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-19 |
 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | android, iqoo, vivo, originos, adb, debloat, uad-ng | 2026-10-19 |
 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | tiktok-bot, home, anoa, camofox, scraping, cdp, gallery-dl | 2026-10-18 |
 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | technitium, dns, blocklist, samsung, smart-tv, advanced-blocking, hagezi | 2026-10-18 |

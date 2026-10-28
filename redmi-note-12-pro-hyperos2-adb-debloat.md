@@ -2,7 +2,7 @@
 type: how-to
 tags: [android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, wireless-debugging, mediatek, technitium, advanced-blocking, hagezi, mikrotik]
 created: 2026-10-19
-last_verified: 2026-10-19
+last_verified: 2026-10-28
 status: current
 ---
 
@@ -266,6 +266,42 @@ Notes / undo:
   `/ip address remove [find comment="Redmi DNS redirect hairpin source"]`,
   `/ip dhcp-server lease remove [find address=192.168.50.252]`, `/ip dhcp-server lease make-dynamic [find address=192.168.50.3]`.
   In Technitium, remove `.3` (all nodes) and `.252` (`.200`) from the maps and delete the `redmi-phone` group.
+
+## 8. Post-update re-check: OS2.0.17 -> OS2.0.18 (2026-10-28)
+
+Question: did the OTA bring telemetry back? **No.** Checked over USB (`adb devices -l`, serial from
+`adb devices`; the wireless pairing was lost after the update, see below).
+
+```bash
+S=<serial>
+adb -s $S shell pm list packages    | sed 's/package://' | tr -d '\r' | sort > installed.txt
+adb -s $S shell pm list packages -u | sed 's/package://' | tr -d '\r' | sort > all_u.txt
+comm -12 prev_removed.txt installed.txt        # previously removed but installed again -> empty
+comm -23 <(comm -23 all_u.txt installed.txt) prev_removed.txt   # removed now but not in the old list -> empty
+adb -s $S shell pm list packages -d            # weather2 + preff.kb.xm still disabled
+for h in data.mistat.intl.xiaomi.com miui-l7-data-other-c3.pt.miui.com bigota.d.miui.net; do
+  adb -s $S shell "ping -c1 -W2 $h 2>&1 | head -1" </dev/null; done
+```
+
+(`prev_removed.txt` = the 135-package list in section 1 plus the 8 uninstalled in section 3.)
+
+Results:
+- All **143** previously removed packages are still removed (`comm -12` empty). `com.miui.analytics`,
+  `msa.global`, `joyose`, `mipicks`, `daemon`, `discover` did not come back.
+- `com.miui.weather2` and `com.preff.kb.xm` are still disabled.
+- Total packages 566 with `-u` (was 565): one new one, not identified (no saved old list, nothing on the
+  telemetry watch list matches).
+- DNS from the phone: `data.mistat.intl.xiaomi.com` and `tracking.intl.miui.com` -> `127.0.0.1`
+  (global list); `miui-l7-data-other-c3.pt.miui.com` -> unknown host (`redmi-phone` group, so the
+  router redirect and static lease survived); allowlisted `bigota.d.miui.net` and
+  `api.xmpush.global.xiaomi.com` resolve.
+- Still unknown: `settings get global personalized_ad_enabled` = 3 (meaning never confirmed);
+  `secure upload_log_pref` = 0. Private DNS mode `off` (stale `dot.ublockdns.com` specifier left saved).
+
+Gotcha: the OTA dropped this PC's wireless-debugging authorization. Port 33817 was open but
+`adb connect` failed and `adb pair` asked for a code, i.e. it was the **pairing** port, not the connect
+port. Plug in USB and accept the RSA prompt instead (`adb devices` shows `unauthorized` until you do), or
+re-pair from Developer options > Wireless debugging.
 
 ## Restore
 
