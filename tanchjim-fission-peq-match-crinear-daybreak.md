@@ -1,12 +1,14 @@
 ---
 type: how-to
-tags: [tanchjim, fission, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, crinear-daybreak, fedora]
+tags: [tanchjim, fission, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, crinear-daybreak, ja11, chu-ii, fedora]
 created: 2026-10-28
 last_verified: 2026-10-28
 status: current   # (see the T-nozzle section for what is applied now) applied and saved to flash via SAVE 0x53 (ACK 0x03), bands intact after the self-reboot
 ---
 
 # Tanchjim FISSION-Rational HiFi dongle: PEQ-match CrinEar Daybreak (same-rig, no offset needed)
+
+> **Also covers the FiiO JA11 + Moondrop Chu II (14-site fit), see the last two sections before Caveats.** What is on each dongle now: Fission dongle = Fission T-nozzle bands; **JA11 USER1 = Chu II bands** (141 Hz -2.4 Q0.56, 447 +2.1 Q0.72, 2098 -1.1 Q0.77, 4693 -1.4 Q1.98, 8464 -1.6 Q3.0), re-read from the device after the save on 2026-10-28.
 
 Third sibling after [C7](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) (device protocol, SAVE, gotchas live there) and [Nightfall](tanchjim-fission-peq-match-crinear-nightfall-cross-rig.md). Files: `~/sessions/2026-10-26-iem-dsp-eq/` (`fit_daybreak.py`, `daybreak_fission.py`, `data/daybreak/`).
 

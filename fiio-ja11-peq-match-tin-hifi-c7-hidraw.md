@@ -8,6 +8,8 @@ status: current   # C7 PEQ written to USER1 slot, saved, verified surviving unpl
 
 # FiiO JadeAudio JA11 (cross-flashed KT02H20): PEQ-match a Tin HiFi C7 over raw hidraw, no app
 
+> **Update 2026-10-28:** USER1 now holds a CrinEar Daybreak EQ for a Moondrop Chu II (not the C7 bands below); see [tanchjim-fission-peq-match-crinear-daybreak.md](tanchjim-fission-peq-match-crinear-daybreak.md). Same protocol and script pattern (`ja11_daybreak_chu2.py`); the C7 section below is still the protocol reference. `ja11_c7.py restore` returns the factory USER1.
+
 > **Files:** scripts, backups, measurement data and venv for both dongles live in `~/sessions/2026-10-26-iem-dsp-eq/` (see its `README.md`); run the commands below from that folder. Factory-band backups: `eq_backup.json` (Fission) and `ja11_backup.json` (JA11) — keep them, `restore` depends on them.
 
 Sibling of [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) (different dongle, different protocol, same target). The dongle is the one flashed with JA11 firmware in [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md).

@@ -110,7 +110,7 @@ One combined view across all three tables below, so the latest work is visible a
 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | fiio, ja11, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, tin-hifi | 2026-10-26 |
 | [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | tanchjim, fission, ktmicro, dsp, peq, hid, squig-link, iem, eq, fedora | 2026-10-26 |
 | [tanchjim-fission-peq-match-crinear-nightfall-cross-rig.md](tanchjim-fission-peq-match-crinear-nightfall-cross-rig.md) | tanchjim, fission, ktmicro, dsp, peq, squig-link, crinear-nightfall, cross-rig | 2026-10-27 |
-| [tanchjim-fission-peq-match-crinear-daybreak.md](tanchjim-fission-peq-match-crinear-daybreak.md) | tanchjim, fission, ktmicro, dsp, peq, squig-link, crinear-daybreak | 2026-10-28 |
+| [tanchjim-fission-peq-match-crinear-daybreak.md](tanchjim-fission-peq-match-crinear-daybreak.md) | tanchjim, fission, ktmicro, dsp, peq, squig-link, crinear-daybreak, ja11, chu-ii | 2026-10-28 |
 | [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md) | samsung, tizen, tv, sideload, sdb, tizen-studio, fedora, clean-home, youtube, tizentube, ad-block | 2026-10-25 |
 | [samsung-tv-t6500-power-states-and-remote-control.md](samsung-tv-t6500-power-states-and-remote-control.md) | samsung, tizen, kants2, t6500, power, standby, wol, ex-link, mdc, suspend, sdb | 2026-10-25 |
 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | android, xiaomi, redmi, fm-radio, adb, wireless-debugging, apk-backup | 2026-10-23 |
