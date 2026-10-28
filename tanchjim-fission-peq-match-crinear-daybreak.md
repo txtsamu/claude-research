@@ -92,6 +92,19 @@ The csi-zone Fission file used above (`AtSDdf`) is the **S** nozzle on the DSP j
 - Fifth T-nozzle source (Daybreak default L+R minus Fission nickel/Atmosphere L+R, `analyze_t5.py`): needed correction +3.0 @60, -1.9 @2k, -3.5 @5k, -2.5 @6.5k, -3.5 @8k. The EQ applied from the first four sites scores **0.62 dB RMS on this unseen site vs 1.44 with no EQ** (a genuine out-of-sample check). Refit on all five: 66 Hz +3.0 Q2.44, 561 Hz +1.4 Q1.74, 2235 Hz -2.2 Q1.75, 3108 Hz +1.3 Q2.61, 7631 Hz -2.3 Q0.71; mean RMS 0.55, identical to the applied EQ, so nothing was changed.
 - Insertion depth matters a lot: on Super* Review, Daybreak shallow vs default insertion differ by 1.66 dB RMS, deep by 0.77. This is a likely source of between-site disagreement.
 
+## Same EQ on the FiiO JA11 (analog) (2026-10-28)
+Request: "I just connected my DAC, check claude-research and apply CrinEar Daybreak EQ, but research again if there is EQ reference for my device". Connected: JA11 (`lsusb` 2972:0102, ALSA card `JA11`, PipeWire sink `alsa_output.usb-FIIO_JadeAudio_JA11...analog-stereo` RUNNING). It held the C7 bands in USER1 (preset 3).
+
+- The JA11 is a flat DAC and the baseline used above (Fission T nozzle, Atmosphere, **analog 3.5 mm**, EQ-off) is exactly the signal path through the JA11, so the T-nozzle bands transfer unchanged (no factory-band subtraction needed, unlike the Tanchjim DSP dongle). Assumption: the IEM on it is the Fission with the T nozzle (the JA11 doc's "which IEM" caveat still applies).
+- Re-search: web search for Tanchjim Fission FR measurements found nothing beyond what the all-site scan already covered (squig.link is the only source with both IEMs; no Crinacle/RTINGS Fission data), so the fit was not changed.
+- Script: `~/sessions/2026-10-26-iem-dsp-eq/ja11_daybreak.py` = `ja11_c7.py` with the band list replaced (same hidraw protocol, backup, RAM read-back check before save, see [the JA11 doc](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md)):
+```bash
+sudo -n ./venv/bin/python -I ja11_daybreak.py read      # showed C7 bands, preset 3
+sudo -n ./venv/bin/python -I ja11_daybreak.py           # apply + verify + save USER1
+sudo -n ./venv/bin/python -I ja11_c7.py restore         # JA11 factory USER1 back (ja11_backup.json)
+```
+- Applied and read back after the save: 66 Hz +3.0 Q2.24, 549 Hz +1.3 Q1.70, 2216 Hz -2.3 Q1.83, 3214 Hz +1.3 Q2.32, 7073 Hz -2.0 Q0.74, preset 3 active. Not yet re-checked after an unplug/replug. Same +3 dB no-preamp clipping caveat (JA11 global gain `0x17` deliberately untouched).
+
 ## Caveats
 - Approximation: coupler data, R-vs-L, one unit standing in for another; no listening A/B or re-measurement.
 - +2.5 dB peak digital boost with no preamp (preamp reg `0x66` is deliberately never written); loud full-scale tracks could clip slightly.
