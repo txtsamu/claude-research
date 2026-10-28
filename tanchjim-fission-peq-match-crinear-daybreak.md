@@ -3,7 +3,7 @@ type: how-to
 tags: [tanchjim, fission, ktmicro, dsp, peq, hidraw, squig-link, iem, eq, crinear-daybreak, fedora]
 created: 2026-10-28
 last_verified: 2026-10-28
-status: current   # applied and saved to flash via SAVE 0x53 (ACK 0x03), bands intact after the self-reboot
+status: current   # (see the T-nozzle section for what is applied now) applied and saved to flash via SAVE 0x53 (ACK 0x03), bands intact after the self-reboot
 ---
 
 # Tanchjim FISSION-Rational HiFi dongle: PEQ-match CrinEar Daybreak (same-rig, no offset needed)
@@ -74,6 +74,16 @@ Findings:
 - Leave-one-site-out, mean RMS (no EQ 1.28): notch only 1.16, notch + 488 Hz 1.13, 3 bands 1.23, 5 bands 1.24. Extra bands fit their own sites better (in-sample 1.06) but do not generalise.
 - Recommendation: one notch ~6.8 kHz -2.9 dB Q 2.8 (others 0 dB), all-site mean 1.14 / worst 1.87 dB, no boost so no clipping risk. Optional +1.1 dB at 488 Hz Q 2.8 gains only 0.02 dB (noise). Add bass lift only if the user's nozzle/switch matches csi-zone's `AtSDdf` and a listening A/B prefers it.
 - Median-of-8 5-band fit for reference: 175 Hz -1.3 Q1.86, 480 Hz +1.0 Q1.41, 2113 Hz -1.1 Q1.38, 2702 Hz +1.1 Q3, 6836 Hz -3.1 Q3 (max boost +0.9; mean 1.06 in-sample, 1.21 leave-one-out).
+
+## User's actual setup: Atmosphere switch + T (titanium) nozzle (2026-10-28) - current applied EQ
+The csi-zone Fission file used above (`AtSDdf`) is the **S** nozzle on the DSP jack, so everything before this section was fitted to the wrong nozzle. csi-zone's file names encode it (`AtT3` = switch: Atmosphere; filter: T; jack: analog 3.5mm). Four sites have a T-nozzle Atmosphere/Default analog Fission (= EQ-off, so no factory-band guess): csi-zone `Tanchjim Fission AtT3` (L only), atechreviews `(Nozzle T Switch Default)`, audioamigo `Titanium Default`, practiphile `Titanium Atmosphere` (R only). Scripts: `fetch_t_nozzle.py`, `analyze_t.py`.
+
+- Sites agree much better with one nozzle: needed correction at 60 / 2k / 5k / 6.5k / 8k Hz is +3.4 / -2.0 / -1.6 / -2.2 / -1.9 dB (median), between-site std 0.3-0.9 dB (8-site mix was ~1-1.5).
+- Leave-one-site-out RMS: 5-band 0.63 dB vs no EQ 1.28 (notch+low 0.86, notch only 1.07). Here extra bands do generalise, unlike the mixed-nozzle set.
+- Versus the 4 T sites (mean RMS): no EQ 1.28; previously applied S-based median-of-3 1.29; 8-site notch-only 1.13; T-median 5-band 0.54.
+- Factory-EQ side check: csi `AtSDdf` (DSP Default) minus `AtS3` (analog), both S: -1.0 @60, -1.7 @100, -2.6 @230, -1.7 @310, -0.7 @3k dB; the OLD factory bands model it with 1.33 dB RMS error, NEW with 1.65, flat 1.66 (neither fits well; above 8 kHz unreliable).
+
+**Applied and saved (SAVE ACK 0x03, bands intact after reboot):** 66 Hz +3.0 Q2.24, 549 Hz +1.3 Q1.70, 2216 Hz -2.3 Q1.83, 3214 Hz +1.3 Q2.32, 7073 Hz -2.0 Q0.74. Caveats: the 66 Hz gain is at the +3 dB search bound (median need there is +3.4) and is a +3 dB peak with no preamp (clipping risk on loud bass-heavy tracks); coupler data below ~60 Hz is unreliable; csi/practiphile Fission files are single-channel. `daybreak_fission.py apply` = these bands, `apply-m3` = previous median-of-3, `apply-csi` = csi S-only, `restore` = factory.
 
 ## Caveats
 - Approximation: coupler data, R-vs-L, one unit standing in for another; no listening A/B or re-measurement.
