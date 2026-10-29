@@ -12,6 +12,12 @@ State at writing: `dev` = `e042fef` (pushed to `origin/dev`; `main` untouched at
 
 Working rules that apply to every step: build only from `dev`; hot-load with `~/diskos/diskos-hotload.sh ui/mq_ui` (never the generic deploy script: it does not freeze the `fiio_init.sh` watchdog), only after `uptime` >= 45 s and `reached main loop` in `/usr/data/diskos_boot.log`; tests with `CC=clang`; worktree agents start with `git reset --hard dev`; push `main` only after a flash you are happy with.
 
+## Status at the end of the day (2026-10-29, `dev` = `454b0f7`, pushed)
+
+Done and merged: 0.1 key-SSH awareness; step 2 (adopt a running USB DAC at startup); 3.2 (Storage return saves the pick); 3.3 (unplug fallback retries); 3.4 (autoplay pause gate, corrected so that an UNSET Resume Playback still pauses); 3.5 and 3.6 (settle and theme-reload guard share one predicate); the three broken Python tests; the radio module (candidate 4); the speaker icon (drawn, not a font glyph); the Now Playing back button. Details: [[diskos-parallel-wave-keyssh-restore-switchflow-radio-icon-backbutton]]. Hot-loaded and screenshot-checked: Now Playing back, Apps circles and speaker, Debug Mode key-SSH line.
+
+Still open: everything in section 1 (hardware checks) plus the Key SSH checkbox and the radio toggles on the Disc; 3.1 (held frames) next, then the source-mode extraction (both were held back because they collide with the merged code); section 4 (paused-song capture); section 5 (flash, second `/ultrareview`, then `main`); the older `feat-*` branches are merged into `dev` but their folders under `~/diskos/` were left for you to remove.
+
 ## 0. In progress
 
 | # | Task | State | Done when |
