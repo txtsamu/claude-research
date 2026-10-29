@@ -62,7 +62,7 @@ Paused-song bug: tapping a song while paused re-sends the USB preamble and resta
 
 ## 6. Later / optional
 
-- Architecture candidates not done: pull the source-mode switch (SD handoff, DAC exit, persisted choice) out of `main.c` (builds on the session module); one radio-intent module for Wi-Fi and Bluetooth (`wifi.c`/`bt.c`).
+- Architecture candidates: all four are done now. The source-mode switch (candidate 3) is `ui/srcswitch.c`, commit `6369094`: [[diskos-srcswitch-source-mode-switch-extraction]]. Still to check on the Disc: a USB Storage round trip and a USB DAC exit with a computer attached.
 - A real speaker glyph for the USB DAC tile: regenerate the 28 px icon font with one more `--range` (it currently uses U+F178, an arrow).
 - Make key SSH opt-in per image variant (installed for dev images only) if you later decide to; currently it ships everywhere and Debug Mode will show it (0.1).
 
@@ -70,5 +70,5 @@ Paused-song bug: tapping a song while paused re-sends the USB preamble and resta
 
 - 20 git worktrees, 9 `worktree-agent-*` branches and the older `feat-*` / `disco-with-fixes` / `stock-plus-disco` branches: check which are merged into `dev` (`git merge-base --is-ancestor <branch> dev`), then remove merged worktrees and delete merged branches.
 - `git push -u origin dev` to set the upstream; add `.claude/` to `.gitignore` (or the local exclude) so it stops showing as untracked.
-- Three Python tests fail on `dev` before any of this work: `ui/tests/storage_test.py` (stale slice of `main.c`: undeclared `outseq_rc`, `glob_t`), `font_coverage_test.py` (undeclared `ui_font_cjk`), `rmguard_test.py` (looks for `../installer/payload/diskos-rmguard`). Repair or retire them.
+- (Resolved: all eight Python tests pass on `dev` as of 2026-10-29.) Three Python tests failed on `dev` before any of this work: `ui/tests/storage_test.py` (stale slice of `main.c`: undeclared `outseq_rc`, `glob_t`), `font_coverage_test.py` (undeclared `ui_font_cjk`), `rmguard_test.py` (looks for `../installer/payload/diskos-rmguard`). Repair or retire them.
 - `/ultrareview` free runs used: 1 of 3.
