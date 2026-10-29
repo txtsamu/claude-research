@@ -85,8 +85,29 @@ iptables -t nat -S | grep -E "dport (53|8080|8443)"        # <-- the cause
 ```
 The nat table has `CNI-DN-512c6e...` rules DNATing tcp/udp 53, 8080->80, 8443->443 to `10.89.1.3`, a leftover of an old `pi-hole_default` podman network. They are saved in `/etc/iptables/rules.v4` (dated 2026-05-07) and restored by `netfilter-persistent` on every boot. Technitium now runs with `Network=host`, so PREROUTING sends LAN DNS traffic to a nonexistent address. The web UI on 5380 is not in the stale rules, which is why it still works. A DNS client with arm4 in its resolver list waits for the timeout before falling back, which looks like a flaky connection.
 
-Status at time of writing: **not yet fixed** (waiting for the user to approve changing the firewall). Planned fix: back up `rules.v4`, delete the stale `CNI-*` chains/rules for `10.89.1.0/24` live, re-save with `netfilter-persistent save`, re-test `dig @192.168.50.43`.
+Status: **fixed** (see the next section).
 
 Also done in this update: `/etc/cron.d/journal-persist` (`*/5 * * * * root journalctl --flush`) installed on arm4 after the user approved it. Tested: after a forced `armbian-ramlog write` (which relinquishes `/var`), a `journalctl --flush` put new lines back in `/var/log.hdd/journal`.
 
 Side notes: the Technitium admin password is in plain text in the Quadlet file `/etc/containers/systemd/technitium.container` (`DNS_SERVER_ADMIN_PASSWORD`) and shows in the generated unit; consider a podman secret. No vmalert/Alertmanager exists on home; Kuma already has a default Telegram notification (@txtcybr_bot) attached to all ping monitors. `vm-bot` (`homelab/vm-bot`) is a command bot with no inbound port, so it cannot receive pushed alerts as is.
+
+## DNS fix applied 2026-10-29 and network config review
+
+Fix (user approved). Only the Pi-hole leftovers (pattern `512c6e089d98ab8b48026|10\.89\.1\.`) were removed; the cloudflared CNI rules were left alone. Live rules were deleted one by one (not a full `iptables-restore`, which would have wiped the rules of the running containers), then the saved file was filtered the same way and validated first:
+```bash
+cp -a /etc/iptables/rules.v4 /root/rules.v4.bak-20261029; iptables-save > /root/iptables-live-before-20261029.txt
+PAT="512c6e089d98ab8b48026|10\.89\.1\."
+delmatch(){ t=$1; c=$2; while :; do n=$(iptables -t $t -S $c | grep "^-A" | grep -nE "$PAT" | head -1 | cut -d: -f1); [ -z "$n" ] && break; iptables -t $t -D $c $n; done; }
+delmatch nat CNI-HOSTPORT-DNAT; delmatch nat POSTROUTING; delmatch filter CNI-FORWARD
+for ch in CNI-DN-512c6e089d98ab8b48026 CNI-512c6e089d98ab8b48026b8a; do iptables -t nat -F $ch; iptables -t nat -X $ch; done
+grep -vE "$PAT" /etc/iptables/rules.v4 > /root/rules.v4.new && iptables-restore --test < /root/rules.v4.new && install -m 644 /root/rules.v4.new /etc/iptables/rules.v4
+```
+Result: `dig @192.168.50.43 cloudflare.com` answers over UDP and TCP; the VictoriaMetrics probe went from `probe_success=0` / 5.0 s to `1` / 2 ms. Rollback: `cp /root/rules.v4.bak-20261029 /etc/iptables/rules.v4` and `iptables-restore < /root/iptables-live-before-20261029.txt` (reloads everything, so restart the containers afterwards). Not tested across a reboot.
+
+Network config review of arm4 (read-only):
+- Static IP 192.168.50.43/24 via NetworkManager (netplan renderer NM), DNS 192.168.50.200/.42/.40/1.1.1.1, eth0 100 Mbps full, autoneg on. No ethtool/dispatcher scripts, nothing rewrites the network at runtime. IPv6 has only link-local (v6 forwarding is on, so RAs are ignored); harmless.
+- `wifi-X` profile has autoconnect on for `wlan0`/`wlan1` (currently disconnected). If Wi-Fi ever came up it would add a second default route; consider `nmcli con mod wifi-X connection.autoconnect no`.
+- The check-mk agent (`check-mk-agent-async.service`, loop every 60 s, plus socket on 6556) is read-only (grep for `ip link set`, `iptables`, `sysctl -w`, `ethtool -s` found nothing). The socket has accepted 0 connections since boot: the Checkmk server (once at 192.168.50.221:5000 on home k3s) no longer exists as a deployment, so the agent is orphaned. `cekping-agent` runs on home, not arm4.
+- Conflicting sysctl: `/etc/sysctl.d/60-quic-tuning.conf` asks for `net.core.rmem_max/wmem_max = 16 MiB`, but `/etc/sysctl.d/99-sysctl.conf` loads later and sets 4 MiB / 1 MiB. cloudflared logs `failed to increase send buffer size (wanted: 7168 kiB, got 2048 kiB)`. A plausible contributor to the QUIC "no recent network activity" stalls (not proven). Also `kernel.hung_task_timeout_secs = 0` disables hung-task detection.
+- Stale leftovers still in `rules.v4` and live: CNI rules for `10.89.0.5` (cloudflared now has `10.89.0.2`), plus an unused podman network `pi-hole_default`. Harmless cruft.
+- INPUT chain: accepts established, loopback and `192.168.50.0/24`, drops everything else (counter 14 packets of about 36 bytes after 1.5 h; source not identified, no tcpdump installed).
