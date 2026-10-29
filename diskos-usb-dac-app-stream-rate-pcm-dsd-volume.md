@@ -10,7 +10,7 @@ status: current
 
 Repo `/home/moo/diskos/diskos`, branch `dev`, commit "USB DAC app: stream rate, PCM or DSD and volume, from the Apps page" (on top of the session/play-admission merge, see [[diskos-session-and-play-admission-modules-parallel-agents]]). Request: when USB DAC mode is active, show the sample rate in kHz, PCM or DSD, and the volume, as an app (an Apps tile, like Pet).
 
-**Status: built and host-tested; NOT run on the Disc** (the hot-load was blocked by the permission classifier, see the end). The page layout has never been seen on the round panel.
+**Status: hot-loaded onto the Disc and working (PCM streams); DSD still unverified.** Hot-loaded 2026-10-29 14:28 with `~/diskos/diskos-hotload.sh ui/mq_ui` (see below); a hot-load lasts until the next reboot, so it is not flashed yet.
 
 ## Where the numbers come from (read-only checks on the Disc, nothing sent to the Player)
 
@@ -47,14 +47,27 @@ The first parser called `strtol` on the value inside the message buffer. A kerne
 - The 28 px icon font (`font_icons_28.c`) only has U+F004, F079, F074, F08A, F178, F013, F15B, F185, F202, F186: no speaker or audio glyph. The tile uses U+F178 (long arrow) as a stand-in; a proper icon needs the font regenerated with another `--range`.
 - The `git`/`make`/`grep` wrappers on this box (RTK) truncate output ("... (13 lines truncated)"), even when redirected to a file; counts from `grep -c` came out as 0 for lines that were there. Use `rtk proxy make run CC=clang > file` and count in Python. Python/host tests need `CC=clang` here (see the earlier note about sanitizers).
 
-## Not verified, and what to check on the Disc
+## Hot-load and what was verified on the Disc
 
-1. The page layout on the 360x360 round panel (positions were set from the chord table in `ui/ui_round.h`).
-2. That the netlink socket receives the `UAC_*` uevents in the UI process (open `mq_ui dac`, play from a computer, change the rate on the computer: the page should follow within a second).
-3. The **DSD spelling** of `UAC_FORMAT` and the rate the gadget reports for DSD: only `PCM` and `UNKNOW` appear in the logs. The parser matches the prefix `DSD`; DSD over USB is normally DoP (a PCM carrier at 176.4 kHz and up), so the page may show a PCM-looking rate with "DSD". Play a DSD file from the host and read `fiio_player.log` for `UAC_FORMAT value:` to settle it.
-4. After a hot-load while a stream is already running the format reads "-" until the next change (the rate still shows, from ALSA).
+The first attempt used the generic `tools/diskos-deploy.sh` (key-SSH copy) and was stopped: it does not freeze the `fiio_init.sh` watchdog, which is what causes the Snowsky-logo hang ([[diskos-disc-hotload-watchdog-snowsky-logo-hang]]). The documented way is the watchdog-safe script:
 
-Deploy attempt: a hot-load with key SSH was refused by the permission classifier as a production deploy while the Disc was in use in USB DAC mode; it needs the user's go-ahead (or a permission rule) and was not retried.
+```bash
+cd ~/diskos/diskos && ~/diskos/diskos-hotload.sh ui/mq_ui      # stages + md5-checks, SIGSTOPs the watchdog, swaps, retries the launch, SIGCONTs
+#   >> staged 5c006126...   ok=1 attempts=1   (mq_player pid unchanged)
+ssh disc 'tail -n 3 /usr/data/fiio/log/process_failed.txt'     # no new "mq_ui Restarting" line
+~/diskos/snowsky-shot.sh out.png                               # screenshot (read-only); shots in ~/sessions/2026-10-29-diskos-dac-app/shots/
+```
+
+Seen on the real panel (Terminal theme, header `~/usb_dac`): while a computer streamed, the page showed **96 kHz / PCM / Volume 35** with the bar at about 29 percent. The host changed from 44.1 to 96 kHz at 14:28:57 (`UAC_SRATE=96000` in `fiio_player.log`, ALSA `rate: 96000`) and the page followed within a second, so the netlink listener receives the kernel `UAC_*` uevents inside the UI process, and the layout fits the round glass. When the stream was momentarily down it showed "Waiting for the computer or phone to play" with the volume.
+
+Side effect seen (not caused by this feature): a fresh `mq_ui` started while already in USB DAC mode begins with source mode Local and `src_mode=1` saved, so the cold-boot restore re-sends the switch to USB DAC (log: `usb dac: volume -> 35 (your last USB DAC level)`, then `UAC_SRATE=44100` again). The host's stream dips for a few seconds after every hot-load or relaunch that is not a theme reload. Candidate 1's notes (see [[diskos-session-and-play-admission-modules-parallel-agents]]) already list the related relaunch edge cases; fix would be to detect the real gadget state at startup before arming the restore.
+
+## Still not verified
+
+1. The **DSD spelling** of `UAC_FORMAT` and the rate the gadget reports for DSD: only `PCM` and `UNKNOW` appear in the logs. The parser matches the prefix `DSD`; DSD over USB is normally DoP (a PCM carrier at 176.4 kHz or higher), so the page may show a PCM-looking rate with "DSD". Play a DSD file from the host and read `fiio_player.log` for `UAC_FORMAT value:`.
+2. After a hot-load while a stream is running and no new uevent has arrived, the format reads "-" until the next change (the rate still shows, from ALSA). Not seen in practice because of the restore re-switch above.
+3. The tile icon is a stand-in arrow; not looked at in the Apps grid.
+4. Other themes (only Terminal was seen).
 
 ## References
 
