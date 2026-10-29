@@ -27,7 +27,7 @@ podman run -d --name memtest-pg -e POSTGRES_PASSWORD=memtest -e POSTGRES_USER=po
   -p 55433:5432 --shm-size=128m ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
 podman run -d --name memtest-redis -p 56379:6379 docker.io/valkey/valkey:9@sha256:418652cfb58ef879d4978c33553735d7147016032d5aefaa14c828e611eb9dfd
 # server needs a build/geodata dir or the metadata service fails init (geodata-date.txt, cities500.txt,
-# admin1CodesASCII.txt, admin2Codes.txt, ne_10m_admin_0_countries.geojson with at least one valid Polygon feature)
+# admin1CodesASCII.txt, admin2Codes.txt, ne_10m_admin_0_countries.geojson with at least one valid Polygon feature whose properties include ADMIN, ADM0_A3 and TYPE, because those columns are NOT NULL)
 DB_HOSTNAME=127.0.0.1 DB_PORT=55433 DB_USERNAME=postgres DB_PASSWORD=memtest DB_DATABASE_NAME=immich \
 REDIS_HOSTNAME=127.0.0.1 REDIS_PORT=56379 IMMICH_MEDIA_LOCATION=<scratch>/data IMMICH_BUILD_DATA=<scratch>/build \
 IMMICH_PORT=22830 NODE_ENV=production node dist/main.js
