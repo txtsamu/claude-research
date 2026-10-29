@@ -60,6 +60,7 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-29 | [diskos-dev-next-steps-plan-2026-10-29.md](diskos-dev-next-steps-plan-2026-10-29.md) | how-to |
 | 2026-10-29 | [diskos-parallel-wave-keyssh-restore-switchflow-radio-icon-backbutton.md](diskos-parallel-wave-keyssh-restore-switchflow-radio-icon-backbutton.md) | how-to |
 | [diskos-srcswitch-source-mode-switch-extraction.md](diskos-srcswitch-source-mode-switch-extraction.md) | diskos, snowsky-disc, architecture, refactor, srcswitch, source-mode, usb-storage, usb-dac, host-tests, podman, hot-load | current | 2026-10-29 |
+| [diskos-apps-page-scrolls-up-when-settings-tile-pressed.md](diskos-apps-page-scrolls-up-when-settings-tile-pressed.md) | diskos, snowsky-disc, lvgl, apps, scroll-on-focus, touch, input-injection, evdev, hot-load | current | 2026-10-29 |
 | 2026-10-27 | [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md) | evomem search timeouts: real cause was a per-query full word_index vocabulary scan (not a vector scan); fixed with a cached vocabulary, ~5 s -> ~0.3 s |
 | 2026-10-27 | [8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md](8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md) | how-to |
 | 2026-10-27 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | how-to |
