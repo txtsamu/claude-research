@@ -238,7 +238,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance | current | 2026-10-28 |
+| [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance | current | 2026-10-29 |
 | [diskos-build-diskos-bin-image-locally.md](diskos-build-diskos-bin-image-locally.md) | diskos, snowsky-disc, installer, firmware, image, squashfs, bin | current | 2026-10-27 |
 | [diskos-loudness-spdif-ja11-and-main-release.md](diskos-loudness-spdif-ja11-and-main-release.md) | diskos, snowsky-disc, volume, gain, loudness, usb-audio, spdif, ja11, wifi-interference, flash, release | current | 2026-10-27 |
 | [diskos-pet-tamagotchi-app-digimon-agents.md](diskos-pet-tamagotchi-app-digimon-agents.md) | diskos, snowsky-disc, pet, tamagotchi, digimon, apps, lvgl, subagents, canvas, screenshots | current | 2026-10-27 |
