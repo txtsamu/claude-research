@@ -8,7 +8,7 @@ status: current
 
 # Why Immich trashes moved external-library files, and relinking them instead
 
-Question: when a file in an external library is moved or renamed, why does its asset go offline and into the trash instead of just getting a new path? Answer: by design, because external assets are identified by their path. Fixed in the fork (`effect-v4` commit `4bde5bc5a`) by relinking on a size + mtime + type match.
+Question: when a file in an external library is moved or renamed, why does its asset go offline and into the trash instead of just getting a new path? Answer: by design, because external assets are identified by their path. Fixed in the fork (`effect-v4` commit `4bde5bc5a`) by relinking on a size + mtime + type match. Follow-up commit `9a530a06b` makes the file watcher take deleted files offline instead of removing them, and lets deleting from the trash remove the original files of offline assets (see the last section).
 
 ## Why it happens (code in `server/src/services/library.service.ts`)
 
@@ -52,9 +52,44 @@ Files changed: `asset.repository.ts` (query + `ExternalFileSignature` type), `li
 
 ## Not covered / limitations
 
-- Library watcher: unlink still deletes the asset immediately, so a move seen by the watcher still creates a new asset. Fixing it means turning unlink into "mark offline" instead of remove, which changes what watcher-detected deletions look like (they would sit in the trash like scan-detected ones).
+- Library watcher: fixed in the follow-up below (it used to delete the asset on unlink).
 - Ambiguous cases are imported as new assets: several missing assets or several new files with identical size + mtime + type (for example burst copies made with `cp -p`).
 - A move that changes mtime (plain `cp` + `rm`, or tools that touch files) is not matched.
 - Assets with no exif row yet (metadata extraction not finished) have no size to match.
 - Assets already split before this change (an offline trashed row plus a new row) are not merged.
-- Medium tests (real Postgres) were not run for the new query; it was exercised only through the live instance above.
+- Medium tests (real Postgres) were not run for the relink query itself; it was exercised only through the live instance above.
+
+## Follow-up (commit `9a530a06b`): watcher offline + deleting originals from the trash
+
+Request: make the watcher take deleted files offline instead of removing them, and make the trash pages able to delete the original files to free storage (most files are in external libraries).
+
+### What the code did before (checked first, because part of it already worked)
+
+- Emptying the trash or force-deleting an **online** external asset already deleted the original file: `handleAssetDeletion` (asset.service.ts) pushes `asset.originalPath` into the `FileDelete` job when `deleteOnDisk` is true. Confirmed live: `DELETE /api/assets {force:false}`, `POST /api/trash/empty`, the file under the library was gone after a few seconds.
+- It skipped the file when `asset.isOffline` (`deleteOnDisk = request && !asset.isOffline`). For an asset offlined by an exclusion pattern or import-path change the file is still on disk, so that storage was never freed.
+- `Trash.empty` (trash.repository.ts) only turned `status = Trashed` into `Deleted`. A scan offlines an asset by setting `isOffline` + `deletedAt` and leaves `status = Active`, so "Empty trash" silently skipped every offline asset (they stay visible on the trash page).
+- Watcher: `unlink` queued `LibraryRemoveAsset`, which called `asset.remove`. And watcher `add`/`change` queued `LibrarySyncFiles` straight into `createAll` with no check for an existing asset, which would hit the unique (owner, library, checksum) constraint for a path that now has an offline asset.
+
+### Changes
+
+1. `handleAssetRemoval` (job `LibraryRemoveAsset`, name kept so queued jobs still work): skip unknown or already-offline assets, `stat` the path and skip if the file is back (editors that save by replacing the file), otherwise `updateAll([id], { isOffline: true, deletedAt: now })`; an asset with `status = Trashed` only gets `isOffline: true`.
+2. `handleSyncFiles`: `filterNewExternalAssetPaths` splits the batch into new paths and known paths. New helper `syncKnownFiles` brings a known offline asset back online (a user-trashed one stays trashed) and queues a metadata refresh when a known online file's mtime changed. The relink from the first change then handles a watcher rename (unlink marks offline, add relinks, in either order).
+3. `IAssetDeleteJob.deleteOffline?: boolean`. `handleAssetDeletion` now uses `deleteOnDisk = request && (!asset.isOffline || deleteOffline)` and passes `deleteOffline` on to the live-photo motion part. `TrashService.handleEmptyTrash` (user emptied the trash or force-deleted selected items) sets it to true. The automatic expiry (`handleAssetDeletionCheck`) does not, on purpose: otherwise adding an exclusion pattern would delete those files from disk 30 days later without the user doing anything.
+4. `Trash.empty` also takes `status = Active AND isOffline AND deletedAt IS NOT NULL`.
+5. en.json: `empty_trash_confirmation` and `permanently_delete_assets_prompt` now say external library files are deleted from disk. Docs: watcher paragraph, relink section, new "Deleting from the trash" section in `docs/docs/features/libraries.md`.
+6. Tests: 11 new unit tests (library, asset, trash services), one medium test (`test/medium/specs/repositories/trash.repository.spec.ts`, real Postgres; `TrashRepository` added to `test/medium.factory.ts`). Regenerated `src/queries/trash.repository.sql`.
+
+### Verification
+
+- Unit: 2144 pass, 3 fail (same Node 22 environmental). Medium (real Postgres via `DOCKER_HOST=unix:///run/user/1000/podman/podman.sock TESTCONTAINERS_RYUK_DISABLED=true`, `--config test/vitest.config.medium.mjs`): 576 pass, 1 fail (`mkdtempDisposable` on Node 22). Full eslint and `tsc` clean.
+- Live, watcher enabled via `PUT /api/system-config` (`library.watch.enabled = true`, picked up without a restart):
+  - `rm` of a watched file: row stays, `isOffline=t`, `deletedAt` set, status active.
+  - File re-created at the same path: asset online again, `deletedAt` cleared, no duplicate.
+  - `mv b/p4-copy.jpg b/watcher-renamed.jpg`: same asset id, new path, online.
+  - Exclusion `**/c/**` then scan: `c/p4.jpg` goes offline but its file stays; `POST /api/trash/empty`: row removed and `c/p4.jpg` deleted from disk.
+
+### Still open
+
+- A watched move where the new file's mtime/size differ from the stored values is not matched (same limits as the scan relink).
+- Offline assets that were already stuck in the trash before this change are removed by the next "Empty trash" (and their files too if still on disk), which is a visible change for existing installs.
+- Web UI was rebuilt with the new texts but not clicked through in a browser.
