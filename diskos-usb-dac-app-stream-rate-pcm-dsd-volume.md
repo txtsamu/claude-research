@@ -1,0 +1,61 @@
+---
+type: how-to
+tags: [diskos, snowsky-disc, usb-dac, uac2, uevent, netlink, alsa, apps, lvgl]
+created: 2026-10-29
+last_verified: 2026-10-29
+status: current
+---
+
+# diskOS "USB DAC" app: stream rate (kHz), PCM or DSD, and volume
+
+Repo `/home/moo/diskos/diskos`, branch `dev`, commit "USB DAC app: stream rate, PCM or DSD and volume, from the Apps page" (on top of the session/play-admission merge, see [[diskos-session-and-play-admission-modules-parallel-agents]]). Request: when USB DAC mode is active, show the sample rate in kHz, PCM or DSD, and the volume, as an app (an Apps tile, like Pet).
+
+**Status: built and host-tested; NOT run on the Disc** (the hot-load was blocked by the permission classifier, see the end). The page layout has never been seen on the round panel.
+
+## Where the numbers come from (read-only checks on the Disc, nothing sent to the Player)
+
+The UI did not parse any rate frame (`aa1b` "UAC sample-rate change" is in `docs/RE_CATALOGUE.md` but nothing in `ui/ipc.c` handles it). With the Disc in USB DAC mode and a computer playing to it:
+
+```bash
+ssh disc 'cat /proc/asound/cards'          # card 1 = FIIOUAC2Gadget (the gadget's sound card; id file: /proc/asound/card1/id)
+ssh disc 'cat /proc/asound/card1/pcm0c/sub0/hw_params'
+#   format: S32_LE  channels: 2  rate: 48000 (48000/1)    <- capture side = what the host sends; "closed" when idle
+ssh disc 'cat /proc/asound/card1/pcm0c/sub0/status'       # state: RUNNING
+ssh disc 'tail -n 400 /usr/data/fiio/log/fiio_player.log | grep -E "UAC_|dac_control"'
+#   uevent_listener.c: UAC_SRATE ==== UAC_SRATE=48000   ...   UAC_FORMAT value: PCM
+#   (on host stop: UAC_SRATE=0 and UAC_FORMAT value: UNKNOW [sic])
+#   dac_control.c: bits_per_sample=32 sample_rate=2 is_dsd=0
+ssh disc 'cat /sys/kernel/config/usb_gadget/uac_demo/functions/uac2.a/c_srate'   # 48000: the advertised config, NOT the live rate
+```
+
+So the Player itself learns rate and PCM/DSD from **kernel uevents** `UAC_SRATE=<hz>` and `UAC_FORMAT=<PCM|...>`. Nothing in sysfs holds the PCM/DSD verdict, so the UI listens to the same uevents itself. ALSA `hw_params` is the fallback for the rate when the UI started after the stream (a uevent is only sent on change). Bit depth was left out on purpose: `S32_LE` is the container, not the real depth.
+
+## What was built
+
+- `ui/dacinfo.c` + `dacinfo.h` (no LVGL). `dacinfo_init()` opens a `NETLINK_KOBJECT_UEVENT` socket (group 1, non-blocking, only messages from `nl_pid == 0`); `dacinfo_get()` drains it, folds `UAC_SRATE` / `UAC_FORMAT` into the state (`UAC_SRATE=0` clears the format) and falls back to ALSA when no uevent has been seen. Pure parsers: `dacinfo_parse_uevent`, `dacinfo_parse_hwparams`, `dacinfo_format_rate` ("48 kHz", "44.1 kHz", "176.4 kHz", "2.82 MHz").
+- `ui/dac_ui.c`: `SCR_DAC` page (`dac_create/_open/_visible`): rate in the accent colour, a PCM/DSD pill, `Volume N` with a bar (0..`VOL_MAX`, from `ipc_get_state`). One 500 ms `lv_timer`, only while the page is on show (screenmgr calls `dac_visible`). Outside USB DAC mode (`ui_get_source_mode() != 1`) it says "USB DAC mode is off" with a Working Mode button; in the mode with no host playing it says "Waiting for the computer or phone to play" and still shows the volume.
+- Wiring (same places as Pet): `screens.h` (`SCR_DAC`, declarations), `screenmgr.c` (figure number 36, root, create, visible hooks), `apps.c` tile "USB DAC", `main.c` deep link `mq_ui dac`, `ui/Makefile` sources.
+- Tests: `ui/tests/dacinfo_test.c` (rule `dacinfo_test`, in `make run`): PCM and DSD streams, stop clears the format, rate-only update keeps the format, unrelated uevents ignored, garbage and an unterminated key, `hw_params` text captured from the Disc, rate wording.
+
+## Bug the sanitizer caught in my first version
+
+The first parser called `strtol` on the value inside the message buffer. A kernel uevent is not NUL-terminated at the end, and the netlink receive buffer is uninitialised, so a `UAC_SRATE=48000` as the last entry would be read past the buffer. ASan reported it in the "key at the very end" test case. Fix: `entry_value()` copies the value into a bounded, terminated local buffer before `strtol` / `strncmp`.
+
+## Gotchas hit
+
+- `make check-theme` (part of the link) is a plain text grep: a **comment** that contains the font symbol name `font_icons_28` fails the build ("use a font role (TF(...)) instead"). Word comments without it.
+- The 28 px icon font (`font_icons_28.c`) only has U+F004, F079, F074, F08A, F178, F013, F15B, F185, F202, F186: no speaker or audio glyph. The tile uses U+F178 (long arrow) as a stand-in; a proper icon needs the font regenerated with another `--range`.
+- The `git`/`make`/`grep` wrappers on this box (RTK) truncate output ("... (13 lines truncated)"), even when redirected to a file; counts from `grep -c` came out as 0 for lines that were there. Use `rtk proxy make run CC=clang > file` and count in Python. Python/host tests need `CC=clang` here (see the earlier note about sanitizers).
+
+## Not verified, and what to check on the Disc
+
+1. The page layout on the 360x360 round panel (positions were set from the chord table in `ui/ui_round.h`).
+2. That the netlink socket receives the `UAC_*` uevents in the UI process (open `mq_ui dac`, play from a computer, change the rate on the computer: the page should follow within a second).
+3. The **DSD spelling** of `UAC_FORMAT` and the rate the gadget reports for DSD: only `PCM` and `UNKNOW` appear in the logs. The parser matches the prefix `DSD`; DSD over USB is normally DoP (a PCM carrier at 176.4 kHz and up), so the page may show a PCM-looking rate with "DSD". Play a DSD file from the host and read `fiio_player.log` for `UAC_FORMAT value:` to settle it.
+4. After a hot-load while a stream is already running the format reads "-" until the next change (the rate still shows, from ALSA).
+
+Deploy attempt: a hot-load with key SSH was refused by the permission classifier as a production deploy while the Disc was in use in USB DAC mode; it needs the user's go-ahead (or a permission rule) and was not retried.
+
+## References
+
+None external: all from device logs, `docs/RE_CATALOGUE.md` and the repo.
