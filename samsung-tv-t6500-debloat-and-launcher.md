@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [samsung, tizen, tv, sdb, developer-mode, debloat, mikrotik, kants2, uep, cold-boot, persistence, clean-launcher, tvunlock02, smack, app-list, launcher, home-key, app-operation-api, uid-5001, t6500, blocked]
 created: 2026-10-18
-last_verified: 2026-10-25
+last_verified: 2026-10-29
 status: current
 ---
 
@@ -480,3 +480,11 @@ The payload has since been extended (built, **not yet executed on the TV**) with
    not our own binary (this is exactly the trick the boot-hook chapter in the root doc used for
    the debloat re-apply, but Home routing additionally needs uid 5001, which that hook doesn't
    have).
+
+## Local payloads for this doc
+
+The payloads behind the steps above — `pkgcmd` deactivation, `key_filter` / `managed_app` and
+`widgetinfo` cleanup, and the launcher `main.js` watchdog patch — now live in
+`~/archive/samsung-tv-t6500-2026-10/scripts/2026-10-25-root-session/` (with the exact
+`hermes_root -p -c '…'` command bodies in `cmd/`); the host-side drivers are in
+`~/archive/samsung-tv-t6500-2026-10/tooling/tv-helpers/`. Each directory has a `README.md`.

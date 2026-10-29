@@ -2,7 +2,7 @@
 type: investigation
 tags: [samsung, tizen, tv, root, kants2, uep, kernel-exploit, armv7l, dotnet, dotnet-launcher, aul, capabilities, remotepc, cifs, smack, ghidra, reverse-engineering, persistence, profile.d, raw-block, sdb]
 created: 2026-10-23
-last_verified: 2026-10-28
+last_verified: 2026-10-29
 status: current
 ---
 
@@ -1707,6 +1707,27 @@ Control host (`moo@fedora`, also committed under
 `rollback.sh`, `vendor-bash_prompt_custom.sh`.
 
 ---
+
+## Local tooling layout (host side, fedora)
+
+Every host-side helper and one-shot device payload used in Chapters 6-7 used to sit loose in
+`/home/moo`; they were moved — not deleted — on 2026-10-29 into
+`~/archive/samsung-tv-t6500-2026-10/`:
+
+- `tooling/tv-helpers/` — sdb command runners `tvcap.py` / `tvc2.py` / `tvrun.py`, the stdlib
+  websocket remote `tvkey.py`, TCP receivers `recv.py` / `recv_shot.py`, and the capture drivers
+  `tvshot.sh` / `tvshot2.sh` (flip UEP → capture → pull the PNG back to fedora). Each file is
+  documented in that directory's `README.md`.
+- `scripts/2026-10-25-root-session/` — the 65 one-shot device payloads (`root1.sh`, `kfix.sh`,
+  `wasrep.sh`, `dl*.sh`, `shot*.sh`, `pw*.sh`, …) plus `patchlauncher.py`, alongside the 79
+  `hermes_root -p -c '…'` command bodies they were fed from in `cmd/`. See its `README.md`.
+- `scripts/logs/` — `mali10-tcp-2026-10-25.log`, `ntk-tcp-2026-10-26.log` (renamed with their
+  dates so they no longer collide with the older copies in `scripts/`).
+- `device-data/tizenbrew/tb` and `app-src/free-my-tv` — sideloaded/composed app material, see
+  [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md).
+
+Absolute paths inside `tvshot.sh` / `tvshot2.sh` were rewritten at move time, so they still run
+from the new location — rewrite them again if that directory ever moves.
 
 ## What's next
 

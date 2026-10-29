@@ -2,7 +2,7 @@
 type: how-to
 tags: [samsung, tizen, tv, sideload, sdb, tizen-studio, fedora, clean-home, youtube, tizentube, ad-block, kants2, apps2samsung]
 created: 2026-10-23
-last_verified: 2026-10-25
+last_verified: 2026-10-29
 status: current
 ---
 
@@ -17,6 +17,14 @@ status: current
 > `~/SamsungCertificate` → `.../tooling/SamsungCertificate`; `~/tizen-studio` and
 > `~/tizen-studio-data` → `.../tooling/`; `~/tizen-dl` (installer) → `.../duplicates/tizen-dl`;
 > `~/Backups/cleanmysamsungtv` → `.../device-data/backup-cleanmysamsungtv`.
+>
+> **Paths relocated (2026-10-29):** every loose helper and one-shot payload was moved out of
+> `~/` into this same archive tree (nothing deleted) — `~/tb` (TizenBrew `.wgt` + extracted app) →
+> `.../device-data/tizenbrew/tb`; `~/free-my-tv` (upstream clone + built `FreeMyTV-tizen.wgt`) →
+> `.../app-src/free-my-tv`; a regenerated `~/tizen-studio-data` (empty `profiles.xml` + CLI log) →
+> `.../tooling/tizen-studio-data/stray-2026-10-25/`; the duplicate `~/Downloads/author.p12` export
+> (byte-identical to `.../tooling/SamsungCertificate/samu/author.p12`) →
+> `.../duplicates/author.p12.dup-2026-10-23`.
 
 Device: Samsung **UA43T6500AKXXD** (2020, `20_KANTS2_FHD`, Tizen 5.5), `192.168.50.31`. Host:
 fedora, `192.168.50.20`.
