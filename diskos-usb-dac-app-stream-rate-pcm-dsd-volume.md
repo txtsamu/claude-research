@@ -62,6 +62,15 @@ Seen on the real panel (Terminal theme, header `~/usb_dac`): while a computer st
 
 Side effect seen (not caused by this feature): a fresh `mq_ui` started while already in USB DAC mode begins with source mode Local and `src_mode=1` saved, so the cold-boot restore re-sends the switch to USB DAC (log: `usb dac: volume -> 35 (your last USB DAC level)`, then `UAC_SRATE=44100` again). The host's stream dips for a few seconds after every hot-load or relaunch that is not a theme reload. Candidate 1's notes (see [[diskos-session-and-play-admission-modules-parallel-agents]]) already list the related relaunch edge cases; fix would be to detect the real gadget state at startup before arming the restore.
 
+## Apps page: round icons and the clipped first row (same day, from the user: "the apps page looks weird, use a circle for the icon")
+
+Screenshot first (`~/diskos/snowsky-shot.sh`, read-only) showed two things on the Terminal theme: square outlined tiles, and the top border of the first row cut off. Causes, both in `ui/apps.c`:
+
+1. The tile was a clickable object holding a glyph label, which the theme kit classifies as `KIT_ICON_BUTTON` and restyles into its own boxed button (Terminal: a square outline), whatever radius the code set. Fix: a transparent clickable cell (`kit_keep`) holding a circular chip (`LV_RADIUS_CIRCLE`, `SURFACE_RAISED` fill, 2 px `BORDER_STRONG`, also `kit_keep`, not clickable so the touch goes to the cell), glyph centred in the chip, caption under it, and `transform_scale` 240/256 on the pressed state instead of a colour swap. `kit_keep` makes the kit pass skip that object (not its children).
+2. `lv_obj_set_flex_align(g_list, CENTER, START, CENTER)`: the last argument (track alignment) centred the rows vertically; with 2 rows of 118 px, the 10 px gap and the 44 px bottom pad (290 px) in a 266 px viewport, the content overflowed about 12 px at both ends and hid the top of the first row. Fix: track alignment `START`.
+
+Hot-loaded twice with `~/diskos/diskos-hotload.sh ui/mq_ui` (no new `process_failed.txt` line); screenshots `apps-page-before.png`, `apps-circles-v2.png` in `~/sessions/2026-10-29-diskos-dac-app/shots/`. Only the Terminal theme was looked at; other themes are untested. Each hot-load while in USB DAC mode again re-sent the mode switch (see the side effect above), so the host's stream dipped each time.
+
 ## Still not verified
 
 1. The **DSD spelling** of `UAC_FORMAT` and the rate the gadget reports for DSD: only `PCM` and `UNKNOW` appear in the logs. The parser matches the prefix `DSD`; DSD over USB is normally DoP (a PCM carrier at 176.4 kHz or higher), so the page may show a PCM-looking rate with "DSD". Play a DSD file from the host and read `fiio_player.log` for `UAC_FORMAT value:`.
