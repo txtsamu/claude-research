@@ -51,7 +51,9 @@ Gotchas: the installer tests need the repo root on the import path (`python3 -I`
 
 ## Not verified
 
-Nothing was run on the Disc: no real player restart, no real charger, no frozen Windows build. The merged `mq_ui` (md5 `77661757...`) is built but NOT hot-loaded. `dev` is local only (about 15 commits ahead of `origin/dev` at the time of writing).
+Hot-loaded onto the Disc 2026-10-29 15:13 with `~/diskos/diskos-hotload.sh ui/mq_ui` (md5 `77661757...`, `ok=1 attempts=1`, no new `process_failed.txt` entry). The Disc had rebooted a minute earlier (which drops any hot-load), so the script was run only after `uptime` >= 45 s and `reached main loop` appeared in `diskos_boot.log`. Seen afterwards: Local mode, a track playing, Now Playing drawn correctly (screenshot `merged-build-running.png`), 0 `ipc: /player full ... reopening` lines (expected: no player restart happened). A hot-load lasts until the next reboot; the flashed build is still the old one.
+
+Still NOT exercised on the Disc: the charging-overlay fix (needs a wall charger plus a theme change) and the dead-queue reopen (needs a real player restart; look for `ipc: /player full for ...ms, reopening` in `/usr/data/diskos_boot.log`). No frozen Windows build was run. `dev` was pushed to `origin/dev` (`e042fef`), `main` untouched; `dev` has no upstream configured (`git push -u origin dev` would set it).
 
 ## References
 
