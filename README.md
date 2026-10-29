@@ -73,6 +73,7 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-22 | [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | troubleshooting |
 | 2026-10-22 | [truenas-music-dedupe-and-tag-cleanup.md](truenas-music-dedupe-and-tag-cleanup.md) | how-to |
 | 2026-10-22 | [immich-lan-unreachable-oom-crashloop-and-stale-caddy-ca.md](immich-lan-unreachable-oom-crashloop-and-stale-caddy-ca.md) | troubleshooting |
+| 2026-10-29 | [immich-external-library-offline-assets-relink.md](immich-external-library-offline-assets-relink.md) | investigation |
 | 2026-10-28 | [immich-effect-v4-stage4-verification.md](immich-effect-v4-stage4-verification.md) | how-to |
 | 2026-10-28 | [immich-effect-v4-stage3-utils-streams.md](immich-effect-v4-stage3-utils-streams.md) | how-to |
 | 2026-10-21 | [immich-effect-v4-stage3-utils-streams.md](immich-effect-v4-stage3-utils-streams.md) | immich, fork, effect, effect-ts, nestjs, streams, subagents, podman | 2026-10-28 |
@@ -240,6 +241,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [immich-external-library-offline-assets-relink.md](immich-external-library-offline-assets-relink.md) | immich, external-library, offline-assets, trash, nestjs, effect, kysely | current | 2026-10-29 |
 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | immich, memory, nodejs, sharp, exiftool, bullmq, postgres, podman, performance | current | 2026-10-29 |
 | [diskos-build-diskos-bin-image-locally.md](diskos-build-diskos-bin-image-locally.md) | diskos, snowsky-disc, installer, firmware, image, squashfs, bin | current | 2026-10-27 |
 | [diskos-loudness-spdif-ja11-and-main-release.md](diskos-loudness-spdif-ja11-and-main-release.md) | diskos, snowsky-disc, volume, gain, loudness, usb-audio, spdif, ja11, wifi-interference, flash, release | current | 2026-10-27 |
