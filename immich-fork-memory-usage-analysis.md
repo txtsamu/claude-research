@@ -228,4 +228,158 @@ Gotchas hit while measuring:
 
 - A hung `tsc --noEmit` (TypeScript 7.0.2 native `tsc`, started through `npm exec` on 2026-10-21 in the first strip session, 8 days elapsed, 2h44m CPU) held 2.8 GB RSS, the largest process on the machine. It ignored SIGTERM and needed SIGKILL. This, not the server, was the biggest memory user on the box. Cause of the hang not investigated.
 - An orphaned `immich-api` (272 MB, parent pid 1) from the 2026-10-28 smoke test was still holding port 2283, pointing at databases that no longer existed. Killed.
-- Build-time memory (`tsc`, `nest build`, `vite build`, image build) is still not measured anywhere in this repo.
+- Build-time memory is measured in the next section (`tsc`, `nest build`, `vite build`); the container image build is still not measured.
+
+## Build-time memory: `tsc`, `nest build`, `vite build` (2026-10-29)
+
+Question: what do the build steps of the fork need? Measured on `effect-v4` (`9a530a06b`) on the 32-core, 63 GB Fedora box, node 22.22.2, all runs cold (no incremental state, no warm caches carried over from the previous run), the live test instance idle in the background. Image build (`podman build`), `svelte-check` and `pnpm install` were **not** measured.
+
+### Result
+
+| Step | Command | Wall | Peak memory (whole process tree) | What it is |
+|---|---|---|---|---|
+| Server type check | `tsc --noEmit --incremental false` (in `server/`) | 3.8 s | **2.4 GB** (2.37 / 2.44) | `tsc` here is **TypeScript 7.0.2, the native Go port** (`@typescript/native`), one process |
+| Server build | `nest build` | 15.2 s | **1.4 GB** (1.41 / 1.42) | one node process; uses the JS `typescript` 6.0.2 from `server/node_modules`, not the native one |
+| Web build | `vite build` (in `web/`) | 16.7 s | **4.07 GB** (4.07 / 4.06) | Vite 8.3.4 (rolldown, Rust, in-process), one node process |
+
+Two runs each; the pairs agree within 3%. The numbers are peak RSS summed over the process tree, sampled every 0.2 s; they match `/usr/bin/time -v` max-RSS (single process) and the cgroup `memory.peak` (which adds page cache, +0.3 to +0.1 GB) within a few percent, so there is no hidden child process.
+
+**`vite build` is the heaviest build step, at about 4 GB, and it is the one a small builder will fail on.** `tsc` is second.
+
+### Can it be made smaller?
+
+| Step | Knob | Result |
+|---|---|---|
+| `tsc` | `--checkers 1` | 1.40 GB, 5.6 s (default is 4 checkers: 2.4 GB, 3.8 s) |
+| `tsc` | `--checkers 2` | 1.68 GB, 4.2 s |
+| `tsc` | `--singleThreaded` | 1.38 GB, 6.1 s |
+| `tsc` | `GOGC=25` | 2.29 GB (barely helps) |
+| `tsc` | `GOMEMLIMIT=1GiB` (soft) | 1.97 GB and 13.6 s: the limit is soft, the GC thrashes and still ends above it |
+| `tsc` | hard cgroup limit 3072 / 2560 MB | passes (2.44 GB) |
+| `tsc` | hard cgroup limit 2048 / 1536 / 1024 / 768 MB, defaults | **killed** by the OOM killer |
+| `tsc` | `--checkers 1` under a 1536 MB cgroup limit | passes (1.41 GB) |
+| `tsc` | `--singleThreaded` under a 1024 MB cgroup limit | **killed** (so the floor is above 1 GB) |
+| `nest build` | `NODE_OPTIONS=--max-old-space-size=2048 / 1536` | passes (1.44 / 1.38 GB) |
+| `nest build` | `--max-old-space-size=1024 / 768` | **fails**, exit 134 (V8 "heap out of memory") after 21 s / 13 s |
+| `vite build` | `--max-old-space-size=3072 / 2048 / 1536 / 1024` | passes every time at 3.7 to 4.0 GB: **the heap cap does nothing**, the memory is native (rolldown, not the JS heap) |
+| `vite build` | `RAYON_NUM_THREADS=4` | 3.18 GB, same 16.9 s |
+| `vite build` | `RAYON_NUM_THREADS=1 UV_THREADPOOL_SIZE=1` | 3.08 GB, 29.6 s (almost no further saving, 75% slower) |
+| `vite build` | hard cgroup limit 3072 / 2048 MB, defaults | **killed** |
+| `vite build` | `RAYON_NUM_THREADS=4` under a 3584 MB cgroup limit | passes (3.0 GB peak, 16.9 s) |
+
+What this means for a builder:
+- `nest build` needs a Node heap of 1.5 GB or more (it dies at 1 GB); give it `NODE_OPTIONS=--max-old-space-size=1536` at minimum.
+- Native `tsc` is a Go process, so `--max-old-space-size` does not apply to it. The two things that cut it are `--checkers 1` (2.4 → 1.4 GB, 5.6 s instead of 3.8 s) and a hard memory limit. Do not rely on `GOMEMLIMIT`.
+- `vite build` cannot be capped with the Node heap flag. Limiting threads with `RAYON_NUM_THREADS=4` drops it to about 3.0 to 3.2 GB at no time cost on this box. On a builder with 4 GB or less, expect it to be the step that dies; the realistic floor found here is about 3 GB.
+- A CI or image-build host therefore needs about 4 GB free for the web build, and about 2.5 GB for the server steps, which run one after another and do not add up.
+
+### Caveats
+
+- One machine with 32 cores. Thread counts default to the core count, so a smaller builder may use less memory than the unconstrained numbers here (the `--checkers` and `RAYON_NUM_THREADS` rows are the nearest proxy), but the wall times will be longer.
+- The "killed" rows are the cgroup OOM killer terminating the whole scope; the harness then reports no data for that run (a Python `FileNotFoundError` in the raw output is that, not a harness bug).
+- The 2.8 GB hung `tsc` from 2026-10-21 (see above) is consistent with a normal native `tsc` run (2.4 GB): its size was normal, the problem was that it never exited.
+- Peak memory depends on the free memory the process sees (GCs are lazy), so the unconstrained numbers are upper bounds; the capped rows are the ones that show what is actually required.
+
+### Harness (kept in `~/sessions/2026-10-29-immich-effect-v4-live-test/buildmem/`)
+
+Each command runs inside a transient `systemd-run --user --scope` unit, so the cgroup `memory.peak` covers the whole tree and `-p MemoryMax=...M -p MemorySwapMax=0` gives a hard limit. A sampler walks `/proc` for the descendants of the unit's shell and records the peak of the summed RSS and of the largest single process.
+
+`measure.sh`:
+```bash
+#!/bin/bash
+# usage: measure.sh <label> <cwd> <cmd...>   (env NODE_OPTIONS passes through)
+# Runs the command in a transient systemd user scope, so cgroup memory.peak covers the whole tree.
+label=$1; cwd=$2; shift 2
+D=$(dirname "$(readlink -f "$0")")/runs; mkdir -p "$D"
+export D label cwd; export CMD="$*"
+export SAMPLER="$(dirname "$(readlink -f "$0")")/treesampler.py"
+systemd-run --user --scope --quiet -p MemoryAccounting=yes $SCOPE_PROPS bash "$(dirname "$(readlink -f "$0")")/inner.sh"
+python3 - "$D/$label" <<'PY'
+import sys, json, re
+b = sys.argv[1]
+j = json.load(open(b + '.json')); j.pop('samples')
+t = open(b + '.time').read()
+rss = int(re.search(r'Maximum resident set size \(kbytes\): (\d+)', t).group(1)) // 1024
+wall = re.search(r'Elapsed \(wall clock\) time.*: (\S+)', t).group(1)
+try: cg = int(open(b + '.cgpeak').read()) // 1048576
+except Exception: cg = None
+ex = open(b + '.exit').read().strip()
+print(f"{b.split('/')[-1]}: exit={ex} wall={wall} peak_tree_rss={j['peak_sum_mb']}MB largest_proc={j['peak_single_mb']}MB({j['peak_single_comm']}) time_maxrss={rss}MB cgroup_peak={cg}MB")
+PY
+```
+
+`inner.sh` (runs inside the scope):
+```bash
+#!/bin/bash
+# runs inside the systemd scope; env: D label cwd CMD SAMPLER
+cd "$cwd" || exit 1
+stop="$D/$label.stop"; rm -f "$stop"
+python3 "$SAMPLER" "$$" "$D/$label.json" "$stop" &
+sp=$!
+/usr/bin/time -v -o "$D/$label.time" bash -c "$CMD" > "$D/$label.log" 2>&1
+echo $? > "$D/$label.exit"
+cg=/sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)
+cat "$cg/memory.peak" > "$D/$label.cgpeak" 2>/dev/null
+touch "$stop"; wait $sp
+```
+
+`treesampler.py`:
+```python
+#!/usr/bin/env python3
+"""Samples RSS of a process tree every 0.2s: peak of the summed RSS and the largest single process.
+usage: treesampler.py <root_pid> <out.json> <stopfile>"""
+import os, sys, time, json
+root = int(sys.argv[1]); out = sys.argv[2]; stop = sys.argv[3]
+
+def procs():
+    r = {}
+    for d in os.listdir('/proc'):
+        if not d.isdigit(): continue
+        try:
+            with open(f'/proc/{d}/stat') as f: s = f.read()
+            comm = s[s.index('(')+1:s.rindex(')')]; rest = s[s.rindex(')')+2:].split()
+            ppid = int(rest[1])
+            with open(f'/proc/{d}/status') as f:
+                rss = next(int(l.split()[1]) for l in f if l.startswith('VmRSS:'))
+            r[int(d)] = (ppid, comm, rss)
+        except Exception: pass
+    return r
+
+peak_sum = 0; peak_one = (0, ''); t0 = time.time(); t_peak = 0; samples = []
+while not os.path.exists(stop):
+    p = procs(); desc, frontier = set(), {root}
+    while frontier:
+        nxt = {k for k, v in p.items() if v[0] in frontier and k not in desc}
+        desc |= nxt; frontier = nxt
+    tot = sum(p[k][2] for k in desc)
+    for k in desc:
+        if p[k][2] > peak_one[0]: peak_one = (p[k][2], p[k][1])
+    if tot > peak_sum: peak_sum, t_peak = tot, time.time() - t0
+    samples.append((round(time.time() - t0, 1), tot))
+    time.sleep(0.2)
+json.dump({'peak_sum_mb': round(peak_sum/1024), 'peak_single_mb': round(peak_one[0]/1024),
+           'peak_single_comm': peak_one[1], 't_peak_s': round(t_peak, 1),
+           'duration_s': round(time.time() - t0, 1), 'samples': samples}, open(out, 'w'))
+```
+
+Runs used, all as `./measure.sh <label> <dir> <cmd>`:
+```bash
+S=~/immich/server; W=~/immich/web
+./measure.sh tsc-server-1 $S ./node_modules/.bin/tsc --noEmit --incremental false
+rm -f $S/dist/tsconfig.build.tsbuildinfo   # cold nest build
+./measure.sh nest-build-1 $S ./node_modules/.bin/nest build
+./measure.sh vite-build-1 $W ./node_modules/.bin/vite build
+# caps
+NODE_OPTIONS=--max-old-space-size=1024 ./measure.sh nest-heap1024 $S ./node_modules/.bin/nest build
+SCOPE_PROPS="-p MemoryMax=2048M -p MemorySwapMax=0" ./measure.sh tsc-cg2048 $S ./node_modules/.bin/tsc --noEmit --incremental false
+./measure.sh tsc-checkers1 $S ./node_modules/.bin/tsc --noEmit --incremental false --checkers 1
+RAYON_NUM_THREADS=4 ./measure.sh vite-rayon4 $W ./node_modules/.bin/vite build
+```
+
+Harness pitfalls hit: `$BASHPID` inside a backgrounded `python3 ... &` is the subshell's pid, not the scope shell's, so the sampler saw an empty tree (peak 0 MB); use `$$`. Inline quoting of `$$` inside a `bash -c '...'` string was mangled, so the scope body lives in `inner.sh`. `pkill -f run_default.sh` killed its own shell (exit 144); find the pid with `ps` instead.
+
+### Not measured / next
+
+- `podman build` of `server/Dockerfile` (multi-stage; runs the same `nest build` and `vite build` plus `pnpm install` inside the builder stage, so it needs at least the 4 GB above).
+- `svelte-check` and `web` `tsc --noEmit`, `eslint` (type-aware lint is often heavier than `tsc`).
+- Whether `vite build` memory comes mainly from `@sveltejs/enhanced-img` (sharp image processing at build time) or from rolldown bundling; the heap-cap experiment only shows it is not the JS heap.
