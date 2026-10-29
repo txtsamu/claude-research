@@ -71,3 +71,22 @@ Question: arm4 (`root@arm4`, 192.168.50.43) seemed to disconnect by itself, and 
 - Scrape Kuma `/metrics` into VictoriaMetrics for later correlation; alert on `node_network_carrier_changes_total` and uptime resets.
 - Security: the cloudflared tunnel token is visible in the process arguments of the container (`ps`); consider rotating it and passing it via a file or env var.
 - arm4: try another cable/switch port and check the 5 V supply if link drops or stalls continue.
+
+## Update 2026-10-29 (later): arm4 DNS (port 53) is broken by stale Pi-hole CNI DNAT rules
+
+Found while preparing monitoring: VictoriaMetrics blackbox `probe_success{job="blackbox-dns",name="technitium-arm4"}` is **0 for the whole retained window (~20 h, probe takes the full 5 s timeout)**, while ICMP, SSH and the web UI (5380) are fine; the other Technitium servers (home, arm1, arm3) are healthy. Kuma has no DNS monitor, so nothing alerted.
+
+Diagnosis (all read-only):
+```bash
+dig +time=3 +tries=1 @192.168.50.43 cloudflare.com A      # timeout over UDP and TCP, from the PC and from arm4 itself
+ss -ulnp "sport = :53"; ss -ltnp "sport = :53"             # dotnet is listening, Recv-Q 0, no listen drops
+iptables -S INPUT                                          # LAN is accepted, firewall is not the cause
+iptables -t nat -S | grep -E "dport (53|8080|8443)"        # <-- the cause
+```
+The nat table has `CNI-DN-512c6e...` rules DNATing tcp/udp 53, 8080->80, 8443->443 to `10.89.1.3`, a leftover of an old `pi-hole_default` podman network. They are saved in `/etc/iptables/rules.v4` (dated 2026-05-07) and restored by `netfilter-persistent` on every boot. Technitium now runs with `Network=host`, so PREROUTING sends LAN DNS traffic to a nonexistent address. The web UI on 5380 is not in the stale rules, which is why it still works. A DNS client with arm4 in its resolver list waits for the timeout before falling back, which looks like a flaky connection.
+
+Status at time of writing: **not yet fixed** (waiting for the user to approve changing the firewall). Planned fix: back up `rules.v4`, delete the stale `CNI-*` chains/rules for `10.89.1.0/24` live, re-save with `netfilter-persistent save`, re-test `dig @192.168.50.43`.
+
+Also done in this update: `/etc/cron.d/journal-persist` (`*/5 * * * * root journalctl --flush`) installed on arm4 after the user approved it. Tested: after a forced `armbian-ramlog write` (which relinquishes `/var`), a `journalctl --flush` put new lines back in `/var/log.hdd/journal`.
+
+Side notes: the Technitium admin password is in plain text in the Quadlet file `/etc/containers/systemd/technitium.container` (`DNS_SERVER_ADMIN_PASSWORD`) and shows in the generated unit; consider a podman secret. No vmalert/Alertmanager exists on home; Kuma already has a default Telegram notification (@txtcybr_bot) attached to all ping monitors. `vm-bot` (`homelab/vm-bot`) is a command bot with no inbound port, so it cannot receive pushed alerts as is.
