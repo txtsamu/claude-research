@@ -49,6 +49,7 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-27 | [diskos-screenshots-over-key-ssh-and-terminal-home-layout.md](diskos-screenshots-over-key-ssh-and-terminal-home-layout.md) | how-to |
 | 2026-10-27 | [diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md](diskos-lastfm-removal-terminal-cursor-and-subagent-worktrees.md) | how-to |
 | 2026-10-27 | [diskos-persistent-clock-timekeep.md](diskos-persistent-clock-timekeep.md) | troubleshooting |
+| 2026-10-30 | [diskos-strip-comments-from-source-into-comments-md.md](diskos-strip-comments-from-source-into-comments-md.md) | how-to |
 | 2026-10-27 | [diskos-hotload-gotchas-test-outputs-usb-storage-reboot.md](diskos-hotload-gotchas-test-outputs-usb-storage-reboot.md) | troubleshooting |
 | 2026-10-27 | [diskos-fork-consolidated-into-dev-branch.md](diskos-fork-consolidated-into-dev-branch.md) | how-to |
 | 2026-10-27 | [diskos-persistent-debug-checkboxes.md](diskos-persistent-debug-checkboxes.md) | how-to |
