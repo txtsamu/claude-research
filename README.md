@@ -115,6 +115,7 @@ One combined view across all three tables below, so the latest work is visible a
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
+| [diskos-usb-audio-headset-click-gestures-and-flash.md](diskos-usb-audio-headset-click-gestures-and-flash.md) | diskos, snowsky-disc, usb-audio, usbhid, headset, ja11, click-gestures, subagents, flash | 2026-10-31 |
 |---|---|---|
 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-28 |
 | [boox-poke3-adb-debloat-telemetry-and-firmware-check.md](boox-poke3-adb-debloat-telemetry-and-firmware-check.md) | boox, onyx, poke3, android10, e-ink, adb, debloat, telemetry, firmware, koreader | 2026-10-28 |
