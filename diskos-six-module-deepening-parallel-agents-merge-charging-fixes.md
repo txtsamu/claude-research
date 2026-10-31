@@ -10,7 +10,7 @@ status: current
 
 Fork `txtsamu/diskos`, branch `dev`, from `4f28beb`. Companion docs: [[diskos-ui-architecture-review-output-sequencer-design]], [[diskos-session-and-play-admission-modules-parallel-agents]], [[diskos-hotload-gotchas-test-outputs-usb-storage-reboot]], [[diskos-disc-hotload-watchdog-snowsky-logo-hang]], [[fiio-snowsky-disc-diskos-flash-fedora]], [[diskos-usb-audio-headset-click-gestures-and-flash]], [[diskos-usb-dac-exit-deadlock-roles-and-volume-fix]].
 
-**Status:** merged into `dev`, host tests and a clean cross-build pass, hot-loaded to the Disc (md5 `a60d9077…`, up on the first attempt). Flash of `344334e` started 12:17:55 (result at the end of this doc). **Nothing was exercised by hand on the Disc, and the charging fixes (merged afterwards at `dea3ce7`) are not in the flashed or hot-loaded build.**
+**Status:** merged into `dev`, host tests and a clean cross-build pass, hot-loaded to the Disc (md5 `a60d9077…`, up on the first attempt). Flash of `344334e` (UI sha256 `4dc2718d…`) ran 12:17:20 to 12:37:29 and verified: `0x600DF10C [F001] SUCCESS`, `bad-blocks-found=2 list=[128, 522]`, `write: skipped=2 retried=0`, backup `g0014` committed. The Disc is still in USB boot until power is cut; first boot and use not yet checked. **Nothing was exercised by hand on the Disc, and the charging fixes (merged afterwards at `dea3ce7`) are not in the flashed or hot-loaded build.**
 
 ## Time estimate
 
@@ -25,7 +25,7 @@ Measured this session unless marked (est.). Wall-clock, 2026-10-31, WIB.
 | Clean cross-build in podman | 13.0 s (`real 0m12.994s`); an earlier "2 s build" was stale objects |
 | Hot-load | 8.2 s |
 | Image build only (`echo n \|`) | about 1 s |
-| Flash | about 20 min (fixed 18 min writer wait, see [[fiio-snowsky-disc-diskos-flash-fedora]]) |
+| Flash | 20 min 9 s measured (12:17:20 to 12:37:29; fixed 18 min writer wait, see [[fiio-snowsky-disc-diskos-flash-fedora]]) |
 
 ## 1. Find candidates (the `improve-codebase-architecture` skill)
 
