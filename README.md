@@ -56,10 +56,63 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-27 | [diskos-persistent-debug-checkboxes.md](diskos-persistent-debug-checkboxes.md) | how-to |
 | 2026-10-27 | [diskos-ui-architecture-review-output-sequencer-design.md](diskos-ui-architecture-review-output-sequencer-design.md) | investigation |
 | 2026-10-29 | [diskos-session-and-play-admission-modules-parallel-agents.md](diskos-session-and-play-admission-modules-parallel-agents.md) | how-to |
+| 2026-10-29 | [diskos-disc-player-stuck-play-thread-spin-flash-size-root-limits.md](diskos-disc-player-stuck-play-thread-spin-flash-size-root-limits.md) | troubleshooting |
+| 2026-10-29 | [diskos-usb-dac-app-stream-rate-pcm-dsd-volume.md](diskos-usb-dac-app-stream-rate-pcm-dsd-volume.md) | how-to |
+| 2026-10-29 | [diskos-ultrareview-dev-to-main-findings-and-first-fixes.md](diskos-ultrareview-dev-to-main-findings-and-first-fixes.md) | investigation |
+| 2026-10-29 | [diskos-dev-next-steps-plan-2026-10-29.md](diskos-dev-next-steps-plan-2026-10-29.md) | how-to |
+| 2026-10-29 | [diskos-parallel-wave-keyssh-restore-switchflow-radio-icon-backbutton.md](diskos-parallel-wave-keyssh-restore-switchflow-radio-icon-backbutton.md) | how-to |
 | [diskos-srcswitch-source-mode-switch-extraction.md](diskos-srcswitch-source-mode-switch-extraction.md) | diskos, snowsky-disc, architecture, refactor, srcswitch, source-mode, usb-storage, usb-dac, host-tests, podman, hot-load | current | 2026-10-29 |
 | [diskos-apps-page-scrolls-up-when-settings-tile-pressed.md](diskos-apps-page-scrolls-up-when-settings-tile-pressed.md) | diskos, snowsky-disc, lvgl, apps, scroll-on-focus, touch, input-injection, evdev, hot-load | current | 2026-10-29 |
+| 2026-10-27 | [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md) | evomem search timeouts: real cause was a per-query full word_index vocabulary scan (not a vector scan); fixed with a cached vocabulary, ~5 s -> ~0.3 s |
+| 2026-10-27 | [8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md](8bitdo-ultimate-2c-wireless-linux-web-firmware-update.md) | how-to |
+| 2026-10-27 | [fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md](fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md) | how-to |
+| 2026-10-27 | [ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md](ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg.md) | investigation |
+| 2026-10-27 | [moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md](moondrop-chu2-dsp-ktmicro-peq-match-tin-hifi-c7.md) | how-to |
+| 2026-10-26 | [fiio-ja11-peq-match-tin-hifi-c7-hidraw.md](fiio-ja11-peq-match-tin-hifi-c7-hidraw.md) | how-to |
+| 2026-10-26 | [tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md](tanchjim-fission-ktmicro-dsp-peq-match-tin-hifi-c7.md) | how-to |
+| 2026-10-28 | [tanchjim-fission-peq-match-crinear-daybreak.md](tanchjim-fission-peq-match-crinear-daybreak.md) | how-to |
+| 2026-10-27 | [tanchjim-fission-peq-match-crinear-nightfall-cross-rig.md](tanchjim-fission-peq-match-crinear-nightfall-cross-rig.md) | how-to |
+| 2026-10-25 | [samsung-tv-t6500-root-and-persistence.md](samsung-tv-t6500-root-and-persistence.md) | investigation |
+| 2026-10-25 | [samsung-tv-t6500-debloat-and-launcher.md](samsung-tv-t6500-debloat-and-launcher.md) | troubleshooting |
+| 2026-10-25 | [samsung-tv-t6500-sideload-and-apps.md](samsung-tv-t6500-sideload-and-apps.md) | how-to |
+| 2026-10-25 | [samsung-tv-t6500-power-states-and-remote-control.md](samsung-tv-t6500-power-states-and-remote-control.md) | investigation |
+| 2026-10-23 | [xiaomi-fm-radio-backup-and-cross-device-install.md](xiaomi-fm-radio-backup-and-cross-device-install.md) | how-to |
+| 2026-10-23 | [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md) | investigation |
+| 2026-10-23 | [redmi-10-miui125-adb-debloat-telemetry-ads.md](redmi-10-miui125-adb-debloat-telemetry-ads.md) | how-to |
+| 2026-10-22 | [firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md](firefox-audio-pinned-to-onboard-sink-wireplumber-restore-target.md) | troubleshooting |
+| 2026-10-22 | [poweramp-pauses-when-switching-apps-audio-focus.md](poweramp-pauses-when-switching-apps-audio-focus.md) | troubleshooting |
+| 2026-10-22 | [truenas-music-dedupe-and-tag-cleanup.md](truenas-music-dedupe-and-tag-cleanup.md) | how-to |
+| 2026-10-22 | [immich-lan-unreachable-oom-crashloop-and-stale-caddy-ca.md](immich-lan-unreachable-oom-crashloop-and-stale-caddy-ca.md) | troubleshooting |
+| 2026-10-29 | [immich-external-library-offline-assets-relink.md](immich-external-library-offline-assets-relink.md) | investigation |
+| 2026-10-28 | [immich-effect-v4-stage4-verification.md](immich-effect-v4-stage4-verification.md) | how-to |
+| 2026-10-28 | [immich-effect-v4-stage3-utils-streams.md](immich-effect-v4-stage3-utils-streams.md) | how-to |
+| 2026-10-21 | [immich-effect-v4-stage3-utils-streams.md](immich-effect-v4-stage3-utils-streams.md) | immich, fork, effect, effect-ts, nestjs, streams, subagents, podman | 2026-10-28 |
 | [immich-effect-v4-stage2-services.md](immich-effect-v4-stage2-services.md) | how-to |
+| 2026-10-21 | [immich-effect-v4-stage2-services.md](immich-effect-v4-stage2-services.md) | immich, fork, effect, effect-ts, nestjs, services, subagents, vitest, podman | 2026-10-21 |
 | [immich-effect-v4-stage1-repositories.md](immich-effect-v4-stage1-repositories.md) | how-to |
+| 2026-10-21 | [immich-fork-memory-usage-analysis.md](immich-fork-memory-usage-analysis.md) | investigation |
+| 2026-10-21 | [immich-strip-ai-machine-learning-fork.md](immich-strip-ai-machine-learning-fork.md) | how-to |
+| 2026-10-20 | [kt02h20-jcally-dac-ja11-firmware-flash-protocol.md](kt02h20-jcally-dac-ja11-firmware-flash-protocol.md) | investigation |
+| 2026-10-23 | [diskos-stock-plus-round-screen-features-and-flash.md](diskos-stock-plus-round-screen-features-and-flash.md) | how-to |
+| 2026-10-22 | [diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md](diskos-usb-dac-exit-deadlock-roles-and-volume-fix.md) | troubleshooting |
+| 2026-10-22 | [snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md](snowsky-disc-usb-dac-uac2-android-and-firmware-decompile.md) | investigation |
+| 2026-10-20 | [diskos-disc-hotload-watchdog-snowsky-logo-hang.md](diskos-disc-hotload-watchdog-snowsky-logo-hang.md) | troubleshooting |
+| 2026-10-20 | [gigabyte-b650m-k-argb-fan-no-light-openrgb-gbrgb.md](gigabyte-b650m-k-argb-fan-no-light-openrgb-gbrgb.md) | troubleshooting |
+| 2026-10-19 | [mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md](mikrotik-dhcp-public-dns-fallback-lan-nxdomain.md) | troubleshooting |
+| 2026-10-19 | [ingenic-x2000-swb-reboot-to-usb-boot.md](ingenic-x2000-swb-reboot-to-usb-boot.md) | investigation |
+| 2026-10-19 | [snowsky-disc-music-sync-from-nas.md](snowsky-disc-music-sync-from-nas.md) | how-to |
+| 2026-10-28 | [xiaomi-phone-music-library-sync-adb.md](xiaomi-phone-music-library-sync-adb.md) | how-to |
+| 2026-10-19 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | investigation |
+| 2026-10-19 | [pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md](pipewire-native-sample-rate-usb-dac-cosmic-volume-keys.md) | how-to |
+| 2026-10-19 | [fiio-snowsky-disc-diskos-flash-fedora.md](fiio-snowsky-disc-diskos-flash-fedora.md) | how-to |
+| 2026-10-19 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | how-to |
+| 2026-10-19 | [iqoo-z11-usb-audio-output-flags-bitperfect-hires.md](iqoo-z11-usb-audio-output-flags-bitperfect-hires.md) | investigation |
+| 2026-10-19 | [iqoo-vivo-otg-keepalive-not-possible-without-root.md](iqoo-vivo-otg-keepalive-not-possible-without-root.md) | investigation |
+| 2026-10-19 | [iqoo-originos6-adb-debloat-uad-list.md](iqoo-originos6-adb-debloat-uad-list.md) | how-to |
+| 2026-10-18 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | how-to |
+| 2026-10-18 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
+| 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
+| 2026-10-31 | [diskos-six-module-deepening-parallel-agents-merge-charging-fixes.md](diskos-six-module-deepening-parallel-agents-merge-charging-fixes.md) | how-to |
 
 ### How-to / deployment
 
