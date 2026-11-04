@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-05 | [immich-medium-tests-leak-exiftool-and-postgres.md](immich-medium-tests-leak-exiftool-and-postgres.md) | troubleshooting |
 | 2026-11-03 | [redmi-10-magisk-zygisk-play-integrity-fork-device-integrity-fails.md](redmi-10-magisk-zygisk-play-integrity-fork-device-integrity-fails.md) | investigation |
 | 2026-10-29 | [arm4-uptime-kuma-flapping-and-persistent-journal.md](arm4-uptime-kuma-flapping-and-persistent-journal.md) | troubleshooting |
 | 2026-10-28 | [boox-poke3-adb-debloat-telemetry-and-firmware-check.md](boox-poke3-adb-debloat-telemetry-and-firmware-check.md) | how-to |
@@ -203,6 +204,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [immich-medium-tests-leak-exiftool-and-postgres.md](immich-medium-tests-leak-exiftool-and-postgres.md) | immich, vitest, exiftool, testcontainers, ryuk, podman, memory, orphan-processes | 2026-11-05 |
 | [arm4-uptime-kuma-flapping-and-persistent-journal.md](arm4-uptime-kuma-flapping-and-persistent-journal.md) | arm4, armbian, uptime-kuma, victoriametrics, journald, armbian-ramlog, cloudflared, flapping | 2026-10-29 |
 | [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md) | evomem, mcp, timeout, search, latency, sqlite, embeddings | 2026-10-27 |
 | [samsung-tv-t6500-debloat-and-launcher.md](samsung-tv-t6500-debloat-and-launcher.md) | samsung, tizen, tv, sdb, debloat, kants2, uep, cold-boot, persistence, clean-launcher, tvunlock02, app-list, home-key, uid-5001, t6500, blocked | 2026-10-25 |
