@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-05 | [mediatek-usb-audio-hal-mt6768-reverse-engineering.md](mediatek-usb-audio-hal-mt6768-reverse-engineering.md) | investigation |
 | 2026-11-05 | [android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md](android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md) | investigation |
 | 2026-11-05 | [immich-medium-tests-leak-exiftool-and-postgres.md](immich-medium-tests-leak-exiftool-and-postgres.md) | troubleshooting |
 | 2026-11-03 | [redmi-10-magisk-zygisk-play-integrity-fork-device-integrity-fails.md](redmi-10-magisk-zygisk-play-integrity-fork-device-integrity-fails.md) | investigation |
@@ -256,6 +257,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [mediatek-usb-audio-hal-mt6768-reverse-engineering.md](mediatek-usb-audio-hal-mt6768-reverse-engineering.md) | android, mediatek, mt6768, usb-audio, usb-dac, audio-hal, ghidra, reverse-engineering, libalsautils, aurisys | current: static RE of audio.usb.mt6768.so + libalsautils; the "96 kHz cap" is a table-order quirk (96000 first, returned as default/highest), 192 kHz is supported; Aurisys handler in the playback path unverified; no DAC test yet | 2026-11-05 |
 | [android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md](android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md) | android, apple-music, usb-dac, bit-perfect, magisk, redmi-10, selene, android11 | current: Android 11 + HIDL USB HAL, no documented Magisk route for Apple Music bit-perfect; measure with dumpsys/stream0 once a DAC is attached | 2026-11-05 |
 | [redmi-10-magisk-zygisk-play-integrity-fork-device-integrity-fails.md](redmi-10-magisk-zygisk-play-integrity-fork-device-integrity-fails.md) | android, xiaomi, redmi-10, magisk, zygisk, play-integrity, playintegrityfork, adb | blocked | 2026-11-03 |
 | [immich-external-library-offline-assets-relink.md](immich-external-library-offline-assets-relink.md) | immich, external-library, offline-assets, trash, nestjs, effect, kysely | current | 2026-10-29 |
