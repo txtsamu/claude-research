@@ -87,6 +87,26 @@ Wireless adb: `adb connect 192.168.50.18:5555` was refused (Android 11 wireless 
 
 - **Test files:** six synthetic 24-bit FLACs (44.1, 48, 88.2, 96, 176.4, 192 kHz, 30 s, soft chord, ultrasonic marker on 88.2k+) were generated with `~/sessions/2026-11-05-hires-test-files/scripts/make_tones.sh` and pushed to the phone's `/sdcard/Music/HiResTest/`. Real free hi-res sources found: 2L Test Bench is offline; Real HD-Audio demo files need an email request; the Internet Archive copy of the Open Goldberg Variations has only MP3/Ogg.
 
+## 384 kHz table swap (module v2.0, 2026-11-05)
+
+The stock loop is fixed at 13 slots, so 384000/352800 can only be added by dropping two entries. Chosen: drop `12000` and `11025` (keep `8000` for telephony). New table, applied to both `lib64` (offset `0x17ac`) and `lib` (`0x13fc`) from the **stock** copies in `backups/`:
+
+```
+384000, 352800, 192000, 176400, 96000, 88200, 48000, 44100, 32000, 24000, 22050, 16000, 8000
+```
+
+```bash
+python3 -I $S/scripts/patch_rates.py $S/backups/libalsautils64.so.orig $M/system/vendor/lib64/libalsautils.so 384
+python3 -I $S/scripts/patch_rates.py $S/backups/libalsautils32.so.orig $M/system/vendor/lib/libalsautils.so 384
+# module.prop -> version=v2.0; push over /data/adb/modules/mtk-usb-rate-order, chown root, chcon vendor_file, adb reboot
+```
+
+- Verified after reboot: sha256 lib64 `6260de7e...497e`, lib `3ece3104...e197`; live lib64 table reads the 13 values above; `audioserver` up (pid 723).
+- v1.0 (192k-first, keeps all 13 stock rates) is saved in `backups/module-192-v1.0/`.
+- `profile_get_sample_rate_strs` builds the rate list in a 224-byte stack buffer, so six-digit rates fit.
+- Wireless debugging port changes on every reboot: rescan with `nmap -p 30000-49999,5555 --open 192.168.50.18` (this time `45221`).
+- **Not tested with the DAC yet:** after this reboot the Type-C controller reported nothing attached (`typec_mode=0`, no `1-1` in `/sys/bus/usb/devices`), so the DAC needs to be re-plugged. Expectation, unverified: the HAL probes 384000/352800 against the DAC, but AudioFlinger's mixer (to my recollection capped at 192 kHz) may still resample.
+
 ## References
 
 - [usb-samplerate-unlocker (yzyhk904)](https://github.com/yzyhk904/usb-samplerate-unlocker): origin of the `std_sample_rates[]` / `libalsautils` patch
