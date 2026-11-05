@@ -47,6 +47,20 @@ adb shell 'su -c "cat /vendor/etc/usb_audio_policy_configuration.xml"'
 6. **Apple Music root detection** is reported to be a simple root-file check in `/system/bin/` (smartworld.it), solved there with MagiskHide, which no longer exists in Magisk 30.x. Use DenyList / Shamiko-style hiding if the app refuses to start. `playintegrityfix` is already installed.
 7. **`NLSound` is active** and is a global audio-tuning module; it edits audio policy and effects, which works against bit-perfect. Disable it (touch `/data/adb/modules/NLSound/disable`, reboot) before any DAC test. Not done.
 
+## Upstream BitChord `main` (checked 2026-11-05, `origin/main` of kushagrasinghx/BitChord)
+
+Upstream now ships its own "Bit-perfect USB exclusive output" (README credits [Mornye](https://github.com/mornyeapp/Mornye) as the reference; the code is LGPL-3.0 adapted from it). `minSdk = 26`. It has three transports, chosen by `BitPerfectMode` in `playback/audio/bitperfect/BitPerfectOutput.kt`:
+
+| Mode / transport | Needs | How it works |
+|---|---|---|
+| `ANDROID_MIXER` (`MixerTransport.kt`) | Android 14+ (`SDK_INT >= 34`) and a USB device that offers bit-perfect mixer attributes | `AudioMixerAttributes` bit-perfect mixer + one `AudioTrack` pinned to the DAC; re-verifies the route every few hundred ms; volume is the DAC's |
+| `USB_DIRECT` (`usb/UsbDirectTransport.kt`, `cpp/bitperfect/usb_transport.cpp`) | any Android >= 8 (no API-level gate seen) | USB host permission, detaches Android's `snd-usb-audio` for the stream, native libusb isochronous transfers, DAC feature-unit volume, falls back to the normal sink on failure |
+| `DAP_EXCLUSIVE` (`ExclusiveTransport.kt`) | `SDK_INT >= 27` | AAudio exclusive stream at the track's own rate with conversion off, for a DAP's built-in DAC |
+
+`BitPerfectRoutingSink` picks per track: a lossless track the DAC can carry unchanged goes bit-perfect, anything else (lossy, unsupported format) takes the normal sink. This is the same idea as the `usb-exclusive-mode` branch in my fork (commit `8006f342`, see the other doc), so on **Android 11 the `USB_DIRECT` transport is the route that matters for this phone**, and it works with no root and no Magisk module.
+
+Limit that matters for the original question: BitChord's sources are YouTube Music, user-configured module sources (FLAC/ALAC), downloads and local files. It does **not** play Apple Music's DRM catalogue, so this gives bit-perfect for local/other-source files, not for the Apple Music app. Not tested on this phone yet (no DAC attached, local fork is on `usb-exclusive-mode`, not on upstream `main`).
+
 ## Dead ends / not found
 
 - No source found for a Magisk module that adds `AUDIO_OUTPUT_FLAG_BIT_PERFECT` or a direct USB output to an Android 11 HIDL HAL.
@@ -61,7 +75,7 @@ adb shell 'su -c "cat /vendor/etc/usb_audio_policy_configuration.xml"'
    ```
    Also watch the DAC's own sample-rate LED. 48 kHz everywhere means the mixer is resampling.
 2. Disable `NLSound` first, set system volume to max, system sound effects off.
-3. If it stays at 48 kHz: either try the unlocker module as a controlled experiment (back up first; `/data/adb/modules/<name>/disable` removes it), or move to a ROM whose USB HAL declares the bit-perfect flag, or use a bit-perfect player for local files (BitChord fork, UAPP) and accept that Apple Music stays on the Android mixer.
+3. If it stays at 48 kHz: either try the unlocker module as a controlled experiment (back up first; `/data/adb/modules/<name>/disable` removes it), or move to a ROM whose USB HAL declares the bit-perfect flag, or use a bit-perfect player for local files (upstream BitChord `main` with `USB_DIRECT`, or UAPP) and accept that Apple Music stays on the Android mixer.
 
 ## References
 
@@ -74,4 +88,6 @@ adb shell 'su -c "cat /vendor/etc/usb_audio_policy_configuration.xml"'
 - [Head-Fi UAPP thread](https://www.head-fi.org/threads/usb-audio-player-pro-uapp-24-and-32-bit-playback-ubiquitous-usb-audio-support-for-android.704065/post-17717934)
 - [SlashGear: apps that play hi-res audio on Android](https://www.slashgear.com/1662737/apps-android-high-resolution-audio-full-quality)
 - [Poweramp forum: forced 48 kHz Android resample](https://forum.powerampapp.com/topic/22229-forced-48-khz-android-resample-and-deep_buffer-enforced-flag-on-hi-res-output-log/)
+- [BitChord upstream (kushagrasinghx), `main`](https://github.com/kushagrasinghx/BitChord)
+- [Mornye (reference for BitChord's bit-perfect code)](https://github.com/mornyeapp/Mornye)
 - [smartworld.it: Apple Music and root](https://www.smartworld.it/news/apple-music-root.html)
