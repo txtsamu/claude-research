@@ -75,6 +75,16 @@ adb push $S/module/mtk-usb-rate-order /sdcard/ && adb shell 'su -c "cp -r /sdcar
 - Verify after reboot: `adb shell 'su -c "sha256sum /vendor/lib64/libalsautils.so"'` should show `3c3faa32...`; with a DAC, `adb logcat -s modules.usbaudio.audio_hal` and `cat /proc/asound/card1/stream0`.
 - Undo: `adb shell 'su -c "touch /data/adb/modules/mtk-usb-rate-order/disable"'` and reboot (or delete the module folder; Magisk safe mode also disables modules if boot fails).
 
+## Live check with a DAC (2026-11-05, after the reboot)
+
+Wireless adb: `adb connect 192.168.50.18:5555` was refused (Android 11 wireless debugging uses a random port); `nmap -p 30000-49999,5555 --open 192.168.50.18` found `45481`, then `adb connect 192.168.50.18:45481`.
+
+- **Patch is live:** `sha256sum` of `/vendor/lib64/libalsautils.so` = `3c3faa32...3723` and `/vendor/lib/libalsautils.so` = `a4abb6a9...ffac3` after reboot; the live 64-bit table reads `192000, 176400, 96000, 88200, 48000, 44100, ...`; `audioserver` up, no crash lines.
+- **DAC:** FiiO JadeAudio JA11, USB `2972:0102`, 480 Mbps high-speed, UAC2 (`/sys/bus/usb/devices/1-1`). From `dmesg | grep "usb 1-1"`: iface 1 alt 1 = 16-bit at 44.1/48/88.2/96/176.4/192 kHz; alt 3 = 32-bit at 192 kHz.
+- **Evidence the system path now opens at 192 kHz / 32-bit:** `dmesg` shows thread `writer` (tid 7387, which `/proc/7387/exe` confirms belongs to `/vendor/bin/hw/android.hardware.audio.service.mediatek`, the audio HAL) starting the playback endpoint 1.3 s after the DAC enumerated: `iface=1:3 format = 32bit rate = 192000`, `frames_per_period=960` (960 frames at 192 kHz = 5 ms = `ro.audio.usb.period_us`). That fits the new default (first valid entry = 192000, highest PCM format = 32-bit). I have no pre-patch baseline for the same DAC, so this is consistent with the patch, not proof of it.
+- **Not testable at that moment:** Poweramp (`com.maxmpz.audioplayer`, "external proxy" player, state started) was playing and holds interfaces 1.0/1.1 through `usbfs` (its own USB driver), so no ALSA card exists (`/proc/asound/cards` shows only `card0`) and `/proc/asound/card*/stream0` cannot be read. The `USB_AUD` HAL log lines were not in logcat (buffer rolled or filtered).
+- To test the Android mixer path, stop Poweramp's USB-exclusive output (or play from a normal AudioTrack app, e.g. Apple Music), then read `cat /proc/asound/card1/stream0` and `dmesg | grep "usb 1-1"`.
+
 ## References
 
 - [usb-samplerate-unlocker (yzyhk904)](https://github.com/yzyhk904/usb-samplerate-unlocker): origin of the `std_sample_rates[]` / `libalsautils` patch
