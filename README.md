@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-05 | [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | how-to |
 | 2026-11-05 | [mikrotik-hex-s-sqm-cake-fq-codel-cpu-ceiling.md](mikrotik-hex-s-sqm-cake-fq-codel-cpu-ceiling.md) | investigation |
 | 2026-11-05 | [mediatek-usb-audio-hal-mt6768-reverse-engineering.md](mediatek-usb-audio-hal-mt6768-reverse-engineering.md) | investigation |
 | 2026-11-05 | [android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md](android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md) | investigation |
@@ -116,12 +117,12 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-10-18 | [tiktok-bot-anoa-browser-backend-vs-camofox.md](tiktok-bot-anoa-browser-backend-vs-camofox.md) | how-to |
 | 2026-10-18 | [technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md](technitium-samsung-tv-ad-telemetry-block-advanced-blocking.md) | how-to |
 | 2026-10-14 | [bitchord-android-usb-exclusive-mode-uac-driver.md](bitchord-android-usb-exclusive-mode-uac-driver.md) | how-to |
-| 2026-10-31 | [diskos-six-module-deepening-parallel-agents-merge-charging-fixes.md](diskos-six-module-deepening-parallel-agents-merge-charging-fixes.md) | how-to |
 
 ### How-to / deployment
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | perses, victoriametrics, dashboard, promql, k3s, home, monitoring, node-exporter, snmp, blackbox, zfs, proxmox, helm, oomkilled, subagents | 2026-11-05 |
 | [diskos-usb-audio-headset-click-gestures-and-flash.md](diskos-usb-audio-headset-click-gestures-and-flash.md) | diskos, snowsky-disc, usb-audio, usbhid, headset, ja11, click-gestures, subagents, flash | 2026-10-31 |
 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-28 |
 | [boox-poke3-adb-debloat-telemetry-and-firmware-check.md](boox-poke3-adb-debloat-telemetry-and-firmware-check.md) | boox, onyx, poke3, android10, e-ink, adb, debloat, telemetry, firmware, koreader | 2026-10-28 |

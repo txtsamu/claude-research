@@ -2,11 +2,13 @@
 type: how-to
 tags: [perses, victoriametrics, dashboard, kubernetes, k3s, mariadb, home, monitoring, caddy, technitium, kube-state-metrics, promql]
 created: 2026-09-13
-last_verified: 2026-09-17
+last_verified: 2026-11-05
 status: current
 ---
 
 # Perses dashboard on `home`, VictoriaMetrics as the datasource
+
+> **Update 2026-11-05:** Perses now holds 8 dashboards (268 panels), not the single 11-panel one described below; the "Dashboard" section is the September snapshot. See [[perses-dashboards-audit-and-expansion-2026-11-05]] for the current state, the panel audit and the VictoriaMetrics resource bump (384Mi -> 768Mi).
 
 Context: [[home-k8s-resource-rightsizing-victoriametrics]] stood up a lightweight VictoriaMetrics instance for a resource right-sizing exercise, then kept it running for ongoing visibility. This doc covers adding a real visualization layer on top of it - [[warp-vm-nixos-migration-plan]] for the overall `home` migration this all sits on.
 
