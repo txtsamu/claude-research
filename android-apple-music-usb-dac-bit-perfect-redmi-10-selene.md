@@ -49,6 +49,8 @@ adb shell 'su -c "cat /vendor/etc/usb_audio_policy_configuration.xml"'
 
 ## Upstream BitChord `main` (checked 2026-11-05, `origin/main` of kushagrasinghx/BitChord)
 
+Verified against the real head: `origin/main` = `2d0a26c6` (2026-10-30, "lag fixes"), which is also the commit behind release **v1.9** (latest, 2026-10-30); my local `main` was 508 commits behind. The bit-perfect work landed 2026-10-28 (`84c92597` Android 14 mixer, `b5c469be` AAudio exclusive, `06628ed1` direct libusb driver) with `99885a22 fix low spec dac bit perfect` on 2026-10-30. Open PRs: none about USB/bit-perfect (#1240 is Bluetooth Float32 only).
+
 Upstream now ships its own "Bit-perfect USB exclusive output" (README credits [Mornye](https://github.com/mornyeapp/Mornye) as the reference; the code is LGPL-3.0 adapted from it). `minSdk = 26`. It has three transports, chosen by `BitPerfectMode` in `playback/audio/bitperfect/BitPerfectOutput.kt`:
 
 | Mode / transport | Needs | How it works |
