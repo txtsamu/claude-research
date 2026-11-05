@@ -63,6 +63,26 @@ Upstream now ships its own "Bit-perfect USB exclusive output" (README credits [M
 
 Limit that matters for the original question: BitChord's sources are YouTube Music, user-configured module sources (FLAC/ALAC), downloads and local files. It does **not** play Apple Music's DRM catalogue, so this gives bit-perfect for local/other-source files, not for the Apple Music app. Not tested on this phone yet (no DAC attached, local fork is on `usb-exclusive-mode`, not on upstream `main`).
 
+## Why the ASUS Zenfone 10 can reach higher sample rates (asked 2026-11-05)
+
+No source I found measures the Zenfone 10's USB rates, so the SoC-level reason below comes from the unlocker module's README plus ASUS's spec page, and is partly inference.
+
+- **SoC / USB audio path.** The Zenfone 10 is Qualcomm (Snapdragon 8 Gen 2). The unlocker README says USB HAL Audio Class drivers on Android have a limiter at 96 kHz, but "if your device uses (USB) audio hardware offloading, its UAC driver is capable of outputting up to 384kHz for Qcomm devices", "96kHz for MTK ones", and "you may not need this magisk module for Qcomm devices unless considering jitter distortion". So Qualcomm phones can reach 192/384 kHz through the vendor's offload driver, which MediaTek phones like this `selene` do not have.
+- **3.5 mm jack.** ASUS lists the Zenfone 10 headphone output as Qualcomm codec WCD9380 with Hi-Res Audio 192 kHz / 24-bit. That is the analog path, independent of USB.
+- **Android version.** The Zenfone 10 launched with Android 13 and can be updated; Android 14's bit-perfect mixer additionally needs the vendor USB config to declare the flag (not checked for the Zenfone 10).
+- **Not the same as bit-perfect for Apple Music.** A higher *allowed* rate only stops the HAL rejecting 96/192 kHz; the app still has to request it and the mixer must not resample. I found no confirmation that Apple Music does.
+
+What the `selene` (this phone) actually has, read over adb with root:
+
+```bash
+adb shell 'su -c "cp /vendor/lib64/libalsautils.so /sdcard/als64.so"'; adb pull /sdcard/als64.so
+# parse the std_sample_rates[] ints (little-endian) around 44100
+```
+
+- `libalsautils.so` (both lib and lib64) already contains `96000, 88200, 192000, 176400, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000`, so the library table is **not** the 96 kHz cap here; 192 kHz is listed. 352.8/384 kHz are absent.
+- The USB HAL is MediaTek's own `audio.usb.mt6768.so` (not the AOSP/Qualcomm offload path). It exports `profile_get_highest_sample_rate` and `proxy_scan_rates`, so the real limit is whatever it scans from the DAC and its own selection logic. That was not exercised (no DAC attached), so the practical cap on this phone is unknown.
+- To compare against a Zenfone 10, dump the same things there: `/vendor/etc/usb_audio_policy_configuration.xml` (offload / bit-perfect ports), `getprop | grep -i -E "usb.*(offload|audio)"`, `dumpsys media.audio_flinger | grep -i -A8 usb` during playback, and `/proc/asound/card*/stream0`.
+
 ## Dead ends / not found
 
 - No source found for a Magisk module that adds `AUDIO_OUTPUT_FLAG_BIT_PERFECT` or a direct USB output to an Android 11 HIDL HAL.
@@ -92,4 +112,6 @@ Limit that matters for the original question: BitChord's sources are YouTube Mus
 - [Poweramp forum: forced 48 kHz Android resample](https://forum.powerampapp.com/topic/22229-forced-48-khz-android-resample-and-deep_buffer-enforced-flag-on-hi-res-output-log/)
 - [BitChord upstream (kushagrasinghx), `main`](https://github.com/kushagrasinghx/BitChord)
 - [Mornye (reference for BitChord's bit-perfect code)](https://github.com/mornyeapp/Mornye)
+- [usb-samplerate-unlocker (Magisk-Modules-Alt-Repo), Qualcomm vs MediaTek rates](https://github.com/Magisk-Modules-Alt-Repo/usb-samplerate-unlocker)
+- [ASUS Zenfone 10 tech spec (WCD9380, 192 kHz/24-bit 3.5 mm)](https://asus.com/mobile-handhelds/phones/zenfone/zenfone-10/techspec)
 - [smartworld.it: Apple Music and root](https://www.smartworld.it/news/apple-music-root.html)
