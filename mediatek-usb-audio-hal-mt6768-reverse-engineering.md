@@ -57,6 +57,24 @@ Gotcha: running `-import` twice with one `-postScript` output path makes the sec
 - It would still not make Apple Music bit-perfect: AudioFlinger's mixer rate and Apple Music's own volume/DSP are separate, and the Aurisys handler is unverified (finding 6).
 - Not done: a runtime test. With a DAC attached the useful measurements are `adb logcat -s modules.usbaudio.audio_hal` (look for `adev_open_output_stream, config.rate=` and `usb out proxy_config.rate`) and `cat /proc/asound/card1/stream0`.
 
+## Patch applied: 192k first (2026-11-05)
+
+Installed as a systemless Magisk module `mtk-usb-rate-order`; the stock `/vendor` files are untouched. Active only after a reboot (not rebooted yet when this was written, so **not yet verified live**).
+
+```bash
+S=~/sessions/2026-11-05-mtk-usb-hal-re
+python3 -I $S/scripts/patch_rates.py $S/bins/libalsautils64.so $S/module/mtk-usb-rate-order/system/vendor/lib64/libalsautils.so   # offset 0x17ac
+python3 -I $S/scripts/patch_rates.py $S/bins/libalsautils32.so $S/module/mtk-usb-rate-order/system/vendor/lib/libalsautils.so     # offset 0x13fc
+# module.prop id=mtk-usb-rate-order; install:
+adb push $S/module/mtk-usb-rate-order /sdcard/ && adb shell 'su -c "cp -r /sdcard/mtk-usb-rate-order /data/adb/modules/ && chown -R root:root /data/adb/modules/mtk-usb-rate-order && chcon -R u:object_r:vendor_file:s0 /data/adb/modules/mtk-usb-rate-order/system"'
+```
+
+- The script requires the original 13-entry table to occur exactly once, then rewrites it to `192000, 176400, 96000, 88200, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000` (same file length). Done for both `lib64` and `lib`.
+- Stock hashes (sha256): lib64 `e1e54345dca3c1961a64cf6bcb4ed26532e455a975563816eedae923a6ba1d2a`, lib `94084a46797dd85cd8d71484e5c4cb3da955ef06226335d2036dd7e3cb524ffc`; originals are in `~/sessions/2026-11-05-mtk-usb-hal-re/backups/`. Patched lib64: `3c3faa32...3723`. No other module touches `libalsautils` (NLSound only ships `system/vendor/etc`).
+- Side effect: "default" and "highest" rate for any USB device (including USB headset mics) now become 192 kHz if the device accepts it, since the library returns the first accepted entry.
+- Verify after reboot: `adb shell 'su -c "sha256sum /vendor/lib64/libalsautils.so"'` should show `3c3faa32...`; with a DAC, `adb logcat -s modules.usbaudio.audio_hal` and `cat /proc/asound/card1/stream0`.
+- Undo: `adb shell 'su -c "touch /data/adb/modules/mtk-usb-rate-order/disable"'` and reboot (or delete the module folder; Magisk safe mode also disables modules if boot fails).
+
 ## References
 
 - [usb-samplerate-unlocker (yzyhk904)](https://github.com/yzyhk904/usb-samplerate-unlocker): origin of the `std_sample_rates[]` / `libalsautils` patch
