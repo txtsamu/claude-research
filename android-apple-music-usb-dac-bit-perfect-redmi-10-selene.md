@@ -83,6 +83,15 @@ adb shell 'su -c "cp /vendor/lib64/libalsautils.so /sdcard/als64.so"'; adb pull 
 - The USB HAL is MediaTek's own `audio.usb.mt6768.so` (not the AOSP/Qualcomm offload path). It exports `profile_get_highest_sample_rate` and `proxy_scan_rates`, so the real limit is whatever it scans from the DAC and its own selection logic. That was not exercised (no DAC attached), so the practical cap on this phone is unknown.
 - To compare against a Zenfone 10, dump the same things there: `/vendor/etc/usb_audio_policy_configuration.xml` (offload / bit-perfect ports), `getprop | grep -i -E "usb.*(offload|audio)"`, `dumpsys media.audio_flinger | grep -i -A8 usb` during playback, and `/proc/asound/card*/stream0`.
 
+## Is there a "driver" Apple Music could use to reach the DAC directly? (asked 2026-11-05)
+
+Apple Music plays through Android's normal AudioTrack/AudioFlinger path, so it cannot load a USB driver the way UAPP/BitChord do. The only things a system-wide root module can do are edit the audio policy / HAL so the **shared mixer** opens the USB output at a better rate. Two public modules try that:
+
+- **[BitPerfect DAC](https://github.com/varunpilankar/BitPerfect-DAC)** (v0.9.x, experimental). Pins the USB `hifi_playback` output to one fixed rate (default 44.1 kHz, 32-bit container), keeps media off the 48k/16-bit deep-buffer output, optional daemon that follows the track rate (restarts audioserver on each switch). Tested only on OnePlus 7, LineageOS 23.2, Android 16, Qualcomm. Its own Apple Music capture was **not** bit-perfect (a 96 kHz track ran through a 384 kHz mixer at -21 dB). Spotify untested. Says bit-exactness cannot be proven on-device for DRM streams. Installer goes into a do-nothing diagnostic mode if the policy layout differs.
+- **[HiFi SRC Bypass](https://github.com/lizi600jin/hifi-src-bypass)** (v2.0.2, Chinese README). Rewrites policy XML rates/bit depths and reorders the 13-entry `std_sample_rates` table in `libalsautils{,v2}.so` (first entry usually 96000), locks `hifi_playback` to a chosen rate; systemless bind mounts, `hifi doctor` / `hifi restore`. Says any app going through the system mixer is affected, but "bit-perfect" only at the locked rate (other rates are resampled). Works best on Qualcomm; **MediaTek stock ROMs have proprietary HALs and are skipped**; Android 12 and earlier untested; does not mention Apple Music.
+
+Fit for `selene` (MT6768, stock MIUI, Android 11, `audio.usb.mt6768.so`): both are poor matches (MediaTek proprietary HAL, Android 11, neither tested on it), and my libalsautils check above already shows 192 kHz in the table, so the table patch has nothing to unlock. Android 14's bit-perfect mixer remains the only true app-transparent route and needs the vendor `AUDIO_OUTPUT_FLAG_BIT_PERFECT` port plus an app that requests it. Not run on the phone.
+
 ## Dead ends / not found
 
 - No source found for a Magisk module that adds `AUDIO_OUTPUT_FLAG_BIT_PERFECT` or a direct USB output to an Android 11 HIDL HAL.
@@ -114,4 +123,6 @@ adb shell 'su -c "cp /vendor/lib64/libalsautils.so /sdcard/als64.so"'; adb pull 
 - [Mornye (reference for BitChord's bit-perfect code)](https://github.com/mornyeapp/Mornye)
 - [usb-samplerate-unlocker (Magisk-Modules-Alt-Repo), Qualcomm vs MediaTek rates](https://github.com/Magisk-Modules-Alt-Repo/usb-samplerate-unlocker)
 - [ASUS Zenfone 10 tech spec (WCD9380, 192 kHz/24-bit 3.5 mm)](https://asus.com/mobile-handhelds/phones/zenfone/zenfone-10/techspec)
+- [BitPerfect DAC Magisk module (varunpilankar)](https://github.com/varunpilankar/BitPerfect-DAC)
+- [HiFi SRC Bypass (lizi600jin)](https://github.com/lizi600jin/hifi-src-bypass)
 - [smartworld.it: Apple Music and root](https://www.smartworld.it/news/apple-music-root.html)
