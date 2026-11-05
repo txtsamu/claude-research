@@ -85,6 +85,8 @@ Wireless adb: `adb connect 192.168.50.18:5555` was refused (Android 11 wireless 
 - **Not testable at that moment:** Poweramp (`com.maxmpz.audioplayer`, "external proxy" player, state started) was playing and holds interfaces 1.0/1.1 through `usbfs` (its own USB driver), so no ALSA card exists (`/proc/asound/cards` shows only `card0`) and `/proc/asound/card*/stream0` cannot be read. The `USB_AUD` HAL log lines were not in logcat (buffer rolled or filtered).
 - To test the Android mixer path, stop Poweramp's USB-exclusive output (or play from a normal AudioTrack app, e.g. Apple Music), then read `cat /proc/asound/card1/stream0` and `dmesg | grep "usb 1-1"`.
 
+- **Test files:** six synthetic 24-bit FLACs (44.1, 48, 88.2, 96, 176.4, 192 kHz, 30 s, soft chord, ultrasonic marker on 88.2k+) were generated with `~/sessions/2026-11-05-hires-test-files/scripts/make_tones.sh` and pushed to the phone's `/sdcard/Music/HiResTest/`. Real free hi-res sources found: 2L Test Bench is offline; Real HD-Audio demo files need an email request; the Internet Archive copy of the Open Goldberg Variations has only MP3/Ogg.
+
 ## References
 
 - [usb-samplerate-unlocker (yzyhk904)](https://github.com/yzyhk904/usb-samplerate-unlocker): origin of the `std_sample_rates[]` / `libalsautils` patch
