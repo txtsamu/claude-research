@@ -92,6 +92,19 @@ Apple Music plays through Android's normal AudioTrack/AudioFlinger path, so it c
 
 Fit for `selene` (MT6768, stock MIUI, Android 11, `audio.usb.mt6768.so`): both are poor matches (MediaTek proprietary HAL, Android 11, neither tested on it), and my libalsautils check above already shows 192 kHz in the table, so the table patch has nothing to unlock. Android 14's bit-perfect mixer remains the only true app-transparent route and needs the vendor `AUDIO_OUTPUT_FLAG_BIT_PERFECT` port plus an app that requests it. Not run on the phone.
 
+## Has anyone reverse-engineered MediaTek's USB audio HAL? (asked 2026-11-05)
+
+No public write-up of `audio.usb.mt*` internals turned up (searched GitHub/XDA-style terms, 2 searches). What exists is community patching around it:
+
+- yzyhk904's `usb-samplerate-unlocker` and `USB_SampleRate_Changer` hex-edit the `std_sample_rates[]` table in `libalsautils` and say MediaTek USB offload stays capped at 96 kHz (Qualcomm 384 kHz). They only reach the generic HAL part.
+- An "Audio samplerate changer" module lists "Tuned for MTK Dimensity's" in its changelog; `hifi-maximizer-mod` (same author) and `Hi-ResAudio` (MediaTek, but speaker/wired only, not USB) also exist. None documents the HAL itself.
+
+First-hand look at this phone's `/vendor/lib64/hw/audio.usb.mt6768.so` (73 KB, copied with `su` to the scratchpad, `strings` only, not disassembled):
+
+- Links `libalsautils.so`, `libtinyalsa.so`, `libaudioutils.so`, `libaudiocustparam_vendor.so`; dlsyms `createMTKAudioUSBProvider` (MTK's Aurisys DSP chain for USB playback/record).
+- Log strings show the rate logic: `high sample rate playing, use proxy_config.rate %d`, `sample rate not valid ... gPolicyRate %d`, `format not valid ... gPolicyFormat %d`, and `sup_sampling_rates`. So the USB stream is validated against a *policy* rate/format (`gPolicyRate`, `gPolicyFormat`) coming from MTK's audio parameter files (`/vendor/etc/audio_param/USBDevice_AudioParam.xml` exists on the phone), not only against the `libalsautils` table. That is the most plausible place the practical cap lives; unverified.
+- Next step if wanted: Ghidra headless on `audio.usb.mt6768.so`, trace `proxy_config.rate` / `gPolicyRate`, and read `USBDevice_AudioParam.xml`.
+
 ## Dead ends / not found
 
 - No source found for a Magisk module that adds `AUDIO_OUTPUT_FLAG_BIT_PERFECT` or a direct USB output to an Android 11 HIDL HAL.
@@ -125,4 +138,6 @@ Fit for `selene` (MT6768, stock MIUI, Android 11, `audio.usb.mt6768.so`): both a
 - [ASUS Zenfone 10 tech spec (WCD9380, 192 kHz/24-bit 3.5 mm)](https://asus.com/mobile-handhelds/phones/zenfone/zenfone-10/techspec)
 - [BitPerfect DAC Magisk module (varunpilankar)](https://github.com/varunpilankar/BitPerfect-DAC)
 - [HiFi SRC Bypass (lizi600jin)](https://github.com/lizi600jin/hifi-src-bypass)
+- [USB_SampleRate_Changer (yzyhk904)](https://github.com/yzyhk904/USB_SampleRate_Changer)
+- [Hi-ResAudio (adivenxnataly), MediaTek speaker/wired only](https://github.com/adivenxnataly/Hi-ResAudio)
 - [smartworld.it: Apple Music and root](https://www.smartworld.it/news/apple-music-root.html)
