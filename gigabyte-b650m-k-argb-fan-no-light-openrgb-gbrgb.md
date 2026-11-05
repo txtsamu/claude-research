@@ -2,7 +2,7 @@
 type: troubleshooting
 tags: [openrgb, gigabyte, b650m-k, rgb-fusion, it5701, it5702, hidraw, argb, reverse-engineering, ilspy, fedora, systemd]
 created: 2026-10-20
-last_verified: 2026-10-20
+last_verified: 2026-11-05
 status: current
 ---
 
@@ -25,6 +25,56 @@ After `gbrgb` proved hardware **zone 6** lights the fan, I traced OpenRGB's pack
 **Second gotcha:** D_LED zones start with **0 LEDs**, and the driver silently skips any strip zone with 0 LEDs, even for hardware effects. Give the zone a size once (GUI: Edit Zone, e.g. 32; CLI: `openrgb -d 0 -z 1 -s 32 -m Static -c 00FF00`). With that, Direct, Static, Breathing, Flashing, Color Cycle, Double Flash and Random all work. Wave is deliberately absent for this board (effect mask `0x05F`).
 
 **Still true:** the colour does not survive OpenRGB closing (firmware flag `0x47` unsupported, see above), so keep OpenRGB running or use `gbrgb` + systemd. OpenRGB also segfaults on exit on this machine (Logitech HID++ 2.0 watcher race). Upstream contributes via **GitLab merge requests** only (the GitHub repo is a mirror with PRs disabled); the MR text is not filed yet.
+
+## UPDATE 2026-11-05 — "only Color Cycle works in the GUI": black default colours (fixed) + Logitech crash
+
+**Symptom:** with the layout fix installed, opening the OpenRGB GUI on the B650M K only Color Cycle lit the fan; Static, Breathing, Flashing and Double Flash did nothing. The CLI also seemed to do nothing. Two independent causes, both fixed on this machine (user confirmed "all mode is fixed" in the GUI).
+
+### Cause 1 — mode-specific colours start black (the real "only Color Cycle works")
+
+`RGBController_GigabyteRGBFusion2USB.cpp` builds Static/Breathing/Flashing/Double Flash with `colors.resize(1)` and nothing else, so the colour is `0x00000000`. Black on an LED strip draws nothing. Color Cycle is the only mode with `MODE_COLORS_NONE`, so it is the only one that needs no colour. My CLI tests worked because I always passed `-c FF0000`.
+
+Fix: default each of those four colours to white (`X.colors[0] = 0x00FFFFFF;`). Commit `624b77054` on branch `fix/gigabyte-fusion2-mode-default-colors` (based on upstream master `37c005737`). The CLI cannot test the default (it refuses `-m Breathing` without `-c`: "Wrong number of colors specified for mode Breathing"), so this one was verified only in the GUI by the user.
+
+### Cause 2 — Logitech HID++ 2.0 watcher crashes OpenRGB ~20 s into start-up
+
+Symptom: `openrgb --noautoconnect -d 0 -z 1 -s 32 -m Breathing -c FF0000` took about a minute, printed Logitech "discovery failed after retries" warnings, then `Segmentation fault (core dumped)`. Often **no mode packet was sent at all**, so the CLI looked broken. `openrgb --list-devices` also only printed `0: B650M K` with no zones/modes.
+
+Steps, in order:
+
+1. Temporary trace in `RGBFusion2USBController::SendPacket` (removed before committing): `if(getenv("GB_TRACE")) { fprintf(stderr,"GBTRACE >"); for(int i=0;i<36;i++) fprintf(stderr," %02x",packet[i]); fprintf(stderr,"\n"); }`. Rebuild incrementally: `cd ~/src/OpenRGB-build && make -j16` (about 2 s, out-of-tree qmake6 build dir). Run `GB_TRACE=1 openrgb --noautoconnect -d 0 -z 1 -s 32 -m Breathing -c FF0000`. First runs showed only the 12 init packets (`cc 60`, `cc 20..27`, `cc 28 ff`, `cc 31`, `cc 32 03`) and nothing after.
+2. `gdb -batch -ex "set debuginfod enabled off" -ex run -ex bt --args openrgb ...` gave `SIGSEGV` in thread `LogitechHIDPP20ReceiverWatcher::WorkerThreadFunc()` → `HIDPP20BuildForWatcher` → `HIDPP20BuildController` → `std::set<std::pair<std::string,unsigned char>>::equal_range` (that is `hidpp20_building.erase()` in `HIDPP20BuildClaim`'s destructor, `Controllers/LogitechController/LogitechControllerDetect.cpp`). Same crash as the exit segfault noted above, but here it fires mid-start-up, before the CLI applies its options. Root cause inside the Logitech code not found; not investigated whether upstream has fixed it.
+3. Another run got through and showed the right packets (below), then crashed in the same place.
+4. **Workaround:** turn off every Logitech detector in `~/.config/OpenRGB/OpenRGB.json` while OpenRGB is not running (it rewrites the file on exit). Backup first:
+   ```bash
+   cp ~/.config/OpenRGB/OpenRGB.json OpenRGB.json.bak
+   python3 -I -c "
+   import json
+   p='/home/moo/.config/OpenRGB/OpenRGB.json'
+   d=json.load(open(p))
+   for k in d['Detectors']['detectors']:
+       if 'ogitech' in k: d['Detectors']['detectors'][k]=False
+   json.dump(d,open(p,'w'),indent=4)"
+   ```
+   43 entries (incl. `Logitech HID++ 2.0`). Result: the same command now finishes in **1.4 s** (was ~60 s) with exit code 0 (measured with `time`). Cost: OpenRGB no longer controls the Logitech mouse/receiver. Re-enable by restoring the backup.
+
+Packets OpenRGB sends for Breathing red with a working start-up, for comparison with `gbrgb`: `cc 32 02`, `cc 25 20 … 02 64 … 00 00 ff 00 … 20 03 20 03 c8 00` (zone 5 / D_LED1), `cc 32 00`, `cc 26 40 …` (zone 6 / D_LED2, same bytes), `cc 21 02 …` (zone 1 / LED_C), then apply `cc 28 62`. Effect 2, brightness `0x64`, colour `0x00FF0000`, periods 800/800/200 ms — identical to what `gbrgb mode 6 breathing` sends, so the effect packets themselves were never the bug. OpenRGB does not send the `cc 34` LED-count packet that `gbrgb` sends; harmless here.
+
+### Installing and shipping
+
+```bash
+cd ~/src/OpenRGB-build && make -j16
+cp -a /usr/local/bin/openrgb ~/sessions/2026-11-05-openrgb-wave-modes/openrgb.prev   # rollback copy
+sudo install -m755 ~/src/OpenRGB-build/openrgb /usr/local/bin/openrgb
+```
+
+Branches pushed to the fork `txtsamu/OpenRGB`: `fix/gigabyte-fusion2-mode-default-colors` (`624b77054`) and `fix/gigabyte-fusion2-b650m-k-dled2-layout` (`1e72bf172`, the layout fix rebased onto upstream `37c005737`). The older `fix/b650m-k-d-led2-layout` (`d9d56cdad`, old base) was left alone: a `--force-with-lease` push to update it was denied by the permission classifier, so the rebased commit went to a new branch name instead.
+
+**Upstream merge requests: not filed.** No `glab`/GitLab credentials exist on this machine, and the GitHub repo is a mirror with PRs disabled. Ready-to-paste MR titles and text are in `~/sessions/2026-11-05-openrgb-wave-modes/mr-*.md`; file them from a GitLab fork of `CalcProgrammer1/OpenRGB`.
+
+### Wave — still not added
+
+OpenRGB hides Wave for this board because the layout effect mask `0x05F` has no wave bit (`GB_EFF_WAVE = 0x020`); the packet code for Wave/Wave 1-4 already exists in `SetLEDEffect`. A probe sent effects 6, 9, 10, 11, 12 to zone 6 for 7 s each (script `wave_probe.py` in the session dir, using `gbrgb`'s `Fusion2` class; values: Wave = period0 `((s+1)²+(s+1)+10)*5/2`, params (7,1); Wave 1 = 1200/100/360/1200; Wave 2/4 = 200 + param0 7; Wave 3 = 840/20/200/840). Which of them animate on the D_LED2 fan was never reported, so nothing was wired in. Telegram bot/`light-agent` support would need `gbrgb.mode()`, `light_agent.py` `MODES`, `light.ts` `MODE_NAMES` and `bot.ts` `MODE_KEYBOARD` changed.
 
 ## Resolution (original, before the layout cause was found)
 
@@ -429,6 +479,7 @@ if __name__ == "__main__":
 - [WLED forum: hue shifts at low brightness](https://wled.discourse.group/t/only-one-color-is-on-when-brightness-is-set-low/7348)
 - [OpenRGB issue #343 — Gigabyte X570, Direct ignored on LED header](https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/343)
 - [OpenRGB Gigabyte RGB Fusion 2 USB driver source](https://gitlab.com/CalcProgrammer1/OpenRGB/-/tree/master/Controllers/GigabyteRGBFusion2USBController)
+- [OpenRGB GitLab repo (upstream; merge requests only)](https://gitlab.com/CalcProgrammer1/OpenRGB)
 - [OpenRGB udev rules doc](https://gitlab.com/CalcProgrammer1/OpenRGB/-/blob/master/Documentation/UdevRules.md)
 - [REA (Reverse Engineer Anything)](https://github.com/morluto/rea)
 - [ILSpy / ilspycmd](https://www.nuget.org/packages/ilspycmd)
