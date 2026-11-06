@@ -102,7 +102,7 @@ Then run old and new binaries side by side on two copies of that backup (ports 1
 
 ### 7. Deploy through home-nixos (careful: main is stale)
 
-home deploys with `nixos-rebuild switch --flake github:txtsamu/home-nixos/<ref>#home --refresh` (no checkout on the host, push from Fedora). Production ran the perf build from branch `evomem-perf-vocab-cache` (config revision 77d6524, generation 46) while `main` still pinned upstream 0.4.2, because PR #9 was closed unmerged. A deploy from `main` would have silently reverted the latency fix. So branch from that branch:
+home deploys with `nixos-rebuild switch --flake github:txtsamu/home-nixos/<ref>#home --refresh` (no checkout on the host, push from Fedora). Production ran the perf build from branch `evomem-perf-vocab-cache` (config revision 77d6524, generation 46) while `main` still pinned upstream 0.4.2, because PR #9 was closed unmerged. A deploy from `main` would have silently reverted the latency fix (fixed now: PR #11 carried the perf commits into main). So branch from that branch:
 
 ```bash
 git clone https://github.com/txtsamu/home-nixos.git hn && cd hn
@@ -137,7 +137,7 @@ Plus the skill `~/.claude/skills/evomem/SKILL.md` and the "How" section of `~/.c
 
 ## Open items
 
-- PR #11 is not merged on purpose; until it is, `home-nixos` main does not match production.
+- PR #11 was squash-merged on 2026-11-06 (`aa1fbba`); `git diff origin/main origin/evomem-utcp` is empty, so `home-nixos` main matches production again. The squash changes the commit SHA, so `nixos-version --configuration-revision` on home still shows the branch commit `936e255` until the next switch from main; the content is identical.
 - Upstream (`anvie/evomem`) has no UTCP; nothing was sent there.
 - The cold first-query latency and the Nov 2 iSCSI blip are still unexplained (see the diagnosis doc).
 
