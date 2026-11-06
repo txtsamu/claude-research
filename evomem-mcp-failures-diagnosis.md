@@ -87,6 +87,31 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocol
 
 Startup plus initialize: 0.40 s, three runs. Do not use `python3 -I` here: `mcp` lives in the user site and `-I` hides it (`ModuleNotFoundError`), which looked like a failure but was my flag.
 
+## Cold-cache test (2026-11-06, after the UTCP deploy)
+
+Evict only the DB file from the page cache (clean pages, one file), then time uncached searches on home over loopback:
+
+```bash
+DB=/root/evomem-kb/.evomem.db
+sudo fincore $DB                                   # resident before
+sudo dd of=/dev/null if=$DB iflag=nocache count=0  # fadvise DONTNEED on this one file
+curl -s -o /dev/null -w "%{time_total}\n" -G --data-urlencode "q=iscsi timeout nas" 127.0.0.1:7700/api/search
+sudo dd if=$DB of=/dev/null bs=1M                  # sequential read speed of the cold file
+sudo python3 -c "...select name, sum(pgsize) from dbstat group by name..."   # table sizes
+```
+
+| Measurement | Result |
+|---|---|
+| Fully evicted, first new query | **11.5 s**; DB resident again 0 to 525 MB of 625 MB; IO pressure `some avg10` 22 % |
+| Same query again (server LRU cache) | 0.4 ms |
+| Another new query right after | 0.26 s |
+| "Warm" control that started with 470 of 625 MB resident | 3.3 s (the missing 155 MB had to be read) |
+| Sequential read of the cold file | 5.6 s = 117 MB/s (the iSCSI link is fine) |
+
+Reading it: a search touches almost the whole DB (`chunks` 215 MB with the embeddings, `word_index` 207 MB, `idx_word_index_chunk` 201 MB). Cold, the access is not sequential: about 46 MB/s effective versus 117 MB/s sequential, so 11.5 s instead of about 5 s. The vocabulary cache from the perf build removed the CPU scan, not this I/O. Nothing protects the cache (`MemoryLow=0`, host has 15 GiB with 3 GiB swapped), and every restart (including each deploy) also starts cold. Whenever the page cache gets squeezed, the next search pays 3 to 12 s, which matches the remaining slow tail in the MCP logs.
+
+Options, none applied: (a) a systemd timer on home that runs `cat $DB > /dev/null` every few minutes (5.6 s of sequential read, keeps it resident) plus an `ExecStartPost` warm-up; (b) `MemoryLow=900M` on `evomem.service` so reclaim takes other cgroups' pages first (untested whether it holds under the k3s memory pressure); (c) both.
+
 ## Side findings
 
 - The Claude Code hooks in `~/.claude/settings.json` run `python3 .../hooks/hook.py` with no event argument, so every event is recorded as type `unknown` and `session-end` never triggers the fast sync (the 5-minute cron is what actually ingests sessions). Not fixed, not the cause of the failures.
@@ -94,7 +119,7 @@ Startup plus initialize: 0.40 s, three runs. Do not use `python3 -I` here: `mcp`
 
 ## Still open
 
-1. The 11.5 s cold first query. I started a test (evict only `.evomem.db` from the page cache with `dd iflag=nocache count=0`, then time the same query cold and warm) but it was declined, so the cause (iSCSI cold reads under memory pressure vs something else) is unproven.
+1. ~~The 11.5 s cold first query~~ **Explained 2026-11-06** (see "Cold-cache test" below). Remaining decision: add a page-cache warmer / `MemoryLow` for `evomem.service` (not applied).
 2. What caused the Nov 2 04:34 iSCSI ping timeout (TrueNAS side logs, network, or a NAS job at that hour). Check TrueNAS `/var/log/messages` around 04:30 and any scrub/snapshot task schedule.
 
 ## References
