@@ -94,6 +94,12 @@ Symptom: on "check claude-research" the agent's `recall` and `recall_sessions` r
 
 Benchmark settings still in that `.env` and left as they are, to be decided: `EVOMEM_KB_ORGANIZER=off` (no LLM edits to the migrated notes), `ACTIVE_CONTEXT_MODE=off`, `TWO_PASS_ENABLED=0`, `EVONIC_SESSION_ARCHIVE=1` (writes every request and response, including KB text that may contain credentials, to `agents/<id>/llm_traces`). Also seen: asking the bot to "connect to my github" made the agent try `ls ~/.ssh`; Evonic's safety pipeline flagged it `requires_approval` (ssh_access) and waited for an approval in Telegram.
 
+### Same session: more leftovers and a stuck agent (18:31-18:40 WIB)
+
+- "Agent is at maximum concurrent capacity (1/1 slots in use)" on Telegram: Evonic's shipped defaults are one concurrent turn per agent (`max_concurrent_llm_per_agent=1`) and one globally (`max_concurrent_llm_global=1`). The slot was held by a turn waiting for a safety approval: asked "can you connect to my github?", the agent ran `ls ~/.ssh`, the safety pipeline returned `requires_approval` (ssh_access) and the loop waits up to 300 s (default decision on timeout: reject) while every later message is queued with that busy notice. My restart for the `.env` fix did not clear it: Evonic resumes unreplied sessions at startup ("Resumed unreplied session"), so the same question ran again and asked a second time (18:35:05 until the 18:40:05 timeout). Avoid restarting while a human message is unanswered, or expect it to be replayed.
+- Two benchmark-only app settings were also still off and are restored to their defaults (read at runtime, no restart): `long_running_guard_enabled` and `root_fs_scan_guard_enabled` (both default to on; they limit runaway and filesystem-wide bash commands).
+- Open: inside the service the PromptPurify ML prompt-injection classifier fails to load (`numpy: libstdc++.so.6: cannot open shared object file`), so that guard layer is unavailable; the NixOS unit needs `LD_LIBRARY_PATH` to include `stdenv.cc.cc.lib`. It imported fine in a plain shell as another user during testing, which is why the earlier check missed it.
+
 ## Capability differences to keep in mind
 
 - Hermes profiles had MCP tools (TrueNAS, Proxmox, MikroTik, Cloudflare, Notion, evomem, camofox, crawl4ai, gowa). Evonic agents have bash and file tools only, running as an unprivileged `evonic` user without a sandbox; `hermes_ops` and `hermes_net` lose their infrastructure tooling.
