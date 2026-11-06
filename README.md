@@ -132,7 +132,7 @@ One combined view across all three tables below, so the latest work is visible a
 |---|---|---|
 | [hermes-to-evonic-migration.md](hermes-to-evonic-migration.md) | hermes, evonic, telegram, cron, systemd-timers, nixos, home, migration, evomem, multi-agent, profiles | 2026-11-06 |
 | [evomem-utcp-endpoint-fork-and-deploy.md](evomem-utcp-endpoint-fork-and-deploy.md) | evomem, utcp, mcp, rust, nixos, home, fork, deploy, claude-code, skill, podman | 2026-11-06 |
-| [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | perses, victoriametrics, dashboard, promql, k3s, home, monitoring, node-exporter, snmp, blackbox, zfs, proxmox, helm, oomkilled, subagents | 2026-11-05 |
+| [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | perses, metallb, coredns, cert-manager, vmalert, victoriametrics, dashboard, promql, k3s, home, monitoring, node-exporter, snmp, blackbox, zfs, proxmox, helm, oomkilled, subagents | 2026-11-05 |
 | [diskos-usb-audio-headset-click-gestures-and-flash.md](diskos-usb-audio-headset-click-gestures-and-flash.md) | diskos, snowsky-disc, usb-audio, usbhid, headset, ja11, click-gestures, subagents, flash | 2026-10-31 |
 | [redmi-note-12-pro-hyperos2-adb-debloat.md](redmi-note-12-pro-hyperos2-adb-debloat.md) | android, xiaomi, redmi, hyperos, adb, debloat, uad-ng, mediatek | 2026-10-28 |
 | [boox-poke3-adb-debloat-telemetry-and-firmware-check.md](boox-poke3-adb-debloat-telemetry-and-firmware-check.md) | boox, onyx, poke3, android10, e-ink, adb, debloat, telemetry, firmware, koreader | 2026-10-28 |

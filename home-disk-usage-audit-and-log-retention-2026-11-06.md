@@ -2,7 +2,7 @@
 type: how-to
 tags: [disk, home, nixos, journald, tmpfiles, technitium, nix-gc, k3s, containerd, hermes, vmalert, alerting, arm1]
 created: 2026-11-06
-last_verified: 2026-11-06
+last_verified: 2026-11-07
 status: current
 ---
 
@@ -85,8 +85,9 @@ kubectl -n homelab set resources deploy/forgejo-db  --limits=memory=160Mi --requ
 Both rolled out in under a minute; forgejo-app kept answering 200. These Deployments are plain `kubectl apply` (no Helm), so if their manifests live in a repo, copy the new limits there or the next apply reverts them.
 
 ## Status / still open
-- PR #14 (mtime fix) merged 2026-11-06. PR #13 (evonic) is still open; `home` runs the branch `evonic-plus-log-retention`, so merge #13 and then rebuild from `main`.
-- Remaining space on `home` is mostly container layers (24 GB) and `/root/.hermes` (about 7.6 GB); neither shrinks on its own.
+- Resolved (written 2026-11-07): PR #14 (mtime fix) and #13 (evonic) merged and deployed from `main` (section 8). Evonic was then removed from `home` again the same evening by a separate session (PR #18), so the Evonic parts of section 5 and 8 are history; the journal cap and the `m:14d` Technitium rule live in `hosts/home/logging.nix` on `main` and are unaffected.
+- Final state: `home` root 68% used, 30 GB free. What remains is container layers (about 21 GB) and `/root/.hermes` (about 6 GB); neither shrinks on its own (section 9).
+- Related: MetalLB pool cleanup, SMART and MetalLB alerts and the CoreDNS/MetalLB/cert-manager dashboard sections are in [[perses-dashboards-audit-and-expansion-2026-11-05]].
 
 ## 8. Follow-up the same day
 - **Evonic landed.** Pushed branch `evonic-plus-log-retention` (= `evonic` + `main`) as a fast-forward into `evonic`, waited for CI (about 4 min), merged PR #13, and rebuilt from plain `main` (`nixos-version --configuration-revision` = main's head). Journal cap and the `m:14d` Technitium rule confirmed live; evonic, technitium, k3s and caddy active.

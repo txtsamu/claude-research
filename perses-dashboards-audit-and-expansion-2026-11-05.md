@@ -2,7 +2,7 @@
 type: how-to
 tags: [perses, victoriametrics, dashboard, promql, k3s, home, monitoring, node-exporter, snmp, blackbox, zfs, proxmox, helm, oomkilled, subagents]
 created: 2026-11-05
-last_verified: 2026-11-05
+last_verified: 2026-11-07
 status: current
 ---
 
@@ -28,7 +28,7 @@ Measured (agent durations from the run, wall clock ~30 min end to end):
 | 01 · Homelab Overview | `homelab-overview` | 15 → 28 |
 | 02 · Services & Uptime Probes | `services-probes` | 12 → 21 |
 | 03 · Hosts (CPU, Memory, Disk, Network) | `hosts-node-exporter` | 22 → 39 |
-| 04 · Kubernetes (k3s) Cluster | `node-and-cluster` | 11 → 36 → 105 (follow-up 2026-11-06) |
+| 04 · Kubernetes (k3s) Cluster | `node-and-cluster` | 11 → 36 → 105 → 143 (follow-ups 2026-11-06: errors/health, then CoreDNS, MetalLB, cert-manager) |
 | 05 · NAS Storage (TrueNAS & ZFS) | `nas-storage` | 19 → 42 |
 | 06 · Proxmox VE (px1) | `proxmox` | 16 → 30 |
 | 07 · Network & Router (MikroTik) | `network-router` | 20 → 36 |
@@ -239,3 +239,5 @@ Dependency found by grepping the NixOS repo for the three IPs: `mihon.lan` in `h
 
 Alert (ConfigMap `vmalert-rules`, new group `metallb`, apply + `rollout restart deploy/vmalert` as before): `MetalLBPoolNearlyFull`, `100 * metallb_allocator_addresses_in_use_total / metallb_allocator_addresses_total > 80` for 10 min, warning. Tested against live data (92.3% before the cleanup); vmalert shows 17 rules, all ok. Files: `alerts/rules.v5.yml`, previous `alerts/rules.live-before-metallb.yml`. The metric lags a minute or two behind a Service change.
 Merge/deploy note: auto mode blocked `gh pr merge` for #21 ("Merge Without Review"); the user merged it and ran `nixos-rebuild switch --flake github:txtsamu/home-nixos#home --refresh`.
+
+Related: the disk, log-retention, memory and failed-units work from the same days is in [[home-disk-usage-audit-and-log-retention-2026-11-06]].
