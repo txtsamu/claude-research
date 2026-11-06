@@ -3,7 +3,7 @@ type: how-to
 tags: [hermes, evonic, telegram, cron, systemd-timers, nixos, home, migration, evomem, multi-agent, profiles]
 created: 2026-11-06
 last_verified: 2026-11-06
-status: current: live since 2026-11-06 17:59 WIB; inbound Telegram replies not yet confirmed by a human test message; 3 agent cron jobs staged disabled; PR #15 unmerged
+status: current: live since 2026-11-06 17:59 WIB; inbound Telegram replies not yet confirmed by a human test message; 3 agent cron jobs staged disabled; PR #15 merged
 ---
 
 # Migrate Hermes (multi-profile team, memories, skills, Telegram bot, cron) to Evonic
@@ -96,7 +96,7 @@ Over 3 h 43 min of uptime and about 130 agent runs the service used 48 CPU-secon
 
 ## Open items
 
-- PR #15 is not merged. `main` does not contain the timers, so any later `nixos-rebuild` from `main` removes them while the Hermes jobs are paused, which silently stops the evomem sync. Merge it, or resume the Hermes jobs first.
+- PR #15 was squash-merged into home-nixos `main` (5c0b7b9) on 2026-11-06, after verifying `main`'s tree equals the deployed branch head and holds no chat ids (also none in `main`'s history; the ids remain only in the closed PR's own commit list). Before the merge, a `nixos-rebuild` from `main` would have removed the timers while the Hermes jobs were paused and silently stopped the evomem sync.
 - A human test message to the bot (inbound -> `hermes_default` -> reply) has not been done; polling and the token were verified.
 - Delete `/srv/migrate` on `home` when satisfied (portable agent JSON with copied credentials), rotate the plaintext login that was in Hermes' `USER.md`.
 - Decide about the 3 staged agent schedules (give the agents the access they need, or keep those jobs in Hermes with another way to deliver).
