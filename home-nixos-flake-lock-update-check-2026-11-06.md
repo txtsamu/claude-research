@@ -3,7 +3,7 @@ type: investigation
 tags: [nixos, home, flake-lock, nixpkgs, update, dry-activate, ci, k3s, cloudflared, kernel]
 created: 2026-11-06
 last_verified: 2026-11-06
-status: current: checked and NOT deployed; home-nixos PR #10 left open pending a maintenance window
+status: superseded the same evening: PR #10 now conflicts with main and its nixpkgs part is older than what runs; not merged, not deployed
 ---
 
 # What does home-nixos PR #10 (weekly flake.lock update) change? CI, build-only check, dry-activate
@@ -29,3 +29,9 @@ Same channel (26.05), mostly patch-level bumps, no evaluation warnings. The risk
 ## References
 
 None from the web; sources are the PR body, `gh pr diff`, `nix store diff-closures` and `switch-to-configuration dry-activate` output on the host.
+
+## Addendum (21:10 WIB): the check went stale before the deploy
+
+When asked to "merge and deploy now", the pre-flight showed `home` no longer on the build I had compared against: someone merged home-nixos PR #19 (`flake.lock: bump nixpkgs`, cloudflared 2026.5.2 to 2026.10.7) at 20:38 WIB and deployed it at 21:00:47 (generation 57, configuration revision `8de7f82`, nixpkgs 26.05.20261105.c56a87d, newer than PR #10's 2026-11-01). That deploy already caused the service restarts the dry-activate listed, and the generation carries kernel 6.18.60 while 6.18.54 still runs (reboot pending). PR #10 became CONFLICTING/DIRTY against `main` because #19 changed the same `flake.lock` lines; what it would still add is `agenix` 2026-09-28 to 10-20 and `disko` 2026-09-18 to 10-20 (disko matters only at install time). Nothing was merged or deployed. Also found in the pre-flight: `netbird-up.service` has been failing in a retry loop since that 21:00 deploy (`failed to get config directory: neither $XDG_CONFIG_HOME nor $HOME are defined`, then a 90 s start timeout), while the main `netbird` service is active; zero failed units at 19:56, so it came with the newer nixpkgs, not with anything done in this session.
+
+Lesson: the closure diff and dry-activate output are only valid for the exact running revision they were computed against. Re-read `nixos-version --configuration-revision` and `gh pr list` immediately before a deploy, especially when other sessions also deploy to this host.
