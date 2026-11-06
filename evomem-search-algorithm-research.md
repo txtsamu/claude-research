@@ -10,6 +10,32 @@ status: current: recommendations only, nothing implemented; no Indonesian or cha
 
 Question: "what search algorithm is better for our evomem?" Context: [evomem-mcp-failures-diagnosis.md](evomem-mcp-failures-diagnosis.md) (cold search 11.5 s) and [evomem-utcp-endpoint-fork-and-deploy.md](evomem-utcp-endpoint-fork-and-deploy.md).
 
+## What the author says, and what he seems to have intended
+
+Sources read: upstream `anvie/evomem` README, source comments, commit messages (`git log origin/main`, 18 commits, 2026-06-20 to 2026-07-20). The author never writes a design-rationale document; the reasons below are his stated goals plus my inference.
+
+Stated by the author:
+- README: a directory of markdown files turned into a queryable "knowledge", "inspired by gbrain and Obsidian", combining lexical search, hash-based vector embeddings and typed knowledge graphs "with zero LLM dependency at query time", "without the cost, latency, or unpredictability of calling an LLM for every retrieval". Everything is deterministic; "the design is minimal by choice"; 8 MB binary, no runtime dependencies. Benchmarks go up to 1 000 pages / 26 MB (about 42 ms per search).
+- `lexical.rs`: bucket sort chosen over BM25 for deterministic, explainable ranking; "no FTS5/BM25" (`schema.rs`).
+- `hash_embedder.rs`: "lexical smearing, not semantics ... swap in a real model via the Embedder trait when semantic recall matters". `vector.rs`: brute force "fine to ~50K chunks; swap for an HNSW index if needed".
+- `config.rs` `SourceTiers`: curated dirs (`originals`, `concepts`, `writing`) boosted x1.3; bulk dirs (`chat` and `daily` x0.6, `media` x0.7, `archive` x0.5) demoted; `test`, `attachments`, `.raw` excluded.
+- README says "BLAKE3-based hash embedding"; the code uses FNV-1a (README is wrong).
+
+Inferred intent: a small, curated, human-readable notebook for an agent (entities such as people and companies, concepts, writing, with typed links), where search is a precise lookup of named things and bulk chat is a low-priority fallback.
+
+## What our KB actually is (live data, 2026-11-06)
+
+| Source dir | Docs | Chunks | Share of chunks |
+|---|---|---|---|
+| `claude/` (raw Claude Code transcripts, about 149 chunks per doc) | 269 | 40 065 | 78 % |
+| `sessions/` (older session logs) | 859 | 10 959 | 21 % |
+| `claude-research/` (curated write-ups) | 34 | 473 | 0.9 % |
+| `inbox/` + `lessons/` | 22 | 41 | 0.1 % |
+
+1 128 of 1 184 docs are `type: session`. Graph links: 1 525 auto "mentions" and 2 typed edges, 1 171 dangling. `claude/` and `sessions/` are not in the author's demote table, so they get factor 1.0: raw transcripts rank as equals of curated notes. The integration that fills the KB (hooks, backfill, `feat/claude-code-integration`) is our fork's work, not the author's.
+
+Conclusion: evomem is being used as a long-term conversation archive, about 99 % raw transcript chunks, at 50x the size the author benchmarked. That is not forbidden (`session` is a valid type and `capture` exists), but it is not what the design targets, and it explains the cold-cache cost (41k of 51k chunks are transcripts), noisy hits (top hits are often raw `{"session_id": ...}` JSON), and why the hash embedder feels weak.
+
 ## What evomem does today (read from `txtsamu/evomem` branch `feat/utcp`)
 
 Command used: `cat src/search/{mod,vector,fusion,lexical}.rs src/embed/*.rs src/config.rs`.
@@ -39,6 +65,17 @@ Two consequences:
 7. **Bucket sort vs BM25.** Meilisearch's own docs say bucket sort is optimized for app/site search and that BM25 may suit some scenarios; they do not say which. Nothing found on long documents or chat transcripts. BM25's term-frequency saturation and length normalization are the usual reasons to prefer it for long text (general knowledge, not from these sources).
 
 ## Recommendation (ordered, nothing implemented yet)
+
+**Revised after reading the author's intent and the corpus breakdown: fix what goes in before changing the algorithm.** The table below was written first and answers "which algorithm"; the corpus split above is the bigger lever.
+
+| # | Content change (before any algorithm work) | Why |
+|---|---|---|
+| A | Add `claude` and `sessions` to `SourceTiers::DEMOTE` in the fork (for example 0.5-0.6, with the temporal exception) | One-line use of the author's own mechanism; curated notes stop competing with transcripts |
+| B | Keep curated KB (`claude-research`, `lessons`, `inbox`, distilled one-note-per-session summaries of `type: session`) as the main index; move raw transcripts to a second evomem KB/instance or stop indexing them | Brings the main KB back to a few thousand chunks, inside the author's tested range (about 1 000 docs, 45 ms), shrinks the DB about 10x so the cold read mostly disappears, and makes the hash embedder adequate |
+| C | Decide whether searching raw history is the real need ("did we ever..."); if so keep it as the separate, demoted archive | That is episodic memory, a different job from a curated knowledge base |
+
+After A-C, re-measure before doing the algorithm items below; embeddings, fusion and rerank matter much more on the 51k-chunk transcript archive than on a curated KB.
+
 
 | # | Change | Why | Cost / risk |
 |---|---|---|---|
