@@ -74,6 +74,16 @@ Rules live in ConfigMap `vmalert-rules`; vmalert does not watch it, so after `ku
 - `NasPoolFull`: the dashboard's pool-used expression above 85% for 30 min (reads about 3 points low).
 `Arm4DiskFull` (90%) stays, so arm4 gets an early and a late alert. Files: `~/sessions/2026-11-05-perses-dashboards-review/alerts/` (`rules.before.yml`, `rules.after.yml`, `rules.v3.yml`). Check with `curl http://<vmalert clusterIP>:8880/api/v1/rules`.
 
+## 7. Memory pressure check on `home` (same day)
+Earlier notes said "2 OOM kills/hour"; re-measured and it is much healthier: 15.9 GB RAM, 8.4 GB available, swap 3.2 GB used (stale pages of headroom-proxy, node servers, Technitium, anoa), memory PSI about 0.05. Only one OOM kill in 48 h (vmsingle, 2026-11-05 21:49, before its limit was raised to 768Mi) and forgejo-db on 2026-10-28. Container limits sum to 123% of the node but requests only 50%, which is by design.
+Commands: `free -m`, `cat /proc/pressure/memory`, `journalctl -k --since -48h | grep "Killed process"`, `kubectl top pods -A --containers` joined with each container's `limits.memory` (usage/limit ratio), `kubectl describe node | grep -A6 Allocated`.
+Containers closest to their limit: uptime-kuma 369/384 Mi (96%), openwebui 69%, forgejo-db 62% of a 64 Mi limit. Raised (backup of both Deployments in `~/deploy-before-memlimits-20261106.yaml` on home):
+```bash
+kubectl -n homelab set resources deploy/uptime-kuma --limits=memory=768Mi --requests=memory=320Mi
+kubectl -n homelab set resources deploy/forgejo-db  --limits=memory=160Mi --requests=memory=64Mi
+```
+Both rolled out in under a minute; forgejo-app kept answering 200. These Deployments are plain `kubectl apply` (no Helm), so if their manifests live in a repo, copy the new limits there or the next apply reverts them.
+
 ## Status / still open
-- PR #13 (evonic) and #14 (mtime fix) are open on `home-nixos`; `home` runs the combined branch.
+- PR #14 (mtime fix) merged 2026-11-06. PR #13 (evonic) is still open; `home` runs the branch `evonic-plus-log-retention`, so merge #13 and then rebuild from `main`.
 - Remaining space on `home` is mostly container layers (24 GB) and `/root/.hermes` (about 7.6 GB); neither shrinks on its own.
