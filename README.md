@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-07 | [memos-k3s-deploy-on-home.md](memos-k3s-deploy-on-home.md) | how-to |
 | 2026-11-06 | [home-nixos-flake-lock-update-check-2026-11-06.md](home-nixos-flake-lock-update-check-2026-11-06.md) | investigation |
 | 2026-11-06 | [hermes-to-evonic-migration.md](hermes-to-evonic-migration.md) | how-to |
 | 2026-11-06 | [evonic-vs-hermes-agent-benchmark.md](evonic-vs-hermes-agent-benchmark.md) | investigation |
@@ -130,6 +131,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [memos-k3s-deploy-on-home.md](memos-k3s-deploy-on-home.md) | memos, k3s, metallb, truenas-iscsi, service-links | 2026-11-07 |
 | [hermes-to-evonic-migration.md](hermes-to-evonic-migration.md) | hermes, evonic, telegram, cron, systemd-timers, nixos, home, migration, evomem, multi-agent, profiles | 2026-11-06 |
 | [evomem-utcp-endpoint-fork-and-deploy.md](evomem-utcp-endpoint-fork-and-deploy.md) | evomem, utcp, mcp, rust, nixos, home, fork, deploy, claude-code, skill, podman | 2026-11-06 |
 | [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | perses, metallb, coredns, cert-manager, vmalert, victoriametrics, dashboard, promql, k3s, home, monitoring, node-exporter, snmp, blackbox, zfs, proxmox, helm, oomkilled, subagents | 2026-11-05 |
