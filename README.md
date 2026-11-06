@@ -6,7 +6,7 @@ Working notes from Claude Code sessions on the homelab — deployment write-ups,
 
 Flat, no folders. Research says metadata beats hierarchy for a collection this size — a deep PARA/Zettelkasten-style folder tree is overkill for a few dozen docs and just adds navigation cost. Each file has YAML frontmatter instead:
 
-Another code folder: **`evonic-hermes-benchmark/`** holds the agent benchmark harness and raw results behind `evonic-vs-hermes-agent-benchmark.md`. Another code folder: **`kt0211l-flasher/`** holds the Linux flasher (`ktflash_kt0211l.py`, tests, README) for KTMicro KT02H20/KT0211L dongles, documented in `fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md`.
+Another code folder: **`hermes-to-evonic-migration/`** holds the converter, import and cutover scripts behind `hermes-to-evonic-migration.md`. Another code folder: **`evonic-hermes-benchmark/`** holds the agent benchmark harness and raw results behind `evonic-vs-hermes-agent-benchmark.md`. Another code folder: **`kt0211l-flasher/`** holds the Linux flasher (`ktflash_kt0211l.py`, tests, README) for KTMicro KT02H20/KT0211L dongles, documented in `fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md`.
 
 One exception: **`samsung-tv-kants2-exploit/`** holds the buildable exploit sources for the KantS2 TV root chain (`hr.c`, the `.NET` payloads, the kernel-dump scanners, the launcher/debloat scripts). Code cannot live in a flat markdown archive.
 
@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-06 | [hermes-to-evonic-migration.md](hermes-to-evonic-migration.md) | how-to |
 | 2026-11-06 | [evonic-vs-hermes-agent-benchmark.md](evonic-vs-hermes-agent-benchmark.md) | investigation |
 | 2026-11-06 | [home-disk-usage-audit-and-log-retention-2026-11-06.md](home-disk-usage-audit-and-log-retention-2026-11-06.md) | how-to |
 | 2026-11-06 | [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | investigation |
@@ -128,6 +129,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [hermes-to-evonic-migration.md](hermes-to-evonic-migration.md) | hermes, evonic, telegram, cron, systemd-timers, nixos, home, migration, evomem, multi-agent, profiles | 2026-11-06 |
 | [evomem-utcp-endpoint-fork-and-deploy.md](evomem-utcp-endpoint-fork-and-deploy.md) | evomem, utcp, mcp, rust, nixos, home, fork, deploy, claude-code, skill, podman | 2026-11-06 |
 | [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | perses, victoriametrics, dashboard, promql, k3s, home, monitoring, node-exporter, snmp, blackbox, zfs, proxmox, helm, oomkilled, subagents | 2026-11-05 |
 | [diskos-usb-audio-headset-click-gestures-and-flash.md](diskos-usb-audio-headset-click-gestures-and-flash.md) | diskos, snowsky-disc, usb-audio, usbhid, headset, ja11, click-gestures, subagents, flash | 2026-10-31 |
