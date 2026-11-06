@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-06 | [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | investigation |
 | 2026-11-06 | [evomem-utcp-endpoint-fork-and-deploy.md](evomem-utcp-endpoint-fork-and-deploy.md) | how-to |
 | 2026-11-06 | [evomem-mcp-failures-diagnosis.md](evomem-mcp-failures-diagnosis.md) | investigation |
 | 2026-11-05 | [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | how-to |
@@ -262,6 +263,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | evomem, search, bm25, rrf, embeddings, hybrid-retrieval, rust, sqlite, latency, multilingual | current: recommendations only; nothing implemented; no Indonesian/chat-transcript benchmark found | 2026-11-06 |
 | [evomem-mcp-failures-diagnosis.md](evomem-mcp-failures-diagnosis.md) | evomem, mcp, iscsi, truenas, home, claude-code, hooks, latency, pydantic | current: server healthy; failures were q/query mismatch, a since-fixed latency tail and one bridge startup crash; cold-cache first query and the Nov 2 iSCSI blip still open | 2026-11-06 |
 | [mikrotik-hex-s-sqm-cake-fq-codel-cpu-ceiling.md](mikrotik-hex-s-sqm-cake-fq-codel-cpu-ceiling.md) | mikrotik, routeros, hex-s, mmips, sqm, qos, cake, fq-codel, bufferbloat, queue-tree, fasttrack, pppoe | current: CAKE and FQ-CoDel both work on ROS 7.25 hEX S but are single-core bound at ~170 / ~240 Mbps against a 630 Mbps line; bufferbloat already mild (38 ms max under load), so SQM was measured and deliberately left disabled | 2026-11-05 |
 | [mediatek-usb-audio-hal-mt6768-reverse-engineering.md](mediatek-usb-audio-hal-mt6768-reverse-engineering.md) | android, mediatek, mt6768, usb-audio, usb-dac, audio-hal, ghidra, reverse-engineering, libalsautils, aurisys | current: static RE of audio.usb.mt6768.so + libalsautils; the "96 kHz cap" is a table-order quirk (96000 first, returned as default/highest), 192 kHz is supported; Aurisys handler in the playback path unverified; no DAC test yet | 2026-11-05 |
