@@ -3,7 +3,7 @@ type: how-to
 tags: [hermes, evonic, telegram, cron, systemd-timers, nixos, home, migration, evomem, multi-agent, profiles]
 created: 2026-11-06
 last_verified: 2026-11-06
-status: current: live since 2026-11-06 17:59 WIB; inbound Telegram replies not yet confirmed by a human test message; 3 agent cron jobs staged disabled; PR #15 merged
+status: current: live since 2026-11-06 17:59 WIB; inbound Telegram confirmed by a real message at 18:26-18:28 WIB; 3 agent cron jobs staged disabled; PR #15 merged
 ---
 
 # Migrate Hermes (multi-profile team, memories, skills, Telegram bot, cron) to Evonic
@@ -84,6 +84,10 @@ Deployed from the PR branch, then `golive_a_credentials.py` (fills the two files
 
 The 3 agent jobs (`Daily Claude session report`, `proxmox-backup-autofix`, `Daily Hermes efficiency research`) were staged as DISABLED Evonic `session_prompt` schedules (`stage_schedules.py`) on `hermes_default`, `hermes_ops`, `hermes_research` with the original prompts and a preface. They stay disabled because they need what an Evonic agent does not have: root ssh keys to Proxmox and TrueNAS (the autofix job), web and camofox tools plus write access to a root-owned git repo (the research job), and a collector script (the session report). They were left enabled in Hermes, which can no longer deliver their results to Telegram.
 
+## First real use (18:26-18:28 WIB, from the Evonic log, no message text read)
+
+The allowed chat sent `/help`, `/status`, an attachment, then a follow-up and `/new`. Evonic handled the commands, ran one turn on `hermes_default` (3 LLM calls: two `bash` tool calls, then a final answer) and sent the reply through the Telegram channel; no errors or token conflicts were logged. The third call alone took about 65 s (provider latency), so the answer arrived about 2 minutes after the first message. The follow-up messages that arrived during the turn were queued into the running loop ("session busy, injecting into active loop"), which is Evonic's behavior for a busy session. Prompt size was about 9.2K tokens per call (28 309 in / 536 out for the turn), against about 3.4K for the stripped-down benchmark agent, because this agent runs with Evonic's default features and the full system prompt. The service's cgroup memory rose from 770 to 1 106 MB during this (mostly file cache). Evonic's session logs live in `agents/<id>/sessions/<sid>.jsonl` and, with the trace setting on, `agents/<id>/llm_traces/<sid>.jsonl`; the message store is `agents/<id>/chat.db`, not the main `evonic.db`.
+
 ## Capability differences to keep in mind
 
 - Hermes profiles had MCP tools (TrueNAS, Proxmox, MikroTik, Cloudflare, Notion, evomem, camofox, crawl4ai, gowa). Evonic agents have bash and file tools only, running as an unprivileged `evonic` user without a sandbox; `hermes_ops` and `hermes_net` lose their infrastructure tooling.
@@ -97,7 +101,6 @@ Over 3 h 43 min of uptime and about 130 agent runs the service used 48 CPU-secon
 ## Open items
 
 - PR #15 was squash-merged into home-nixos `main` (5c0b7b9) on 2026-11-06, after verifying `main`'s tree equals the deployed branch head and holds no chat ids (also none in `main`'s history; the ids remain only in the closed PR's own commit list). Before the merge, a `nixos-rebuild` from `main` would have removed the timers while the Hermes jobs were paused and silently stopped the evomem sync.
-- A human test message to the bot (inbound -> `hermes_default` -> reply) has not been done; polling and the token were verified.
 - Delete `/srv/migrate` on `home` when satisfied (portable agent JSON with copied credentials), rotate the plaintext login that was in Hermes' `USER.md`.
 - Decide about the 3 staged agent schedules (give the agents the access they need, or keep those jobs in Hermes with another way to deliver).
 - Hermes sessions (2 966) were not migrated; if wanted, distill them into KB notes (see [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) on why raw transcripts make a poor index).
