@@ -6,7 +6,7 @@ Working notes from Claude Code sessions on the homelab — deployment write-ups,
 
 Flat, no folders. Research says metadata beats hierarchy for a collection this size — a deep PARA/Zettelkasten-style folder tree is overkill for a few dozen docs and just adds navigation cost. Each file has YAML frontmatter instead:
 
-Another code folder: **`kt0211l-flasher/`** holds the Linux flasher (`ktflash_kt0211l.py`, tests, README) for KTMicro KT02H20/KT0211L dongles, documented in `fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md`.
+Another code folder: **`evonic-hermes-benchmark/`** holds the agent benchmark harness and raw results behind `evonic-vs-hermes-agent-benchmark.md`. Another code folder: **`kt0211l-flasher/`** holds the Linux flasher (`ktflash_kt0211l.py`, tests, README) for KTMicro KT02H20/KT0211L dongles, documented in `fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l.md`.
 
 One exception: **`samsung-tv-kants2-exploit/`** holds the buildable exploit sources for the KantS2 TV root chain (`hr.c`, the `.NET` payloads, the kernel-dump scanners, the launcher/debloat scripts). Code cannot live in a flat markdown archive.
 
@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-06 | [evonic-vs-hermes-agent-benchmark.md](evonic-vs-hermes-agent-benchmark.md) | investigation |
 | 2026-11-06 | [home-disk-usage-audit-and-log-retention-2026-11-06.md](home-disk-usage-audit-and-log-retention-2026-11-06.md) | how-to |
 | 2026-11-06 | [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | investigation |
 | 2026-11-06 | [home-disk-usage-audit-and-log-retention-2026-11-06.md](home-disk-usage-audit-and-log-retention-2026-11-06.md) | cloudflared, smart, disk, home, nixos, journald, tmpfiles, technitium, nix-gc, k3s, containerd, hermes, vmalert, alerting, arm1 | 2026-11-06 |
@@ -265,6 +266,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [evonic-vs-hermes-agent-benchmark.md](evonic-vs-hermes-agent-benchmark.md) | evonic, hermes, agent-benchmark, nixos, home, deepseek, opencode-go, evomem, fork, subagents | current: 96 runs, accuracy tied at 100 %, Evonic about 1.9x faster, Hermes about 1/3 fewer tool calls | 2026-11-06 |
 | [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | evomem, search, bm25, rrf, embeddings, hybrid-retrieval, rust, sqlite, latency, multilingual | current: recommendations only; nothing implemented; no Indonesian/chat-transcript benchmark found | 2026-11-06 |
 | [evomem-mcp-failures-diagnosis.md](evomem-mcp-failures-diagnosis.md) | evomem, mcp, iscsi, truenas, home, claude-code, hooks, latency, pydantic | current: server healthy; failures were q/query mismatch, a since-fixed latency tail and one bridge startup crash; cold-cache first query and the Nov 2 iSCSI blip still open | 2026-11-06 |
 | [mikrotik-hex-s-sqm-cake-fq-codel-cpu-ceiling.md](mikrotik-hex-s-sqm-cake-fq-codel-cpu-ceiling.md) | mikrotik, routeros, hex-s, mmips, sqm, qos, cake, fq-codel, bufferbloat, queue-tree, fasttrack, pppoe | current: CAKE and FQ-CoDel both work on ROS 7.25 hEX S but are single-core bound at ~170 / ~240 Mbps against a 630 Mbps line; bufferbloat already mild (38 ms max under load), so SQM was measured and deliberately left disabled | 2026-11-05 |
