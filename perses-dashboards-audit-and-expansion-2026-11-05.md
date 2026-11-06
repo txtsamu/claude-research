@@ -28,7 +28,7 @@ Measured (agent durations from the run, wall clock ~30 min end to end):
 | 01 · Homelab Overview | `homelab-overview` | 15 → 28 |
 | 02 · Services & Uptime Probes | `services-probes` | 12 → 21 |
 | 03 · Hosts (CPU, Memory, Disk, Network) | `hosts-node-exporter` | 22 → 39 |
-| 04 · Kubernetes (k3s) Cluster | `node-and-cluster` | 11 → 36 |
+| 04 · Kubernetes (k3s) Cluster | `node-and-cluster` | 11 → 36 → 105 (follow-up 2026-11-06) |
 | 05 · NAS Storage (TrueNAS & ZFS) | `nas-storage` | 19 → 42 |
 | 06 · Proxmox VE (px1) | `proxmox` | 16 → 30 |
 | 07 · Network & Router (MikroTik) | `network-router` | 20 → 36 |
@@ -136,6 +136,51 @@ Data was wrong or misleading, not merely incomplete:
 ## Side effect to know about
 
 One agent installed Playwright in a venv for screenshots and `playwright install` deleted the old shared browsers (`chromium-1208`, `chromium_headless_shell-1208`, `firefox-1509`, `webkit-2248`) from `~/.cache/ms-playwright` on the Fedora desktop. Anything else using those builds needs `playwright install` again. The same agent also made read-only `ssh` calls to the NAS (`zpool list`, `zfs list`) to confirm the pool figure.
+
+## Follow-up 2026-11-06: dashboard 04 (Kubernetes) extended from 36 to 105 panels
+
+Request: "more complete, include common errors and things I might have missed, check available metrics". Done inline (single dashboard, not delegated).
+
+### Method (recipe)
+
+1. **Inventory what exists, not what you assume.** Pull metric names per scrape job through the proxy and diff against the tokens the dashboard already uses:
+   ```bash
+   curl -sk -X POST https://perses.lan/proxy/globaldatasources/victoriametrics/api/v1/query \
+     --data-urlencode 'query=count by (__name__)({job="kubernetes-nodes"})' -o names.json
+   jq -r '.data.result[].metric.__name__' names.json | sort > names-kubernetes-nodes.txt   # also kubernetes-nodes-cadvisor, kube-state-metrics
+   jq -r '.. | .query? // empty' dashboard.json | grep -o -E '[a-zA-Z_:][a-zA-Z0-9_:]*' | sort -u > used.txt
+   grep -v -x -F -f used.txt names-kube-state-metrics.txt     # = unused KSM metrics
+   ```
+   Result: 715 kubelet/k3s names, 85 cAdvisor, 149 kube-state-metrics; only ~37 used before.
+2. **Check ambiguous metrics by value before building on them**: `k3s_certificate_expiration_seconds` is *seconds remaining* (~26.5M = 307 days), not a timestamp; `container_pressure_*` exists at pod level (`pod!=""`) as well as cgroup level, so aggregate with `max by (namespace,pod)` not `sum` (pod cgroup + container cgroups would double count).
+3. **Build with a script** (`k8s_extend.py`: GET dashboard, add panels with helper functions, rebuild `layouts`, PUT) and **test every new query** (`testq.py`: instant + 3h range through the proxy, flags EMPTY/NaN/missing legend label) *before* pushing. 73 built, 4 returned nothing and were dropped.
+4. **Push, re-run the harness on the live dashboard** (105 panels, only intentional empty table flagged), then screenshot.
+
+### What was added (69 panels, 11 sections)
+
+- **Common errors & problem pods**: containers waiting, running-not-Ready, Pending, Failed/evicted, Unschedulable, restarts (15m), OOM kills (1h, cAdvisor `container_oom_events_total`), cordoned nodes, namespaces Terminating, containers without memory/CPU limit, BestEffort pods; problem timeline; containers closest to memory limit %; waiting-reason table (CrashLoopBackOff / ImagePullBackOff...); last-exit-code table (137 killed/OOM, 143 SIGTERM...); restarts last 24h.
+- **Rollouts, scheduling & lifecycle**: Deployments mid-rollout (`metadata_generation != observed_generation`), unavailable replicas, paused deployments, DaemonSet unavailable/misscheduled, StatefulSets not updated, pods started <1h, scheduler attempts by result, scheduler queues, QoS classes, youngest pods.
+- **Pod pressure, I/O & network errors**: PSI memory/CPU/IO per pod, network errors/drops, disk I/O by pod, threads/FDs, node memory composition.
+- **Storage (appended)**: PVs not Bound, PVCs predicted full in 24h (`predict_linear`), VolumeAttachments not attached, PV capacity, PVC free bytes, PVC inode %, container log size, volume operations/h.
+- **Kubelet & runtime health**: soonest k3s cert expiry, node evictions, runtime op errors, pod start errors, PLEG relist p99, runtime latency p99, REST client non-2xx.
+- **k3s control plane & API server (appended)**: in-flight requests, API priority & fairness queue, 5xx / post-timeout / TLS handshake / datastore errors, authentication results, stored objects by kind, workqueue retries and wait p99, k3s goroutines & FDs.
+- **Networking**: LoadBalancer IPs assigned / without IP, Services, kube-proxy pending changes, Services by type.
+- **Inventory & coverage**: Kubernetes version, nodes, node age, pods total, node table, object counts, and a Markdown "Not monitored yet" panel.
+
+Sections reordered: Cluster health → Common errors → Rollouts → Node capacity → Workloads → Pressure/I-O → Storage → Kubelet → Control plane → Networking → Inventory.
+
+### Gotchas found
+
+- The `kubernetes-nodes` / cadvisor scrape jobs use `labelmap` relabeling, so **every series carries ~20 node labels**. Always aggregate (`sum by`, `max by`) or use `defaultColumnHidden: true` on tables; otherwise legends and tables are unreadable.
+- **Dropped (query returned nothing)**: `kubelet_pod_start_sli_duration_seconds` p99/p50 (histogram too sparse over 1h), `container_fs_usage_bytes{container!=""}` (cAdvisor only reports fs usage at cgroup level here), `kubeproxy_sync_proxy_rules_duration_seconds` and `kubeproxy_network_programming_duration_seconds` p99 (no observations in window). Re-try with another window or label filter if needed.
+- **Intentionally empty-when-healthy**: the "Containers waiting - reason" table (KSM only emits `waiting_reason` while a container is waiting). All count tiles use `or vector(0)` so they show 0.
+- **Not scraped, so no panels** (listed on the dashboard): CoreDNS, MetalLB, cert-manager, kube-ovn, Traefik, Kubernetes Warning events; kube-state-metrics emits no Job/CronJob/HPA/ResourceQuota series here. `kube_lease_renew_time` still lists stale Rancher leases (`cattle-controllers`) left from the Rancher decommission, so no lease panel was built.
+- **Screenshots of Perses lie for lazy panels**: panels are only rendered when scrolled into the viewport, so a `full_page` Playwright screenshot shows empty sections. Scroll each section into view (`page.get_by_text("<section title>", exact=True).scroll_into_view_if_needed()`, wait ~6 s) and take a viewport screenshot instead. Removing panels leaves layout holes: widen the neighbours (`x`/`width`) and PUT again.
+- Running a local helper script with `python3 -I` breaks `from pl import *` (isolated mode drops the script directory from `sys.path`); use `-I` only for scripts that read untrusted data.
+
+### Files
+
+`~/sessions/2026-11-05-perses-dashboards-review/lead/`: `k8s_extend.py` (builder), `testq.py` (query tester), `k8s.before-extend.json` (rollback: PUT this file), `k8s.final-live.json` (pushed, version 9), `shot_sections.py` (section screenshots), `testq-1.txt` (test output).
 
 ## Verification
 
