@@ -43,7 +43,7 @@ One combined view across all three tables below, so the latest work is visible a
 |---|---|---|
 | 2026-11-06 | [home-disk-usage-audit-and-log-retention-2026-11-06.md](home-disk-usage-audit-and-log-retention-2026-11-06.md) | how-to |
 | 2026-11-06 | [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | investigation |
-| 2026-11-06 | [home-disk-usage-audit-and-log-retention-2026-11-06.md](home-disk-usage-audit-and-log-retention-2026-11-06.md) | disk, home, nixos, journald, tmpfiles, technitium, nix-gc, k3s, containerd, hermes, vmalert, alerting, arm1 | 2026-11-06 |
+| 2026-11-06 | [home-disk-usage-audit-and-log-retention-2026-11-06.md](home-disk-usage-audit-and-log-retention-2026-11-06.md) | cloudflared, smart, disk, home, nixos, journald, tmpfiles, technitium, nix-gc, k3s, containerd, hermes, vmalert, alerting, arm1 | 2026-11-06 |
 | [evomem-utcp-endpoint-fork-and-deploy.md](evomem-utcp-endpoint-fork-and-deploy.md) | how-to |
 | 2026-11-06 | [evomem-mcp-failures-diagnosis.md](evomem-mcp-failures-diagnosis.md) | investigation |
 | 2026-11-05 | [perses-dashboards-audit-and-expansion-2026-11-05.md](perses-dashboards-audit-and-expansion-2026-11-05.md) | how-to |
