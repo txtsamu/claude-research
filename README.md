@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-06 | [home-nixos-flake-lock-update-check-2026-11-06.md](home-nixos-flake-lock-update-check-2026-11-06.md) | investigation |
 | 2026-11-06 | [hermes-to-evonic-migration.md](hermes-to-evonic-migration.md) | how-to |
 | 2026-11-06 | [evonic-vs-hermes-agent-benchmark.md](evonic-vs-hermes-agent-benchmark.md) | investigation |
 | 2026-11-06 | [home-disk-usage-audit-and-log-retention-2026-11-06.md](home-disk-usage-audit-and-log-retention-2026-11-06.md) | how-to |
@@ -268,6 +269,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [home-nixos-flake-lock-update-check-2026-11-06.md](home-nixos-flake-lock-update-check-2026-11-06.md) | nixos, home, flake-lock, nixpkgs, update, dry-activate, ci, k3s, cloudflared, kernel | current: PR #10 checked (CI green, build ok, dry-activate lists the restarts), not deployed | 2026-11-06 |
 | [evonic-vs-hermes-agent-benchmark.md](evonic-vs-hermes-agent-benchmark.md) | evonic, hermes, agent-benchmark, nixos, home, deepseek, opencode-go, evomem, fork, subagents | current: 96 runs, accuracy tied at 100 %, Evonic about 1.9x faster, Hermes about 1/3 fewer tool calls | 2026-11-06 |
 | [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | evomem, search, bm25, rrf, embeddings, hybrid-retrieval, rust, sqlite, latency, multilingual | current: recommendations only; nothing implemented; no Indonesian/chat-transcript benchmark found | 2026-11-06 |
 | [evomem-mcp-failures-diagnosis.md](evomem-mcp-failures-diagnosis.md) | evomem, mcp, iscsi, truenas, home, claude-code, hooks, latency, pydantic | current: server healthy; failures were q/query mismatch, a since-fixed latency tail and one bridge startup crash; cold-cache first query and the Nov 2 iSCSI blip still open | 2026-11-06 |
