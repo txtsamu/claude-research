@@ -205,3 +205,10 @@ Disk usage from VictoriaMetrics (`100 - node_filesystem_avail_bytes/node_filesys
    - Verified through the vmalert service: `GET http://<clusterIP>:8880/api/v1/rules` shows `Arm1DiskFull inactive ok`, 11 rules loaded.
    - Rollback: re-apply `~/sessions/2026-11-05-perses-dashboards-review/alerts/rules.before.yml`.
 3. Other hosts at check time: home `/` 73%, fedora 58%, arm2 51%, arm3 49%, arm4 48%, px1 22% (local-lvm thin pool 45%), TrueNAS pool about 50%. No other action needed.
+
+### Follow-up: general disk alerts (2026-11-06)
+
+Added to group `hosts` in `vmalert-rules` (same apply + `rollout restart deploy/vmalert` procedure as above; file `alerts/rules.v3.yml` in the session dir, previous version `alerts/rules.after.yml`):
+- `HostDiskFull`: `(1 - avail/size)*100 > 85` for 10 min on `fstype=~"ext4|xfs|btrfs"`, excluding `device=~"/dev/zram.*"` (RAM-backed `/var/log`) and `host="arm1"` (own 80% rule). NFS, vfat and ZFS are excluded on purpose (NFS mounts duplicate the NAS; ZFS per-dataset percentages are meaningless).
+- `NasPoolFull`: the dashboard's pool-used expression (sum of dataset usage + pool free) `> 85` for 30 min; it reads about 3 points low versus the real pool because node_exporter cannot see zvols or snapshots.
+- Tested before applying: both return 0 series with the threshold (nothing firing) and 12 / 1 series without it (max 73.0% on home, 48.5% for the pool), so they match real data. After the restart vmalert reports 13 rules, all `ok`.
