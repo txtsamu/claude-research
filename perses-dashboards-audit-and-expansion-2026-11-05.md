@@ -194,3 +194,14 @@ Sections reordered: Cluster health → Common errors → Rollouts → Node capac
 - [Perses plugin documentation](https://perses.dev/plugins/docs/)
 - [Perses dashboard resource schema](https://raw.githubusercontent.com/perses/perses/main/docs/api/dashboard.md)
 - Earlier docs this builds on: [[perses-dashboard-victoriametrics-datasource]], [[home-k8s-resource-rightsizing-victoriametrics]]
+
+## Follow-up 2026-11-06: disk check across hosts, arm1 cleanup and alert
+
+Disk usage from VictoriaMetrics (`100 - node_filesystem_avail_bytes/node_filesystem_size_bytes*100`, ext4/btrfs/nfs only) plus `ssh <host> df`/`du`. Only arm1 needed action: its 5.9 GB root was back to 78% because VS Code re-downloaded a server build (~600 MB each) into `/root/.vscode-server/cli/servers`.
+
+1. Deleted the older build (`lru.json` lists newest first; no `server-main` process was running): `ssh arm1 'rm -rf /root/.vscode-server/cli/servers/Stable-2c33b50b…'` -> `/` 78% -> 68%.
+2. Added rule group `arm1` to the `vmalert-rules` ConfigMap (homelab ns): `Arm1DiskFull`, `/` ext4 above 80% for 10 min, severity warning (routes to Telegram via alertmanager). The old `Arm4DiskFull` only matched `host="arm4"`.
+   - Applied with `kubectl create cm vmalert-rules --from-file=rules.yml=… --dry-run=client -o yaml | kubectl apply -f -`, then `kubectl rollout restart deploy/vmalert` (vmalert does not watch the file).
+   - Verified through the vmalert service: `GET http://<clusterIP>:8880/api/v1/rules` shows `Arm1DiskFull inactive ok`, 11 rules loaded.
+   - Rollback: re-apply `~/sessions/2026-11-05-perses-dashboards-review/alerts/rules.before.yml`.
+3. Other hosts at check time: home `/` 73%, fedora 58%, arm2 51%, arm3 49%, arm4 48%, px1 22% (local-lvm thin pool 45%), TrueNAS pool about 50%. No other action needed.
