@@ -1,6 +1,6 @@
 ---
 type: how-to
-tags: [memos, k3s, kubernetes, home, metallb, truenas-iscsi, sqlite, service-links]
+tags: [memos, memogram, telegram, k3s, kubernetes, home, metallb, truenas-iscsi, sqlite, service-links]
 created: 2026-11-07
 last_verified: 2026-11-07
 status: current
@@ -73,6 +73,20 @@ spec:
   ports: [{name: http, port: 5230, targetPort: http}]
 ```
 
+## Telegram bot (Memogram)
+Memos no longer has a built-in Telegram bot. The project's integration is **Memogram** ([usememos/telegram-integration](https://github.com/usememos/telegram-integration)), a separate service that calls the Memos REST API. Bot: `@notesamu_bot` (token checked with `getMe` from home, HTTP ok).
+
+1. Read the repo README: config is env vars `SERVER_ADDR`, `BOT_TOKEN`, optional `ALLOWED_USERNAMES`, `DATA` (token-binding file, holds Memos access tokens, must be persisted). Supports Memos 0.31.x and 26.10.x+ (we run 26.11.0, memogram discovered it at startup).
+2. No published container image (Docker Hub `neosmemo/memogram` / `usememos/memogram` return "object not found", workflows only build release artifacts). So: `gh release download 26.10.0 -R usememos/telegram-integration -p memogram_26.10.0_linux_amd64.tar.gz`, extract into its own dir, then a 4-line Containerfile (`FROM cgr.dev/chainguard/static:latest`, `ENV DATA=/data/data.txt`, `COPY memogram /app/memogram`, `USER 65532:65532`, `ENTRYPOINT`) and `podman build -t localhost/memogram:26.10.0`.
+3. Import into home's containerd (same pattern as `localhost/vm-bot`, `localhost/route-manager`): `podman save localhost/memogram:26.10.0 | ssh moo@home 'sudo k3s ctr -n k8s.io images import -'` (0.6 s).
+4. Token as a Secret, never in a file: `printf '%s' "$TOKEN" | ssh moo@home 'kubectl -n homelab create secret generic memogram --from-file=BOT_TOKEN=/dev/stdin --dry-run=client -o yaml | kubectl apply -f -'`.
+5. Deployment `memogram` (manifest `~/sessions/2026-11-07-memos-k3s/memogram.yaml`): `imagePullPolicy: Never`, `SERVER_ADDR=http://memos:5230` (in-cluster Service), `BOT_TOKEN` from the Secret, `DATA=/data/data.txt`, 1Gi `local-path` PVC `memogram-data` with `fsGroup: 65532` (the image runs as UID 65532), `enableServiceLinks: false`, no Service (the bot only makes outbound calls).
+6. Verified: log shows `Memogram started` and `instance profile version=26.11.0`.
+
+Usage: create an account in Memos, make a Personal Access Token (Settings > Access Tokens), then send `/start <token>` to the bot. After that text, photos, files, voice and video messages become memos; `/search <words>` searches. Set `ALLOWED_USERNAMES` (Telegram usernames, no `@`, comma separated) to restrict who can use the bot; currently unset.
+
+Maintenance notes: the image is imported only on `home`; if containerd's image store is wiped, rebuild from steps 2-3. Upgrading means a new release tag, rebuild, import, and bump the image tag in the manifest.
+
 ## Not done yet
 - No `memos.lan` Caddy route / Technitium A record (see the `.lan` DNS notes: every new route needs a manual A record) and no Cloudflare tunnel hostname. Until then it is reachable only at `http://192.168.50.244:5230`.
 - First visit to the UI shows the sign-up page: the first account created becomes the admin, so create it right away.
@@ -82,4 +96,5 @@ spec:
 - [usememos/memos releases](https://github.com/usememos/memos/releases) (latest tag 26.11.0)
 - [memos `scripts/Dockerfile`](https://github.com/usememos/memos/blob/main/scripts/Dockerfile) (`ENV MEMOS_PORT="5230"`, `EXPOSE 5230`)
 - [memos `scripts/entrypoint.sh`](https://github.com/usememos/memos/blob/main/scripts/entrypoint.sh) (data dir `/var/opt/memos`, drops to UID 10001)
+- [usememos/telegram-integration (Memogram) README and releases](https://github.com/usememos/telegram-integration)
 - [Kubernetes: environment variables / service links](https://kubernetes.io/docs/concepts/services-networking/service/#environment-variables) and the `enableServiceLinks` pod field
