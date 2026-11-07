@@ -18,11 +18,12 @@ Follow-up to [[perses-dashboards-audit-and-expansion-2026-11-05]] and [[perses-d
 | ICMP + HTTPS(:8006) probes | done (`job=blackbox-icmp name=px2`, `job=blackbox-http name=proxmox-px2`) |
 | Perses: Hosts dashboard, Services & Probes, Overview | px2 shows up (variables are auto-discovered; Overview ICMP regexes edited) |
 | Perses: Proxmox dashboard host section for px2 | done (8 panels) |
-| **PVE API metrics for px2** (guest table, storage pools, `pve_*`) | **NOT done**: needs a read-only API token on px2, creating one was not approved in the session. See "Open item". |
+| PVE API metrics for px2 (guests, storage, node, version) | done after the user approved the token; second exporter `pve-exporter-px2`, job `pve` with `host=px2` |
+| Proxmox dashboard pve_* panels | made host-aware (px1 + px2 together), see "PVE metrics for px2" |
 
 ## Time estimate
 
-Estimates (no timestamps were recorded), about 25 min wall clock end to end.
+Estimates (no timestamps were recorded), about 25 min for the first part (node, probes, dashboards) plus about 15 min for the PVE token, exporter and dashboard fix.
 
 | Step | Time | Kind |
 |---|---|---|
@@ -32,6 +33,8 @@ Estimates (no timestamps were recorded), about 25 min wall clock end to end.
 | First node series visible in VM after the restart | ~1 min | estimate |
 | First ICMP probe sample visible after the restart | ~2-3 min | estimate (the polling loop needed several tries) |
 | Dashboards: script, push, verify | ~5 min | estimate |
+| PVE token + exporter rollout (~1 min) + scrape job restart (~20 s) + first `pve_up` sample (~1 min) | ~5 min | estimate |
+| pve panel host-awareness fix, test, screenshots | ~10 min | estimate |
 
 ## What was found
 
@@ -87,14 +90,24 @@ Estimates (no timestamps were recorded), about 25 min wall clock end to end.
    - Overview (`homelab-overview`): `fedora|px1|arm1` → `fedora|px1|px2|arm1` in the two ICMP panels (`hosts`, `lat`).
 5. Test every new query through the proxy: all 16 panel queries return data (e.g. `h2disk` 2 series, `h2temp` 8 series); Overview ICMP lists now include `px2`; `node_uname_info` has hosts `arm1-4, fedora, home, nas, px1, px2`; the Services & Probes variable lists `proxmox-px2`.
 
-## Open item: PVE metrics for px2 (needs the user's decision)
+## PVE metrics for px2 (done after the user approved the token)
 
-The `pve-exporter` Deployment (`prompve/prometheus-pve-exporter:3.10.2`, ns `homelab`) reads **one** set of credentials from Secret `pve-exporter` (`PVE_USER=monitor@pve`, token name `vm`) and px1 is scraped through it via the `pve` job (`__param_target` relabel). px2 is a standalone node, so px1's token is not valid there. To finish:
+The `pve-exporter` Deployment (`prompve/prometheus-pve-exporter:3.10.2`, ns `homelab`) reads **one** set of credentials from Secret `pve-exporter` (`PVE_USER=monitor@pve`, token name `vm`) and px1 is scraped through it via the `pve` job (`__param_target` relabel). px2 is a standalone node, so px1's token is not valid there. The first attempt to create the token was blocked by the session's auto-mode classifier ("access added as a means"); it was done after the user said "go ahead and create the PVE token on px2".
 
-1. On px2: `pveum user add monitor@pve`, `pveum acl modify / --users monitor@pve --roles PVEAuditor`, `pveum user token add monitor@pve vm --privsep 0` (the same as on px1: user `monitor@pve` with `PVEAuditor` on `/`).
-2. In k8s: second Secret + Deployment + Service `pve-exporter-px2` (same image, own creds), and a `pve` scrape job with `host: px2` pointing at it. `pve_*` series already carry a `host` label, so most Proxmox panels need a `host` filter or will mix px1+px2.
+1. On px2: same user and role as px1 (`monitor@pve`, `PVEAuditor` on `/`, token `vm` with `--privsep 0`). The token value went straight from the ssh output into a Kubernetes Secret and the temp files were shredded (never printed):
+   ```bash
+   ssh root@px2 'pveum user add monitor@pve --comment "Perses/VM read-only" && pveum acl modify / --users monitor@pve --roles PVEAuditor && pveum user token add monitor@pve vm --privsep 0 --output-format json' > tok.json
+   # extract .value to a file, scp to home, then:
+   kubectl -n homelab create secret generic pve-exporter-px2 --from-literal=PVE_USER=monitor@pve \
+     --from-literal=PVE_TOKEN_NAME=vm --from-literal=PVE_VERIFY_SSL=false --from-file=PVE_TOKEN_VALUE=/tmp/px2tokval
+   shred -u tok.json /tmp/px2tokval
+   ```
+2. Second exporter (`pve-exporter-px2.yaml`: Deployment + ClusterIP Service on 9221, same image and resources as the px1 one, `envFrom` the new Secret). Test from a throwaway pod: `curl "http://pve-exporter-px2.homelab.svc.cluster.local:9221/pve?target=192.168.50.50&cluster=1&node=1"` returned `pve_up{id="node/px2"} 1.0` and the 3 guests.
+3. Scrape job `pve-px2` added to `vmagent-home-config` (same restart procedure as step 2 above): `metrics_path: /pve`, params `cluster=1`, `node=1`, relabel `__address__` -> `__param_target`, then `__address__` -> `pve-exporter-px2.homelab.svc.cluster.local:9221`, and `job` set to `pve`; static target `192.168.50.50` with label `host: px2`. Result: `pve_up` has 8 series for px1 and 5 for px2.
+4. **Dashboard fix that was necessary**: both hosts have `qemu/100` (px1 `tiny11`, px2 `utility-01`), so every join `... * on (id) group_left (name) pve_guest_info` became ambiguous (VictoriaMetrics did not error but matching by `id` alone is wrong). `fix_pve_hosts.py` rewrote all pve panels of the Proxmox dashboard: `on (id)` -> `on (host, id)`, legends now carry the host (`utility-01 (px2)`, `px1 cpu`, ...), and the two tables (`gtab`, `stortab`) got a `Host` column with transforms `MergeIndexedColumns id`, `MergeIndexedColumns host`, `JoinByColumnValue [id, host]`. The Overview stat row was raised from height 4 to 7 because two hosts per tile were cut off.
+5. Verified: every non-host panel query returns series for both hosts with 0 duplicate (host,id,name,storage) combinations; headless Chromium screenshots of Overview, Storage and the px2 host section show no "No data" and both hosts in the guest inventory, storage pools, charts and stat tiles. Playwright was run from the existing `agent-1/venv` (`shot_px.py`).
 
-The session's auto-mode classifier denied step 1 ("access added as a means"), so it was not done. Run it yourself or approve it.
+Gotcha: do not join on `id` alone in any new pve panel, since Proxmox VMIDs repeat across standalone hosts.
 
 ## Side findings
 
@@ -102,7 +115,7 @@ The session's auto-mode classifier denied step 1 ("access added as a means"), so
 
 ## Files
 
-`~/sessions/2026-11-05-perses-dashboards-review/px2/`: `vmagent-home-config.backup.yaml`, `scrape.before.yml`, `scrape.after.yml`, `add_px2.py`, `q.sh` (instant-query helper), `proxmox.before-px2.json` / `proxmox.after-px2.json`, `overview.before-px2.json` / `overview.after-px2.json` (rollback: PUT the `before` files to `/api/v1/projects/default/dashboards/<name>`).
+`~/sessions/2026-11-05-perses-dashboards-review/px2/`: `vmagent-home-config.backup.yaml`, `scrape.before.yml`, `scrape.after.yml`, `add_px2.py`, `q.sh` (instant-query helper), `pve-exporter-px2.yaml`, `fix_pve_hosts.py`, `shot_px.py`, `scrape.before2.yml` / `scrape.after2.yml`, `vmagent-home-config.backup2.yaml`, `proxmox.before-px2.json` / `proxmox.after-px2.json` / `proxmox.before-pvehost.json` / `proxmox.after-pvehost.json` / `proxmox.before-tiles.json`, `overview.before-px2.json` / `overview.after-px2.json` (rollback: PUT the `before` files to `/api/v1/projects/default/dashboards/<name>`).
 
 ## References
 
