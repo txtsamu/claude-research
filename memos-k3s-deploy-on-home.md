@@ -11,7 +11,10 @@ status: current
 Memos 26.11.0 as a single-replica Deployment in the `homelab` namespace on `moo@home` (NixOS, single-node k3s, 192.168.50.200). SQLite database on a `truenas-iscsi` PVC, exposed through MetalLB at **192.168.50.244:5230**. The manifest is `~/sessions/2026-11-07-memos-k3s/memos.yaml` (also reproduced below).
 
 ## Time estimate
-Total about 15 min wall clock (estimate, no precise timing taken). Measured from the pod events: image pull 7 s, PVC provision + iSCSI attach about 13 s, rollout after the fix about 25 s. The first rollout wait timed out at the 240 s limit because of the bug below, which cost about 5 min.
+Whole job about 30 min of active work, in three parts (estimates from pod/log timestamps, UTC, not stopwatch timings):
+- Memos Deployment: about 12 min (first apply about 21:29, healthy about 21:34). Measured: image pull 7 s, PVC provision + iSCSI attach about 13 s, rollout after the fix about 25 s. The first rollout wait ran into its 240 s timeout because of the service-links bug below, which cost about 5 min.
+- Memogram Telegram bot: about 8 min (pod running 21:42). Measured: `podman build` a few seconds, `ctr images import` 0.6 s, rollout about 11 s. Most of the time was finding out there is no published image.
+- note.lan route: about 5 min (route created 01:08 on 2026-11-07), plus a few seconds for Caddy's reload. The DNS-cache gotcha below added about 1 min.
 
 ## Steps
 1. Context checks (read-only). `ssh moo@home 'kubectl get nodes; kubectl get ns'` shows one node `home`, namespace `homelab`. Apps there are plain manifests applied with `kubectl` (they are not in the `home-nixos` repo, which only owns the host). Copied conventions from the newest app (`gowa`): `strategy: Recreate`, label `spread-group: homelab-app`, pinned image tag, probes, `truenas-iscsi` PVC, Service with annotation `metallb.io/loadBalancerIPs`.
@@ -99,10 +102,15 @@ Gotcha: right after creating the route, fedora's `systemd-resolved` returned `SE
 
 Remove the route with `DELETE /api/routes/note` (same bearer header).
 
-## Not done yet
-- No Cloudflare tunnel hostname (LAN only: `https://note.lan` and `http://192.168.50.244:5230`).
-- First visit to the UI shows the sign-up page: the first account created becomes the admin, so create it right away.
-- Backup: the SQLite DB lives only on the iSCSI PVC (`memos-data`); no snapshot/backup job exists for it.
+## Current state and what is left (2026-11-07)
+Running in `homelab`: `memos` (LB 192.168.50.244:5230, reachable at `https://note.lan`), `memogram` (Telegram bot `@notesamu_bot`, outbound only). Manifests live in `~/sessions/2026-11-07-memos-k3s/` (`memos.yaml`, `memogram.yaml`, plus the memogram build context); they are applied with kubectl, not tracked in `home-nixos`.
+
+Still to do by the user or later:
+- Create the first Memos account (it becomes admin), make an access token (Settings > Access Tokens) and send `/start <token>` to the bot. Until then the bot has no linked account.
+- Optionally set `ALLOWED_USERNAMES` on the `memogram` Deployment to restrict the bot. Unset today, so anyone can message it, but nothing happens without a valid Memos token.
+- Rotate the bot token (BotFather `/revoke`, then recreate the `memogram` Secret and restart the pod): it was pasted into a chat that is auto-captured into evomem.
+- No backup for the Memos SQLite database (`memos-data` PVC on `truenas-iscsi`) or for `memogram-data` (token bindings, `local-path`).
+- No Cloudflare tunnel hostname: LAN only.
 
 ## References
 - [usememos/memos releases](https://github.com/usememos/memos/releases) (latest tag 26.11.0)
