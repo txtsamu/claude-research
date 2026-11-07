@@ -111,7 +111,7 @@ Gotcha: do not join on `id` alone in any new pve panel, since Proxmox VMIDs repe
 
 ## Side findings
 
-- `up{job="metallb"}` has a 0: the hard-coded controller target `10.42.0.173:7472` is stale, the controller pod is now `10.42.0.40` (pod restarted). Known gotcha from [[perses-dashboards-audit-and-expansion-2026-11-05]]. Not fixed here (out of scope). Fix: change the IP in `vmagent-home-config` and restart `vmagent-home`.
+- `up{job="metallb"}` had a 0: the hard-coded controller target `10.42.0.173:7472` was stale (the controller pod restarted, it is now `10.42.0.40`). Fixed 2026-11-07 on request: `kubectl -n metallb-system get pod -l component=controller -o jsonpath='{.items[0].status.podIP}'`, replaced the IP in `vmagent-home-config` (`sed`, diff showed one line), applied and restarted `vmagent-home`; `up{instance="10.42.0.40:7472"}` = 1. The old `10.42.0.173` series keeps a last sample of 0 and ages out of instant queries after a few minutes. It **will break again on the next controller restart** (no Service exists for the controller, pod IPs are not stable); the durable fix is pod service discovery with RBAC (`lead2/rbac.NOT-APPLIED.yaml` in the earlier session dir), which the classifier denied earlier. Files: `scrape.before3.yml`, `scrape.after3.yml`, `vmagent-home-config.backup3.yaml`.
 
 ## Files
 
