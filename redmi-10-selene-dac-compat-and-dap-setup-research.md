@@ -143,6 +143,37 @@ adb shell su < probe_jack.sh     # dumpsys media.audio_flinger, dumpsys audio, /
 - The single active track belongs to Poweramp (pid 19866, `com.maxmpz.audioplayer`) and is a **192000 Hz** track; the mixer's out buffer is 48000 Hz float, so AudioFlinger downsamples 192 -> 48 kHz.
 - The codec side confirms it: `/proc/asound/card0/pcm2p/sub0/hw_params` = `S24_LE`, 2 ch, `rate: 48000`. Stock policy only offers 44100/48000 on the primary and deep_buffer ports, so the jack cannot be hi-res as configured. Raising it would need a policy edit for the headphone ports plus a HAL/codec that accepts higher rates; not tried (the codec's DL limit is unverified).
 
+### Jack hi-res module attempt (`mtk-jack-hires`, 2026-11-09): works mechanically, user reports weird sound, reverted
+
+Built in the session dir (`scripts/build_jack_module.py`, output `module/mtk-jack-hires/`), **never installed as a Magisk module**; tested only with a live bind mount so a `umount` + `killall audioserver` undoes it.
+
+```bash
+python3 -I build_jack_module.py phone-audio-cfg/audio_policy_configuration.xml module/mtk-jack-hires "44100,48000,88200,96000,176400,192000" v0.3
+adb push .../audio_policy_configuration.xml /data/local/tmp/ap_test.xml
+adb shell su <<'EOF2'
+cp /data/local/tmp/ap_test.xml /data/local/tmp/ap_test2.xml
+chcon u:object_r:vendor_configs_file:s0 /data/local/tmp/ap_test2.xml; chmod 644 /data/local/tmp/ap_test2.xml
+mount --bind /data/local/tmp/ap_test2.xml /vendor/etc/audio_policy_configuration.xml
+killall audioserver
+EOF2
+# revert: umount /vendor/etc/audio_policy_configuration.xml; killall audioserver   (md5 back to 54ed3bef...)
+```
+
+What the edit does: adds `88200,96000,176400,192000` to the `primary output` and `deep_buffer` mix ports and to the `Wired Headset` / `Wired Headphones` device ports (6+2 profile lines), and moves the `voip_rx` and `incall_music_uplink` ports before `primary output`.
+
+Steps and what each showed:
+
+1. `deep_buffer` + jack ports only: AudioFlinger mixer opened at 192000 Hz (policy picks the highest rate in a mix port's list for mixed outputs), **but the codec stayed at 48 kHz** (`/proc/asound/card0/pcm2p/sub0/hw_params`: `S24_LE`, 48000).
+2. Added `primary output`: same, codec 48 kHz.
+3. Driver log (`logcat | grep PlaybackHandlerNormal`) showed `source sample_rate = 192000` then `sample_rate(target) = 48000`. Ghidra 12.1.4 headless on `audio.primary.mt6768.so` (`AudioALSAPlaybackHandlerNormal::open`, `AudioALSASampleRateController`): the codec target rate is 96000/192000 only when the output device is wired headset (0x4) or headphone (0x8) **and** `getPrimaryStreamOutSampleRate()` is in that range; that value is overwritten by `AudioALSAStreamOut::set()` for **every** output stream as it opens, so the last-opened stream wins. Logged proof: `update mPrimaryStreamOutSampleRate: 192000 => 48000` when `voip_rx` opened. Outputs open in XML order.
+4. Reordering so `voip_rx`/`incall_music_uplink` open first and `deep_buffer` last gave `48000 => 192000`, `sample_rate(target) = 192000` and **codec `rate: 192000`, `S24_LE`**.
+5. Cost: the audio HAL process (`android.hardware.audio.service.mediatek`) used **~88% of one core** at 192 kHz versus **~11%** at stock 48 kHz with the same track (Poweramp itself ~22-32% in both). CPU: MT6769H (Helio G88 class), `schedutil`, cpu0 max 1.8 GHz, cpu6 max 2.0 GHz, CPU zone 46 C, so no thermal issue. In the log the Xiaomi `misound` effect (in `PLAYBACK_NORMAL` and `PLAYBACK_LOW_LATENCY` of `/vendor/etc/aurisys_config.xml`) ran the chain `192000 => 96000` (library) then `96000 => 192000` (out), i.e. extra resampling and a 96 kHz-wide effect stage, so it is not bit-perfect or truly 192 kHz wide.
+6. User then said the sound was weird; the live bind mount was removed. Verified stock: md5 `54ed3bef26bf179a703f67b13c545848`, all mixers 48000 Hz, codec 48000 Hz. Not determined what "weird" is (no listening test, no underruns seen in `dumpsys media.audio_flinger`, `Normal mixer raw underrun counters: partial=0 empty=0`).
+
+Web check of limits (3 standard searches): no published source gives the MT6358 headphone path maximum rate or the Redmi 10 2022's DAC; Xiaomi does not disclose the DAC. The only weak hint is a community MediaTek developer reference saying the kernel drivers handle S24_LE up to 192 kHz and that some devices have trouble above 48 kHz (not specific to this codec). The MT6358 kernel driver source exists but the excerpt did not list rates. So the 192 kHz codec setting is accepted by the driver, but whether the analog output is any better than 48 kHz is unestablished.
+
+Untested options if revisited: a 96 kHz-only variant (`"44100,48000,88200,96000"`, lower CPU), bypassing `misound` with an overridden `aurisys_config.xml` that drops the two `<library name="misound"/>` lines (not tried; an empty downlink list is not used by any other scenario in the file), and checking the FM radio (the driver also reads the shared rate in `getFmUplinkSamplingRate`/`getFmDownlinkSamplingRate`, so FM could be affected).
+
 ## References
 
 - [dontkillmyapp: Xiaomi](https://dontkillmyapp.com/xiaomi)
@@ -156,6 +187,8 @@ adb shell su < probe_jack.sh     # dumpsys media.audio_flinger, dumpsys audio, /
 - [Hi-ResAudio (adivenxnataly)](https://github.com/adivenxnataly/Hi-ResAudio)
 - [XDA: always-on OTG on OxygenOS (`oneplus_otg_auto_disable`)](https://www.xda-developers.com/enable-always-on-otg-oxygenos/)
 - Xiaomi support, OTG: [KA-613065](https://www.mi.com/ph/support/faq/details/KA-613065/), [KA-509270](https://www.mi.com/global/support/faq/details/KA-509270/), [KA-07213](https://www.mi.com/sg/support/article/KA-07213)
+- [MediaTek developer reference (community), kernel audio notes](https://notmyst33d.github.io/mediatek-developer-reference/print.html)
+- [MT6358 codec driver source](https://tomoyo.sourceforge.net/cgi-bin/lxr/source/sound/soc/codecs/mt6358.c?a=sparc)
 - [VR-25/acc](https://github.com/VR-25/acc)
 - [Hepolise/VolumeKeyTrackControlModule](https://github.com/Hepolise/VolumeKeyTrackControlModule)
 - [Old phone as a DAP write-up (Niagara launcher, ADB debloat)](https://esli-blog.pages.dev/posts/transform-old-smartphone-in-a-digital-audio-player-dap)
