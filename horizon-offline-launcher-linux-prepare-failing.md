@@ -36,7 +36,7 @@ Launcher installed (`~/.local/bin/horizon-offline-launcher`) and starts without 
 ## Fix
 Build a standard `~/.minecraft` from Mojang's public manifest plus the user's own client jar, then run prepare:
 ```
-# script: build_minecraft_dir.py (kept in this repo's sibling session dir, ~/sessions/2026-11-09-horizon-offline-launcher/)
+# script: horizon-offline-launcher/build_minecraft_dir.py in this repo (run from a folder holding 26.3.json)
 # - copies 26.3.json and client.jar to ~/.minecraft/versions/26.3/{26.3.json,26.3.jar}
 # - downloads each linux-allowed library artifact (sha1 verified) to ~/.minecraft/libraries/
 # - downloads assets/indexes/<id>.json then every object from resources.download.minecraft.net
@@ -63,6 +63,8 @@ Same machine (Ryzen, 32 threads, 63 GB RAM, RX 7800 XT, Vulkan/RADV), both stand
 | CPU | 4-8% | 31-236%, mostly 30-110% (chunk loading and the JVM) |
 | Threads | 104 | 125 |
 
+Scripts: `horizon-offline-launcher/launch_vanilla_demo.py` and `sample.sh` in this repo. Vanilla took the user one click (Play Demo World) to enter the world; the script alone stops at the title screen. Total effort for the measurement: about 5 minutes. After measuring, vanilla was closed with `kill -TERM <pid>`.
+
 How vanilla was run: the client has no account, so it was started with `--demo` (the official demo mode) and the manifest's default JVM args (`-Xms2G -Xmx4G -XX:+AlwaysPreTouch -XX:+UseZGC ...`), classpath built from `~/.minecraft/libraries` plus `versions/26.3/26.3.jar`, main class `net.minecraft.client.main.Main`. It picked the Vulkan backend (OpenGL failed with "Could not retrieve OpenGL functions", harmless). Account errors (401, Realms JWT) in its log are expected. About 4 GB of the vanilla RSS is the ZGC heap, which Linux reports as shared memory (`RssShmem`); it is still real RAM.
 
 Caveats: demo world and default render distance for vanilla, unknown render distance for Horizon, a single short run each, and vanilla was still growing when sampled. Treat it as a rough comparison. Typical vanilla figures from the web (official recommendation 16 GB RAM, 8 GB minimum, default launcher heap 4 GB since 26.1) are in the sources below.
@@ -70,6 +72,7 @@ Caveats: demo world and default render distance for vanilla, unknown render dist
 ## Notes and gotchas
 - Dead end: assuming a crash. The launcher was fine; the failure only shows in the client's own log.
 - The `Horizon` menu entry (`~/.local/share/applications/horizon-launcher.desktop`) points at the *official* launcher in `~/Downloads/horizon-launcher-linux-x86_64/` (Microsoft sign-in). The offline one is run as `horizon-offline-launcher`.
+- `pgrep -f 'java.*net.minecraft.client.main.Main'` inside a `bash -c` also matches the shell running it, so a leftover PID after `kill` can be a false positive; confirm with `pgrep -x java`.
 - `rtk curl` mangled the JSON manifest (control characters); use `rtk proxy curl` for raw output.
 - Not verified: pressing Prepare/Play inside the offline launcher's own GUI (the prepared folder here belongs to the official launcher's versions dir). With `~/.minecraft` now present, Prepare on "Automatic" should find it.
 
