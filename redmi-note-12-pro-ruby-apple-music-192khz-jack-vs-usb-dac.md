@@ -71,12 +71,24 @@ So the practical "bypass" is: set media volume to 15 (0 dB) and control loudness
 
 Other routes for strict bit-perfect: apps with their own USB driver (Poweramp USB exclusive, USB Audio Player Pro, both installed) bypass Android's mixer and volume, but they cannot play Apple Music streams.
 
+## Could Hi-ResAudio (Magisk module) lift the jack cap? (checked 2026-11-09, not installed)
+
+[adivenxnataly/Hi-ResAudio](https://github.com/adivenxnataly/Hi-ResAudio) (Apache-2.0, last push 2025-06-11, v2.0) rewrites `audio_policy_configuration.xml` / `audio_policy.conf` copies through Magisk so the internal speaker and wired (jack) outputs advertise higher rates and 32-bit; the README says it does **not** apply to Bluetooth/USB. Read via `gh api repos/adivenxnataly/Hi-ResAudio/contents/<file> --jq .content | base64 -d` (`customize.sh`, `copy.sh`, README).
+
+- Gates in `customize.sh`: SDK >= 31 and `ro.soc.manufacturer == Mediatek`. This phone (SDK 34, MT6877) would pass both. (The Redmi 10 on Android 11 failed the first; see the related doc.)
+- It targets exactly the cap found above: the jack profile `samplingRates="44100 48000"` (space-separated in this phone's XML, so the module's grep would match, unlike on the Redmi 10).
+- **Blocker: it needs root.** This phone is unrooted with a locked bootloader (`ro.boot.flash.locked=1`, verified boot green). Magisk would require unlocking the Xiaomi bootloader first, which wipes the data partition.
+- **No benefit for the DAC path**, which already runs at 192 kHz; it also sets `aaudio.mmap_policy=3`, rewrites the primary output flags and deletes speaker compensation filters.
+- Unknown whether the MT6877 jack codec/HAL really outputs above 48 kHz once the policy allows it. On the Redmi 10 the equivalent test (192/96 kHz on the jack) cost CPU and sounded wrong, and was reverted (see related doc), and the HAL MMAP path there was a stub.
+- Verdict: only worth it for jack-only listening at 96/192 kHz, and only after deciding to unlock the bootloader. Use the USB DAC for 24/192 instead.
+
 ## References
 
 - [How do I find 24-bit 192 kHz tracks on Apple? (Apple Community)](https://discussions.apple.com/thread/252881040)
 - [Hands-On: Apple Music Lossless and High-Res Lossless (Sound & Vision)](https://www.soundandvision.com/content/hands-apple-music-lossless-and-high-res-lossless)
 - [Apple Music high res (Roon community)](https://community.roonlabs.com/t/apple-music-high-res/159869?page=91)
 - [Apple Music lossless on Android (9to5Google)](https://9to5google.com/2021/05/14/apple-music-android-lossless-audio-streaming/)
+- [Hi-ResAudio Magisk module (adivenxnataly)](https://github.com/adivenxnataly/Hi-ResAudio)
 - [Wireless Apple Music Control HiRes and Lossless (hifivision)](https://hifivision.com/goto/post?id=1018347)
 - [Apple Classic spielt Titel nur bis 48K/Lossless ab (Apple Community)](https://communities.apple.com/de/thread/256152319)
 
