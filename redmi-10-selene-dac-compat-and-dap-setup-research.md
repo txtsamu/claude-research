@@ -174,6 +174,15 @@ Web check of limits (3 standard searches): no published source gives the MT6358 
 
 Untested options if revisited: a 96 kHz-only variant (`"44100,48000,88200,96000"`, lower CPU), bypassing `misound` with an overridden `aurisys_config.xml` that drops the two `<library name="misound"/>` lines (not tried; an empty downlink list is not used by any other scenario in the file), and checking the FM radio (the driver also reads the shared rate in `getFmUplinkSamplingRate`/`getFmDownlinkSamplingRate`, so FM could be affected).
 
+### 96 kHz variant + misound bypass (v0.4, 2026-11-09 ~09:05 WIB): measured, user still hears "weird", reverted
+
+Built with `build_jack_module.py ... "44100,48000,88200,96000" v0.4` (no 192000 entries) and `build_aurisys_bypass.py phone-aurisys/aurisys_config.xml <out> empty` (empties the `downlink_library_name_list` of `AURISYS_SCENARIO_PLAYBACK_NORMAL` and `..._LOW_LATENCY`, removing the two `<library name="misound"/>` lines; stock md5 `fc63cb24e141...`). Both applied by bind mount (`mount --bind` over `/vendor/etc/audio_policy_configuration.xml` and `/vendor/etc/aurisys_config.xml`, then `killall audioserver`), not installed.
+
+- Live reading with both mounted: codec `S24_LE`, **`rate: 96000`**, audio HAL ~**15% of one core** (stock 48 kHz ~11%, 192 kHz + misound ~88%), audioserver pid stable, no crash seen. The staged script's own stage-A/stage-B log was lost (output file only held the two `adb push` lines), so stage A (96 kHz with misound) was **not measured separately**.
+- Playing track was a normal 44.1 kHz file (Poweramp, "Suki de Ite" by Ado), not a synthetic test tone; with a 96 kHz mixer AudioFlinger resamples 44.1 -> 96 kHz.
+- User reported "still sounds weird" while this was live. Cause not identified: candidates are the AudioFlinger 44.1 -> 96 kHz resample, removing misound's headphone processing (loudness/EQ) changing the tone, or something unrelated to rate. No listening/analysis tool is available on the phone side (AudioFlinger tee sink is debug-build only; not verified here).
+- Reverted: both files unmounted, md5s back to stock (`54ed3bef...` policy, `fc63cb24...` aurisys), codec back at 48000, test dir `/data/local/tmp/jh` removed.
+
 ## References
 
 - [dontkillmyapp: Xiaomi](https://dontkillmyapp.com/xiaomi)
