@@ -86,6 +86,30 @@ adb shell 'su -c "dumpsys usb | head -60; dumpsys audio | grep -iE \"safe|absolu
 4. Safe-volume limit: either accept the -15 dBFS USB cap or test `audio-misc-settings` (back up first; undo with `touch /data/adb/modules/<id>/disable` + reboot).
 5. If a dongle will not power up: test `echo 1 > /sys/module/usb20_host/parameters/vbus_force_on` with it attached (reverts at reboot).
 
+## Follow-up 2026-11-09: volume-key grant and Hi-ResAudio trial
+
+Phone dropped off USB adb mid-session (kernel log: `usb 1-4: USB disconnect`); reconnected over wireless debugging. Wireless port changes every time: `nmap -p 5555,30000-49999 --open 192.168.50.18`, then `adb connect 192.168.50.18:<port>` (the first connect failed, a retry after `adb disconnect` worked).
+
+**Volume-key long-press permission: done.**
+
+```bash
+adb shell 'su -c "pm grant com.maxmpz.audioplayer android.permission.SET_VOLUME_KEY_LONG_PRESS_LISTENER"'   # rc=0
+adb shell 'su -c "dumpsys package com.maxmpz.audioplayer | grep SET_VOLUME_KEY"'   # now: granted=true
+# undo: pm revoke com.maxmpz.audioplayer android.permission.SET_VOLUME_KEY_LONG_PRESS_LISTENER
+```
+
+Root `pm grant` works even though the permission is defined by package `android`. Whether Poweramp's long-press next/prev then fires with the screen off is **not yet tested** (enable the option in Poweramp settings, lock the screen, long-press Vol+/Vol-).
+
+**Hi-ResAudio v2.0 (adivenxnataly, repo head `78706f5`, 2025-06-12): installer refuses; nothing installed.** Read `customize.sh`/`copy.sh` first (no network access, only `sed` edits of vendor audio config copies). Findings:
+
+- `customize.sh` hard-aborts when `SDK < 31` ("Android (SDK) version is not supported!"); this phone is SDK 30. It also needs `ro.soc.manufacturer == Mediatek` (empty on this phone, an Android 12+ property).
+- Ran it unmodified: `magisk --install-module /sdcard/Download/HiResAudio-v2.0-unmodified.zip` printed the abort above. Afterwards `/data/adb/modules` is unchanged (`magisk-swapspace`, `mtk-usb-rate-order`, `playintegrityfix`), `/vendor/etc/audio_policy_configuration.xml` md5 unchanged, no `aaudio.mmap_*` props set, zip removed from the phone.
+- Offline comparison against the phone's real files (`phone-audio-cfg/` in the session dir): the XML here writes rates comma-separated (`samplingRates="44100,48000"`) but the module greps for space-separated, so its rate patch would silently do nothing; the primary-output block ends at line 64, so its hard-coded insert would match; legacy `audio_policy.conf` already lists `96000|192000` on the primary output. The module also changes Speaker to SURROUND, Earpiece mono to stereo, deletes MTK speaker compensation filters, rewrites `AUDIO_OUTPUT_FLAG_PRIMARY` to MMAP_NOIRQ in the legacy conf and sets `aaudio.mmap_policy=3`, then `killall audioserver`.
+- It only edits `audio_policy_configuration.xml` (speaker/wired). `usb_audio_policy_configuration.xml`, the file that governs USB DACs, is never touched, so even forced it would not help a DAC.
+- Not done: forcing it by removing the SDK gate. Reason: no DAC benefit and it rewrites the primary output on a phone used daily. Undo path if ever forced: `touch /data/adb/modules/HiResAudio/disable` and reboot.
+
+Reference: [Hi-ResAudio repo](https://github.com/adivenxnataly/Hi-ResAudio)
+
 ## References
 
 - [dontkillmyapp: Xiaomi](https://dontkillmyapp.com/xiaomi)
