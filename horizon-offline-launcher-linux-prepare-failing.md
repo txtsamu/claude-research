@@ -54,6 +54,19 @@ https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f
 ```
 Those two URLs come from `downloads.client.url` / `downloads.server.url` in the 26.3 manifest above. For other versions, cliffano's gist is a table of server.jar and client.jar links for every Minecraft version (release, snapshot, RC and old versions), also pointing at `piston-data.mojang.com`. The gist was last active 2026-11-04. Its raw file (`https://gist.githubusercontent.com/cliffano/77a982a7503669c3e1acb0a0cf6127e9/raw/minecraft-server-jar-downloads.md`) has a `26.3` row whose server and client URLs are identical to the manifest's, so the two sources agree (checked 2026-11-09). The manifest stays the authority; the gist is a convenient index. The linked comment (6074804) is only the owner replying "All good!" to someone asking to reuse the list; it has no technical content.
 
+## Resource use: Horizon vs official Java Edition 26.3 (measured 2026-11-09)
+Same machine (Ryzen, 32 threads, 63 GB RAM, RX 7800 XT, Vulkan/RADV), both standing in a freshly loaded world. CPU is % of one core, sampled every 2 s (`/proc/<pid>/stat` utime+stime); RAM is `VmRSS`.
+
+| | Horizon (nightly 2026-11-08) | Vanilla 26.3 (demo mode) |
+|---|---|---|
+| RAM | 1.32-1.37 GB, flat | 2.9 GB at title screen, 4.7 GB just after joining, 5.4 GB about 90 s later and still rising |
+| CPU | 4-8% | 31-236%, mostly 30-110% (chunk loading and the JVM) |
+| Threads | 104 | 125 |
+
+How vanilla was run: the client has no account, so it was started with `--demo` (the official demo mode) and the manifest's default JVM args (`-Xms2G -Xmx4G -XX:+AlwaysPreTouch -XX:+UseZGC ...`), classpath built from `~/.minecraft/libraries` plus `versions/26.3/26.3.jar`, main class `net.minecraft.client.main.Main`. It picked the Vulkan backend (OpenGL failed with "Could not retrieve OpenGL functions", harmless). Account errors (401, Realms JWT) in its log are expected. About 4 GB of the vanilla RSS is the ZGC heap, which Linux reports as shared memory (`RssShmem`); it is still real RAM.
+
+Caveats: demo world and default render distance for vanilla, unknown render distance for Horizon, a single short run each, and vanilla was still growing when sampled. Treat it as a rough comparison. Typical vanilla figures from the web (official recommendation 16 GB RAM, 8 GB minimum, default launcher heap 4 GB since 26.1) are in the sources below.
+
 ## Notes and gotchas
 - Dead end: assuming a crash. The launcher was fine; the failure only shows in the client's own log.
 - The `Horizon` menu entry (`~/.local/share/applications/horizon-launcher.desktop`) points at the *official* launcher in `~/Downloads/horizon-launcher-linux-x86_64/` (Microsoft sign-in). The offline one is run as `horizon-offline-launcher`.
@@ -64,3 +77,6 @@ Those two URLs come from `downloads.client.url` / `downloads.server.url` in the 
 - https://github.com/gerdaroot/Horizon-Offline-launcher (README: requirements, first run, FAQ)
 - https://piston-meta.mojang.com/v1/packages/80608ff6753705b6a82e2cb86a5937d4d233abd4/26.3.json (Mojang 26.3 version manifest, checksums)
 - https://gist.github.com/cliffano/77a982a7503669c3e1acb0a0cf6127e9 (Download links of Minecraft server jar and client jar for all versions)
+- https://www.tomshardware.com/video-games/pc-gaming/minecraft-system-requirements-raised-for-the-first-time-in-17-years-microsoft-now-recommends-16gb-of-ram-and-a-2020s-or-newer-cpu-to-run-the-java-edition (26.1 system requirements)
+- https://windowsreport.com/minecraft-java-edition-raises-ram-requirement-to-16gb/ (26.1 RAM requirement)
+- https://bugs-legacy.mojang.com/browse/MC-171958 (Java Edition CPU use, one core busy)
