@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-09 | [horizon-offline-launcher-linux-prepare-failing.md](horizon-offline-launcher-linux-prepare-failing.md) | troubleshooting |
 | 2026-11-09 | [redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md](redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md) | investigation |
 | 2026-11-09 | [redmi-10-selene-dac-compat-and-dap-setup-research.md](redmi-10-selene-dac-compat-and-dap-setup-research.md) | investigation |
 | 2026-11-07 | [px2-perses-monitoring-added.md](px2-perses-monitoring-added.md) | how-to |
