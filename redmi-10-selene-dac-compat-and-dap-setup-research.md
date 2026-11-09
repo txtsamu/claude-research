@@ -108,6 +108,29 @@ Root `pm grant` works even though the permission is defined by package `android`
 - It only edits `audio_policy_configuration.xml` (speaker/wired). `usb_audio_policy_configuration.xml`, the file that governs USB DACs, is never touched, so even forced it would not help a DAC.
 - Not done: forcing it by removing the SDK gate. Reason: no DAC benefit and it rewrites the primary output on a phone used daily. Undo path if ever forced: `touch /data/adb/modules/HiResAudio/disable` and reboot.
 
+### On-device check: would Hi-ResAudio work here? (2026-11-09, read-only)
+
+Probes were run as root over wireless adb (`adb shell su < probe_mmap.sh`, script kept in the session dir `~/sessions/2026-11-09-redmi10-dap-dac-compat/scripts/`).
+
+```bash
+adb shell 'su -c "getprop ro.soc.manufacturer; getprop aaudio.mmap_policy"'      # both empty
+adb shell 'su -c "grep -ci mmap /vendor/etc/audio_policy_configuration.xml /vendor/etc/audio_policy.conf"'   # 0 and 0
+adb shell 'su -c "dumpsys media.aaudio"'                                         # Can't find service: media.aaudio
+# copy the HAL and inspect it on the PC
+adb shell "su -c 'cp /vendor/lib64/hw/audio.primary.mt6768.so /sdcard/p.so'"; adb pull /sdcard/p.so; adb shell rm /sdcard/p.so
+nm -D -S --defined-only audio.primary.mt6768.so | c++filt | grep -i mmap
+# Ghidra 12.1.4 headless, only the MMAP functions (script DecompileFn.java, matches getName(true), not mangled names)
+analyzeHeadless proj prim -import audio.primary.mt6768.so -postScript DecompileFn.java out/mmap.c AudioALSAStreamOut::createMmapBuffer AudioALSAStreamOut::getMmapPosition
+```
+
+Findings:
+
+- **The audio HAL is `android.hardware.audio@6.0` (MediaTek `audio.primary.mt6768.so`).** `AudioALSAStreamOut::createMmapBuffer` exists (588 bytes). It only runs when the stream flags contain bit 14 (`0x4000`, `AUDIO_OUTPUT_FLAG_MMAP_NOIRQ`), then calls a virtual method on the playback handler object.
+- **That handler method is a stub.** `AudioALSAPlaybackHandlerBase::createMmapBuffer` and `getMmapPosition` are 8 bytes each: bytes `e0031f2a c0035fd6` = `mov w0, wzr; ret`, i.e. return 0 and fill nothing. The handler classes in the library are Base, BTCVSD, BTSCO, Fast, FMTransmitter, HDMI, Mixer, Normal, Usb, Voice; there is no MMAP handler, and `nm -D` shows no other `createMmapBuffer` for them (caveat: `nm -D` lists only exported symbols, so a hidden override cannot be fully excluded, but no class exists for it). So an MMAP_NOIRQ stream would get an empty buffer description. Stock policy has no MMAP port at all and AAudio is not exposed as a service on this build, so the module's headline feature cannot work here; with `aaudio.mmap_policy=3` (MMAP only per AOSP docs, from a search summary not read in full) AAudio apps could fail instead of falling back.
+- **Rate and channel patches would not match** (comma-separated rates in the XML, see above), and they only touch speaker/wired.
+- **The JA11 is attached right now** (`1-1` in `/sys/bus/usb/devices`, audio policy lists `USB-Audio - JadeAudio JA11` as `AUDIO_OUTPUT_FLAG`-less `AUDIO_DEVICE_OUT_USB_HEADSET` with rates 44100, 48000, 88200, 96000, 176400, 192000). The audio_flinger log shows float tracks at 192000 Hz opened to the USB output at 08:36 and a 192 kHz 16-bit track playing, `localSR(191999)`; `/proc/asound/cards` still lists only `card0` (Poweramp or the USB host path holds the interface, same as in the earlier test), so `stream0` could not be read. This means the existing `mtk-usb-rate-order` patch already gets the system path to 192 kHz on this DAC; Hi-ResAudio would add nothing for USB.
+- Verdict: **will not work and not worth forcing** on this phone; keep Poweramp USB Exclusive plus the rate-order module.
+
 Reference: [Hi-ResAudio repo](https://github.com/adivenxnataly/Hi-ResAudio)
 
 ## References
