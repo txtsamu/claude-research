@@ -133,6 +133,16 @@ Findings:
 
 Reference: [Hi-ResAudio repo](https://github.com/adivenxnataly/Hi-ResAudio)
 
+### Live check: playing through the 3.5 mm jack (2026-11-09 08:50 WIB)
+
+```bash
+adb shell su < probe_jack.sh     # dumpsys media.audio_flinger, dumpsys audio, /proc/asound/card0/pcm*p/sub0/hw_params
+```
+
+- Output device `0x8 AUDIO_DEVICE_OUT_WIRED_HEADPHONE`, patch created 08:48:25. Active thread `AudioOut_15` = `AUDIO_OUTPUT_FLAG_DEEP_BUFFER`, **Sample rate 48000 Hz**, HAL format PCM_32_BIT, "No FastMixer".
+- The single active track belongs to Poweramp (pid 19866, `com.maxmpz.audioplayer`) and is a **192000 Hz** track; the mixer's out buffer is 48000 Hz float, so AudioFlinger downsamples 192 -> 48 kHz.
+- The codec side confirms it: `/proc/asound/card0/pcm2p/sub0/hw_params` = `S24_LE`, 2 ch, `rate: 48000`. Stock policy only offers 44100/48000 on the primary and deep_buffer ports, so the jack cannot be hi-res as configured. Raising it would need a policy edit for the headphone ports plus a HAL/codec that accepts higher rates; not tried (the codec's DL limit is unverified).
+
 ## References
 
 - [dontkillmyapp: Xiaomi](https://dontkillmyapp.com/xiaomi)
