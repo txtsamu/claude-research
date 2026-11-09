@@ -46,6 +46,14 @@ cd ~/.local/share/horizon-launcher/versions/nightly-*/
 ```
 Result: `Prepared Horizon native-client resources: .../.local/horizon-client/26.3`, `Sound assets ready: 4962 files`, `--check` exit 0. Re-running `./horizon-client` loaded 35723 block states, 1658 items, audio output up, first frame OK, no ERROR lines.
 
+## Where to get the jars
+The jars are Mojang's own files on `piston-data.mojang.com`; the URL path is the file's sha1, so the URL itself tells you the expected checksum:
+```
+https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar   # 26.3 client
+https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar   # 26.3 server
+```
+Those two URLs come from `downloads.client.url` / `downloads.server.url` in the 26.3 manifest above. For other versions, cliffano's gist is a table of server.jar and client.jar links for every Minecraft version (release, snapshot, RC and old versions), also pointing at `piston-data.mojang.com`. The gist was last active 2026-11-04. I only read its top rows (26.4-snapshot-7) and did not look up 26.3 in it, so use the manifest as the authority and the gist as a convenient index. The linked comment (6074804) is only the owner replying "All good!" to someone asking to reuse the list; it has no technical content.
+
 ## Notes and gotchas
 - Dead end: assuming a crash. The launcher was fine; the failure only shows in the client's own log.
 - The `Horizon` menu entry (`~/.local/share/applications/horizon-launcher.desktop`) points at the *official* launcher in `~/Downloads/horizon-launcher-linux-x86_64/` (Microsoft sign-in). The offline one is run as `horizon-offline-launcher`.
@@ -55,3 +63,4 @@ Result: `Prepared Horizon native-client resources: .../.local/horizon-client/26.
 ## References
 - https://github.com/gerdaroot/Horizon-Offline-launcher (README: requirements, first run, FAQ)
 - https://piston-meta.mojang.com/v1/packages/80608ff6753705b6a82e2cb86a5937d4d233abd4/26.3.json (Mojang 26.3 version manifest, checksums)
+- https://gist.github.com/cliffano/77a982a7503669c3e1acb0a0cf6127e9 (Download links of Minecraft server jar and client jar for all versions)
