@@ -82,12 +82,43 @@ Other routes for strict bit-perfect: apps with their own USB driver (Poweramp US
 - Unknown whether the MT6877 jack codec/HAL really outputs above 48 kHz once the policy allows it. On the Redmi 10 the equivalent test (192/96 kHz on the jack) cost CPU and sounded wrong, and was reverted (see related doc), and the HAL MMAP path there was a stub.
 - Verdict: only worth it for jack-only listening at 96/192 kHz, and only after deciding to unlock the bootloader. Use the USB DAC for 24/192 instead.
 
+## Root / bootloader unlock via mtkclient (researched 2026-11-09, NOT done)
+
+Hi-ResAudio needs Magisk, and this phone is unrooted with a locked bootloader (`su` not found, no Magisk/KernelSU package, `ro.boot.flash.locked=1`, `sys.oem_unlock_allowed=0`). The official Xiaomi route is Mi Unlock (bind account, ~168 h wait, data wipe). The alternative looked at was [bkerler/mtkclient](https://github.com/bkerler/mtkclient) (pushed 2026-10-26). Session stopped here: nothing was installed, no BROM mode entered, nothing written to the phone.
+
+Findings (read from the repo with `gh api repos/bkerler/mtkclient/contents/<file> --jq .content | base64 -d`):
+- `mtkclient/config/brom_config.py` has hwcode `0x959` = `MT6877/MT6877V/MT8791N` ("Dimensity 900/1080/7050") with `loader="mt6877_payload.bin"`, i.e. a bootrom exploit payload exists. The README's list of patched "V6" chips (MT6781, MT6789, MT6855, MT6886, MT6895, MT6983, MT8985) does not include MT6877.
+- No confirmed mtkclient report for the ruby (Redmi Note 12 Pro 5G) was found. This phone runs HyperOS 2.0 (`OS2.0.18.0.UMOIDXM`), so a newer preloader/BROM protection cannot be ruled out. Only forum hit: [a Turkish thread](https://www.technopat.net/sosyal/konu/hyperos-android-14-bootloader-ruby-acmak.3492584/) about a brick after relocking with Mi Flash, not about mtkclient.
+- Checked on the PC: USB shows `2717:ff08` (the phone in ADB mode, serial visible to `adb devices`), `fastboot` installed, Python 3.14.8 (mtkclient wants 3.10-3.13, so use `uv venv --python 3.13`), `/etc/udev/rules.d/52-mtk.rules` already present, user already in `dialout`, `mtk` not installed.
+
+Planned steps (from the mtkclient README-INSTALL / README-USAGE):
+
+```bash
+mkdir -p ~/sessions/<date>-ruby-mtkclient && cd ~/sessions/<date>-ruby-mtkclient
+git clone --recursive https://github.com/bkerler/mtkclient && cd mtkclient
+uv venv --python 3.13 && uv pip install -r requirements.txt
+sudo cp Setup/Linux/*.rules /etc/udev/rules.d/ && sudo udevadm control -R && sudo udevadm trigger
+sudo systemctl stop ModemManager            # it grabs MTK serial ports
+# phone fully off; run, then hold Vol Up (or Down) + Power while plugging the cable
+uv run python mtk.py printgpt               # expect hwcode 0x959 and a payload-sent message; shows A/B partitions
+uv run python mtk.py rl backup/ --skip userdata,super   # FIRST: preloader, seccfg, nvram, nvdata, nvcfg, protect1/2, persist, proinfo hold IMEI/calibration
+uv run python mtk.py da seccfg unlock       # destructive: wipes the phone
+uv run python mtk.py e userdata,metadata,md_udc,cache
+uv run python mtk.py reset
+# verify: adb shell getprop ro.boot.flash.locked  -> 0 ; ro.boot.verifiedbootstate -> orange
+# root: mtk.py r boot_a boot.img ; patch in Magisk app ; mtk.py w boot_a magisk_patched.img ; mtk.py da vbmeta 3
+```
+
+Risks: data wipe, possible brick or IMEI loss if a write goes wrong (hence the backup first), Play Integrity/banking apps break after unlock, and the jack benefit of Hi-ResAudio itself is unproven (Redmi 10 test sounded wrong and was reverted). Estimate (not measured): 30-45 min, mostly the backup and the slow first boot.
+
 ## References
 
 - [How do I find 24-bit 192 kHz tracks on Apple? (Apple Community)](https://discussions.apple.com/thread/252881040)
 - [Hands-On: Apple Music Lossless and High-Res Lossless (Sound & Vision)](https://www.soundandvision.com/content/hands-apple-music-lossless-and-high-res-lossless)
 - [Apple Music high res (Roon community)](https://community.roonlabs.com/t/apple-music-high-res/159869?page=91)
 - [Apple Music lossless on Android (9to5Google)](https://9to5google.com/2021/05/14/apple-music-android-lossless-audio-streaming/)
+- [mtkclient (bkerler)](https://github.com/bkerler/mtkclient) and its [README-INSTALL](https://github.com/bkerler/mtkclient/blob/main/README-INSTALL.md), [README-USAGE](https://github.com/bkerler/mtkclient/blob/main/README-USAGE.md), [brom_config.py](https://github.com/bkerler/mtkclient/blob/main/mtkclient/config/brom_config.py)
+- [HyperOS Android 14 bootloader (Ruby) thread (technopat)](https://www.technopat.net/sosyal/konu/hyperos-android-14-bootloader-ruby-acmak.3492584/)
 - [Hi-ResAudio Magisk module (adivenxnataly)](https://github.com/adivenxnataly/Hi-ResAudio)
 - [Wireless Apple Music Control HiRes and Lossless (hifivision)](https://hifivision.com/goto/post?id=1018347)
 - [Apple Classic spielt Titel nur bis 48K/Lossless ab (Apple Community)](https://communities.apple.com/de/thread/256152319)
