@@ -8,13 +8,26 @@ status: current
 
 # Redmi 10 (selene): making USB DAC dongles more compatible, and turning it into a DAP
 
-Goal: the rooted phone should detect DAC dongles more reliably and behave like a dedicated audio player (DAP). This session was a read-only audit over adb plus two web-research passes. **Nothing was changed on the phone and no DAC was attached**, so DAC behaviour below is read from the device configuration, not measured. Earlier work on the same phone: [android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md](android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md), [mediatek-usb-audio-hal-mt6768-reverse-engineering.md](mediatek-usb-audio-hal-mt6768-reverse-engineering.md), [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md).
+Goal: the rooted phone should detect DAC dongles more reliably and behave like a dedicated audio player (DAP). Earlier work on the same phone: [android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md](android-apple-music-usb-dac-bit-perfect-redmi-10-selene.md), [mediatek-usb-audio-hal-mt6768-reverse-engineering.md](mediatek-usb-audio-hal-mt6768-reverse-engineering.md), [redmi-10-magisk-root-swap-zram-and-modules.md](redmi-10-magisk-root-swap-zram-and-modules.md).
+
+The session started as a read-only audit plus two web-research passes, then moved to hands-on tests the user approved. The audio-policy tests were reversible bind mounts (no Magisk module was installed; the one Hi-ResAudio install attempt aborted before touching anything). **The only lasting change on the phone is the Poweramp volume-key permission grant.**
+
+## Outcome at a glance (end of session, 2026-11-09 ~09:05 WIB)
+
+| Question | Result |
+|---|---|
+| Magisk module for better DAC detection on MTK / Android 11? | None exists (research). The JA11 (UAC2) already enumerates fine; the system mixer already opens the USB output at 192 kHz thanks to `mtk-usb-rate-order` |
+| Hi-ResAudio (adivenxnataly) | Installer refuses on Android 11 (SDK 30 < 31). On-device check: it would not help anyway (HAL MMAP is a stub, it never touches the USB policy file, its rate patch would not match this XML) |
+| Volume-key long-press permission for Poweramp | **Granted** with root `pm grant` (lasting change); screen-off behaviour not yet tested |
+| Jack at 192 kHz (custom policy module) | Works mechanically (codec `rate: 192000`) but needs a driver quirk workaround, costs ~8x audio-HAL CPU (88% of a core vs 11%), user reported weird sound; reverted |
+| Jack at 96 kHz + `misound` bypass | Codec `rate: 96000`, HAL ~15% CPU; user still reported weird sound; reverted, cause unidentified |
+| Final state | Stock audio policy and aurisys config (md5 verified), jack at 48 kHz, no test mounts or files left on the phone |
 
 ## Time estimate
 
-About 10 minutes wall clock (estimate from tool timings: adb probes a few seconds each, the two web-research agents ran 2.1 and 2.8 minutes in parallel, measured by the agent runtime). Applying the recommended steps would take about 5 minutes plus one reboot.
+About 35 minutes wall clock for the whole session (measured from log and commit timestamps, roughly 08:30 to 09:05 WIB 2026-11-09). Individual measured steps: two web-research subagents ran in parallel for 2.1 and 2.8 minutes (agent runtime); each Ghidra 12.1.4 headless run on the 2.1 MB `audio.primary.mt6768.so` took 31-35 s (`time` output); each live bind-mount test (mount, `killall audioserver`, 8-9 s wait, play, probe) took about 40 s. Redoing the recommended path (Poweramp settings plus the permission grant) would take about 2 minutes; no reboot is needed because no module is installed.
 
-## Device state read over adb (2026-11-09)
+## Device state read over adb (start of session, 2026-11-09)
 
 ```bash
 adb devices -l
@@ -39,10 +52,10 @@ adb shell 'su -c "dumpsys usb | head -60; dumpsys audio | grep -iE \"safe|absolu
 | OTG props | `persist.vendor.otg_control=true`; `init.mt6768.usb.rc` has `on property:vendor.set.vbus.onoff=*` -> writes `/sys/module/usb20_host/parameters/vbus_force_on 1`. Nothing in `/vendor/etc/init` reads `otg_control`, so what consumes it is unknown |
 | Settings keys | `settings list global/secure/system | grep -iE "otg|usb"` shows only `usb_mass_storage_enabled`, `volume_music_usb_headset=6`; no MIUI OTG auto-off key present while no OTG device is connected |
 | Safe volume | `mSafeMediaVolumeState=SAFE_MEDIA_VOLUME_ACTIVE`, `mSafeUsbMediaVolumeIndex=140`, `mSafeUsbMediaVolumeDbfs=-15.0` (caps loudness on USB outputs unless acknowledged/disabled) |
-| Poweramp battery state | standby bucket 5 (exempt), `RUN_ANY_IN_BACKGROUND: allow`, `WAKE_LOCK: allow`. Requests `SET_VOLUME_KEY_LONG_PRESS_LISTENER` but it is **not granted** (permission is defined by package `android`, i.e. privileged/signature class) |
+| Poweramp battery state | standby bucket 5 (exempt), `RUN_ANY_IN_BACKGROUND: allow`, `WAKE_LOCK: allow`. Requests `SET_VOLUME_KEY_LONG_PRESS_LISTENER`, **not granted at the start** (defined by package `android`); granted later in the session, see Follow-up |
 | Charge control nodes | `/sys/class/power_supply/battery/{charging_enabled,input_suspend,hiz_enable,charge_control_limit,reverse_limit}` exist; `/proc/mtk_battery_cmd/{current_cmd,en_power_path,en_safety_timer}` exist (these are the switches ACC probes) |
 | CPU | `schedutil` on both clusters; governors available: ondemand userspace powersave performance schedutil |
-| USB now | no DAC attached; `/proc/asound/cards` shows only `card0` |
+| USB at start | no DAC attached; `/proc/asound/cards` shows only `card0`. The JA11 was plugged in at about 08:36 and unplugged again later |
 
 ## Findings
 
@@ -66,7 +79,7 @@ adb shell 'su -c "dumpsys usb | head -60; dumpsys audio | grep -iE \"safe|absolu
 ### C. DAP setup
 
 8. **Keep the player alive on MIUI** (dontkillmyapp.com): lock the app in Recents; Security > Permissions > Auto-start on; Security > Battery > App Battery Saver > app > No restriction; "Keep running after screen off". On the device Poweramp already has bucket 5 + RUN_ANY_IN_BACKGROUND allow, so the remaining steps are autostart and the recents lock (not checked over adb).
-9. **Volume-key long-press for next/prev with the screen off:** Poweramp has the feature but needs `SET_VOLUME_KEY_LONG_PRESS_LISTENER`, which is not granted here. Whether root `pm grant` works for a permission defined by `android` (privileged/signature) was **not tried**. Alternatives from community reports: Key Mapper / Button Mapper (reported to work screen-off when rooted), or the Xposed module `Hepolise/VolumeKeyTrackControlModule` (needs LSPosed; README lists only a OnePlus 13 on Android 16 as tested).
+9. **Volume-key long-press for next/prev with the screen off:** Poweramp has the feature but needs `SET_VOLUME_KEY_LONG_PRESS_LISTENER`, which was not granted at the start. **Later in the session `pm grant` as root succeeded** (see Follow-up), screen-off behaviour still untested. Alternatives from community reports: Key Mapper / Button Mapper (reported to work screen-off when rooted), or the Xposed module `Hepolise/VolumeKeyTrackControlModule` (needs LSPosed; README lists only a OnePlus 13 on Android 16 as tested).
 10. **Auto-open Poweramp on DAC connect:** no Poweramp setting. Root options are reported but unverified on Android 11: preset the default activity for the USB device in `/data/system/users/0/` (the `usb_device_manager.xml` / `usb_permissions` style files; on this phone `/data/misc/usb/` does not exist and `/data/system/users/0/` has no usb file yet, so it only appears after one "always" approval).
 11. **Bit-perfect checklist (Poweramp official + 2023 forum guide):** use USB Exclusive; "Perfect Bit Perfect" skips EQ/DSP/software volume/fades; ReplayGain counts as DSP, so off; fades/crossfade off; match Hi-Res output rate to the track; allowed-rate logic is exact rate, else next higher, then next lower; only one app may hold the DAC. Bit-perfect and EQ are mutually exclusive in Poweramp's definition.
 12. **Battery:** ACC (VR-25/acc) is the only charge-limit candidate; its README lists MTK switches `/proc/mtk_battery_cmd/current_cmd` and `en_power_path`, both present here. Not tested on selene; run `acc -s s::` to list working switches. Airplane mode (Wi-Fi/BT off) is the repeated Head-Fi advice against GSM buzz into a USB DAC. No documented CPU-governor/frequency cap for MT6768 to reduce DAC noise (searched, nothing).
@@ -78,13 +91,18 @@ adb shell 'su -c "dumpsys usb | head -60; dumpsys audio | grep -iE \"safe|absolu
 - `forum.powerampapp.com` and `head-fi.org` returned 403/bot wall to fetch; their items are from search snippets and should be re-read in a browser before relying on them.
 - `/proc/asound/*` is unreadable as the adb shell user (needs `su`); `/sys/kernel/debug` is absent.
 
-## Suggested next steps (not run; need a go-ahead for anything that changes the phone)
+## Next steps (status at end of session)
 
-1. Plug the DAC, then measure: `adb shell 'su -c "cat /proc/asound/cards; cat /proc/asound/card1/stream0"'` during playback, and diff `settings list global|secure|system` around the OTG toggle (also reveals the key behind the 10-minute auto-off).
-2. Poweramp: USB Exclusive, hardware volume, Perfect Bit Perfect; check Advanced Tweaks > Audio Outputs Detection Log if the DAC is misdetected; lock in Recents, autostart on, No restriction.
-3. Try `pm grant com.maxmpz.audioplayer android.permission.SET_VOLUME_KEY_LONG_PRESS_LISTENER` as root (reversible with `pm revoke`).
-4. Safe-volume limit: either accept the -15 dBFS USB cap or test `audio-misc-settings` (back up first; undo with `touch /data/adb/modules/<id>/disable` + reboot).
-5. If a dongle will not power up: test `echo 1 > /sys/module/usb20_host/parameters/vbus_force_on` with it attached (reverts at reboot).
+Done: step 3 of the earlier list, the `pm grant` (granted); jack hi-res attempts at 192 kHz and 96 kHz (reverted).
+
+Open, none of it changes the phone without a go-ahead:
+
+1. Test the volume-key long-press: enable it in Poweramp, lock the screen, hold Vol+/Vol-.
+2. Find out what "weird" was: ask which of crackle / thin / loud / wrong pitch, then A/B `misound` bypass alone at 48 kHz versus 96 kHz alone (`build_aurisys_bypass.py` and `build_jack_module.py` in the session dir support both).
+3. With the DAC plugged in, read the live mixer path: `adb shell 'su -c "cat /proc/asound/cards; cat /proc/asound/card1/stream0"'` (needs Poweramp's USB Exclusive stopped, otherwise no ALSA card exists), and diff `settings list global|secure|system` around the OTG toggle to find the MIUI OTG auto-off key.
+4. Poweramp: USB Exclusive, hardware volume, Perfect Bit Perfect; lock in Recents, autostart on, Battery saver No restriction.
+5. Safe-volume limit: accept the -15 dBFS USB cap or test `audio-misc-settings` (back up first; undo with `touch /data/adb/modules/<id>/disable` + reboot).
+6. If a dongle will not power up: `echo 1 > /sys/module/usb20_host/parameters/vbus_force_on` with it attached (reverts at reboot).
 
 ## Follow-up 2026-11-09: volume-key grant and Hi-ResAudio trial
 

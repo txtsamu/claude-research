@@ -274,7 +274,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
-| [redmi-10-selene-dac-compat-and-dap-setup-research.md](redmi-10-selene-dac-compat-and-dap-setup-research.md) | android, redmi-10, selene, mt6768, magisk, usb-dac, otg, dap, poweramp, miui | current: no Magisk module for DAC detection on MTK/Android 11; OTG/VBUS knobs and DAP steps listed, nothing applied | 2026-11-09 |
+| [redmi-10-selene-dac-compat-and-dap-setup-research.md](redmi-10-selene-dac-compat-and-dap-setup-research.md) | android, redmi-10, selene, mt6768, magisk, usb-dac, otg, dap, poweramp, miui | current: no Magisk module for DAC detection on MTK/Android 11; Hi-ResAudio refuses Android 11; jack hi-res at 192/96 kHz tested and reverted (CPU cost, weird sound); only lasting change is the Poweramp volume-key grant | 2026-11-09 |
 | [home-nixos-flake-lock-update-check-2026-11-06.md](home-nixos-flake-lock-update-check-2026-11-06.md) | nixos, home, flake-lock, nixpkgs, update, dry-activate, ci, k3s, cloudflared, kernel | current: PR #10 checked (CI green, build ok, dry-activate lists the restarts), not deployed | 2026-11-06 |
 | [evonic-vs-hermes-agent-benchmark.md](evonic-vs-hermes-agent-benchmark.md) | evonic, hermes, agent-benchmark, nixos, home, deepseek, opencode-go, evomem, fork, subagents | current: 96 runs, accuracy tied at 100 %, Evonic about 1.9x faster, Hermes about 1/3 fewer tool calls | 2026-11-06 |
 | [evomem-search-algorithm-research.md](evomem-search-algorithm-research.md) | evomem, search, bm25, rrf, embeddings, hybrid-retrieval, rust, sqlite, latency, multilingual | current: recommendations only; nothing implemented; no Indonesian/chat-transcript benchmark found | 2026-11-06 |
