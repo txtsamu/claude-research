@@ -3,7 +3,7 @@ type: investigation
 tags: [hermes, mcp, cloudflare, truenas, crawl4ai, audit]
 created: 2026-11-10
 last_verified: 2026-11-10
-status: partly resolved (Cloudflare fixed; TrueNAS needs a new API key; gowa logged out; idle servers not yet removed)
+status: partly resolved (Cloudflare fixed; TrueNAS read-only key created but the REST-based tool cannot use it; gowa logged out; idle servers not yet removed)
 ---
 
 # Hermes MCP servers: usage audit, health check, Cloudflare and TrueNAS fixes
@@ -73,6 +73,21 @@ Root cause: the traceback ends in `middlewared/plugins/api_key.py` `authenticate
 
 Fix (not applied; waiting for a decision): create a new API key (UI: user menu, API Keys, Add, or `midclt call api_key.create`), preferably owned by a read-only user because the `truenas` tool exposes about 278 actions including reboot and shutdown, and put it in `mcp_servers.truenas.env.TRUENAS_API_KEY` of all 12 Hermes configs, then restart the gateway. Do not reuse the democratic-csi key: rotating it would break Kubernetes storage.
 
+### TrueNAS fix attempt (later the same day)
+
+```bash
+ssh moo@nas   # TrueNAS 25.10.4; hostname truenas; midclt over sudo
+midclt call alert.list                      # RESTAPIUsage: "REST API will be removed in version 26.04"
+midclt call privilege.query / user.query    # privileges: FULL_ADMIN, READONLY_ADMIN (group id 41), SHARING_ADMIN
+midclt call user.create '{"username":"hermes-mcp","groups":[41],"password_disabled":true,"shell":"/usr/sbin/nologin","smb":false,...}'
+midclt call api_key.create '{"name":"hermes-mcp-2026-11","username":"hermes-mcp"}'    # key id 3; secret saved to a private file, never printed
+```
+
+- Health check of the NAS: pools `boot-pool` and `data` ONLINE (`data` 58% used, 3 TB free), cifs/iscsitarget/nfs/ssh running, 2 alerts (REST API deprecation, update available). The REST alert also says REST was used 5,463 times in 24 h from the `home` host; the broken Hermes key cannot be the source (its id does not exist), so another client on that host (probably the Kubernetes storage driver, not confirmed) also depends on REST and will break at 26.04.
+- Historic Hermes usage of the `truenas` tool was only read-only listings (smb/nfs share lists, iSCSI targets and sessions, NFS config, pool list), so a read-only owner is enough. Created user `hermes-mcp` (id 73, `READONLY_ADMIN`, no password, no shell, not SMB) and API key id 3.
+- Finding: over the deprecated REST API (`/api/v2.0/...`) the new key authenticates (`core/ping` 200) but every other endpoint returns an empty 403 (system, pool, sharing, iscsi, service, alert, disk, user, api_key), so the `truenas-mcp` npm package (REST) cannot work with a read-only key. Over the supported JSON-RPC 2.0 WebSocket API (`wss://<nas>/api/current`, `auth.login_with_api_key`) the same key works: `system.version`, `pool.query`, `sharing.smb.query`, `iscsi.target.query` return data and `auth.me` shows only `*_READ` roles.
+- Not applied: the Hermes configs still hold the old (deleted) key, so the `truenas` tool is still broken. Options: (1) replace `truenas-mcp` with a small read-only stdio MCP server that speaks the WebSocket API (also survives the 26.04 REST removal); (2) give the key a full-admin owner so REST accepts it (works now, but the tool can reboot or shut down the NAS and it dies at 26.04); (3) look for an existing WebSocket-based TrueNAS MCP server.
+
 ## Cloudflare: three failures in a row, then fixed
 
 1. The old stdio package `@cloudflare/mcp-server-cloudflare` started and listed 89 tools but the API returned `401 Authentication error` (token invalid; Cloudflare's `/user/tokens/verify` said "Invalid API Token" for both the Hermes token and the separate Claude Code one).
@@ -89,7 +104,7 @@ Secrets handling: pasted tokens and R2 keys reached the local hook log (`~/evome
 ## Status and next steps
 
 - Done: crawl4ai and the evomem bridge removed; Cloudflare working in Hermes and Claude Code.
-- Open: TrueNAS key (decision: which user owns it, who creates it); gowa WhatsApp session logged out; optional removal of idle servers (proxmox, gowa, notion if not wanted); revoke the old `cfut_` token and rotate the R2 secret key.
+- Open: TrueNAS tool (read-only user `hermes-mcp` and key id 3 exist, but REST refuses read-only keys; needs a WebSocket-based server or a full-admin key, see the fix attempt above); gowa WhatsApp session logged out; optional removal of idle servers (proxmox, gowa, notion if not wanted); revoke the old `cfut_` token and rotate the R2 secret key.
 - Probe scripts: `~/sessions/2026-11-10-evomem-usage-check/build/smoke/` (`mcp_calls2.py`, `mcp_probe.py`, `mcp_probe2.py`, `tn_probe.py`, `tn_probe2.py`, `cf_check.py`, `cf_remote.py`, `cf_new_test.py`, `rm_bridge.py`, `cf_enable.py`).
 
 ## References
