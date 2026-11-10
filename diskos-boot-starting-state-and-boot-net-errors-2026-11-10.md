@@ -71,6 +71,18 @@ cd ui && podman run --rm --userns=keep-id -v "$PWD:/src:Z" localhost/diskos-ui-b
 
 On the Disc (hot-loaded, no reboot): real build logged `boot: player ready after 705 ms` (Player was already up). To see the indicator a scratch build forced the Player signal to "never up": home showed "Starting... / Please wait", and after 30 s the log line `boot: gave up waiting after 30134 ms (player not up, SD gate settled)` and home returned to "Not Playing / Library". Screenshots in the session scratchpad (`.../scratchpad/shots/`).
 
+## Follow-up: show the boot animation until ready (user request, same day)
+
+The user asked to "just show the diskOS boot animation until it's ready to start playing" instead of the "Starting..." capsule. Branch `feat/splash-until-ready` (worktree `~/diskos/diskos-splashhold`), fast-forwarded into `dev` (`0f3c5a5`); `ui/splash.c` + `comments.md` only.
+
+- The splash was a one-shot 2.4 s animation (`splash_start()` in `main.c`, after `bootstate_start()`). It is now two stages on the same integer timeline: stage 0 = t 0..1500 ms (ring drawn, light swept, hub warm, wordmark fully in), stage 1 = t 1500..2400 ms (wordmark fade, hub opens onto Home). When stage 0 ends, `splash_stage_done()` asks `bootstate_starting()`: if still starting it replays stage 0 (`splash_run(0, SP_INTRO)`, counted in `g_sp.replays`), else it runs stage 1 once and deletes the splash. Replay is bounded by bootstate's 30 s give-up. When everything is ready on the first pass the two linear stages add up to the old 2400 ms.
+- Test on the Disc (hot-load only, never a reboot): real build, Player already up: `splash: 62 frames drawn in 2451 ms (0 intro replays while starting)` (the old one-shot was about 2427 ms). Scratch build with `.player_up` forced to a function returning 0 (temporary edit in `main.c`, reverted with `git checkout`): `boot: gave up waiting after 30042 ms (player not up, SD gate settled)` then `splash: 921 frames drawn in 31346 ms (19 intro replays while starting)`. Screenshots (`.../scratchpad/shots/anim-1.png`, `anim-3.png`) show the animation mid-loop: rings, spectrum light at a different angle in each frame, glowing hub, "diskOS" wordmark.
+- Gotcha: with a charger attached the charging screen ("Charging / Tap to continue") is shown over the splash at boot, so screenshots only show it; the animation still runs underneath. To see it, dismiss the overlay during the loop: `ssh disc '/usr/data/tinj tap 180 180'`.
+- Gotcha: a loop of 19 replays plus 3-4 screenshots goes past the Bash tool's foreground limit (it got moved to the background); run it with `run_in_background`.
+- The "Starting..." capsule on Home and the "Starting up..." toast stay: they cover a theme-reload relaunch (no splash) and the moment after the splash if the 30 s give-up has not passed.
+- Not verified: a real cold boot with the flashed build. Host tests were not re-run for this step: `splash.c` is not part of them, and the earlier full run was on the parent commit. The replay restarts from t=0, so the ring redraws and the wordmark re-fades on each pass (a visible replay, not a smooth loop); a smoother pulse would be a design change.
+- The real build is hot-loaded on the Disc (md5 `07b0cd2cf24b3e727e17b276e0920ea0`) until the next reboot.
+
 ## Not verified
 
 - A real cold boot with a missing Player queue and an unsettled SD gate: a hot-load lasts only until the next reboot, so the flashed `mq_ui` is still the old one. Flash `dev` (recipe in [[fiio-snowsky-disc-diskos-flash-fedora]]) and watch the first 10 s.
