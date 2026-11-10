@@ -115,7 +115,8 @@ Secrets handling: pasted tokens and R2 keys reached the local hook log (`~/evome
 ## Status and next steps
 
 - Done: crawl4ai and the evomem bridge removed; Cloudflare working in Hermes and Claude Code; TrueNAS working again (see above).
-- Done: TrueNAS tool replaced by a read-only WebSocket MCP server (works for the new read-only key; survives the REST removal in TrueNAS 26.04); gowa WhatsApp session logged out; optional removal of idle servers (proxmox, gowa, notion if not wanted); revoke the old `cfut_` token and rotate the R2 secret key.
+- Done: TrueNAS tool replaced by a read-only WebSocket MCP server (works with the read-only key; survives the REST removal in TrueNAS 26.04).
+- Open: update the two Hermes skills that still describe the old `truenas` tool; the Kubernetes storage driver (or whatever else on `home` makes about 5,463 REST logins a day) will break when TrueNAS 26.04 removes REST; gowa WhatsApp session is logged out; optional removal of idle servers (proxmox, gowa, and notion if not wanted); revoke the old `cfut_` token and rotate the pasted R2 secret key.
 - Probe scripts: `~/sessions/2026-11-10-evomem-usage-check/build/smoke/` (`mcp_calls2.py`, `mcp_probe.py`, `mcp_probe2.py`, `tn_probe.py`, `tn_probe2.py`, `cf_check.py`, `cf_remote.py`, `cf_new_test.py`, `rm_bridge.py`, `cf_enable.py`).
 
 ## References
