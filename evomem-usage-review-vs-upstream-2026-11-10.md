@@ -57,6 +57,30 @@ At the start of the session `/api/stats` and `/api/search` timed out at 60 s whi
 **Other observation**
 - `home` runs 13 long-lived `/root/evomem-bridge/mcp_server.py` processes (12 started 3.5 days ago at boot, one 1 day ago). MCP was removed on the fedora side on 2026-11-06, but these come from the Hermes side; whether they are needed or leaked was not checked.
 
+## Addendum: how Hermes memory works and how it is wired to evomem
+
+Commands run (read-only) on `home`:
+
+```bash
+ssh moo@home 'sudo grep -n -i -E "evomem|memory" /root/.hermes/config.yaml'
+ssh moo@home 'sudo cat /root/.hermes/plugins/evomem/__init__.py'
+ssh moo@home 'sudo sed -n 1,90p /opt/hermes-source/agent/memory_provider.py'
+ssh moo@home 'sudo wc -c /root/.hermes/memories/MEMORY.md /root/.hermes/memories/USER.md'
+gh api repos/anvie/evonic/contents/backend/agent_runtime/evomem_writer.py --jq .content | base64 -d
+```
+
+Hermes memory:
+- Built-in store: `~/.hermes/memories/MEMORY.md` (limit 4000 chars, currently 4048 bytes) and `USER.md` (limit 1375), injected into every session, writes need approval (`write_approval: true`).
+- On top of that, exactly one external provider plugin (`memory.provider`), with hooks: `system_prompt_block`, `prefetch` (per-turn recall injected into the prompt), `get_tool_schemas`/`handle_tool_call`, `sync_turn`, `on_memory_write`, `on_pre_compress`, `on_session_end`. Bundled providers: byterover, retaindb.
+- Current setup: `memory.provider: evomem` is a user plugin (`~/.hermes/plugins/evomem/__init__.py`) that is capture-only. It appends every turn (user 500 chars, assistant 2000 chars) and every memory write to JSONL, then runs `sync_to_evomem.py`, which turns the JSONL into one markdown note per session and calls `/api/sync`. `prefetch` and `system_prompt_block` return "" and it exposes no tools, so Hermes never gets evomem recall automatically. Search and capture go through a separate MCP server (`mcp_servers.evomem` -> `/root/evomem-bridge/mcp_server.py`), which is why `home` has many of those processes.
+
+How the author's own agent platform (Evonic) uses evomem (`evomem_writer.py`):
+- Curated docs, not transcripts: frontmatter with `title`, `type`, `description`, `tags`, `aliases`, `created`, `updated`.
+- Relationships as inline `[[Doc Title]]` wiki-links inside sentences; entities are just docs with `type: place|person|...`.
+- `session`/`group` only for collection `index.md` files; a standalone doc is coerced to `note`.
+- Atomic file writes, then a debounced (5 s) `sync`; one evomem per agent; FTS5 fallback if evomem is down; a "KB Organizer" sub-agent extracts entities, dedups and links after conversations.
+- Evonic is AGPL-3.0, so copying its code has licence consequences; re-implementing the idea does not.
+
 ## Suggested changes (none applied)
 
 1. Stop writing full tool output into the KB: summarize each session to prompts plus a short outcome, or store transcripts outside the KB directory.
