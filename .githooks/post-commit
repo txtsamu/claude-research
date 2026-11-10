@@ -1,0 +1,12 @@
+#!/bin/sh
+# Mirror claude-research into the evomem KB on `home` after every commit.
+#
+# Why: the KB copy of this repo (/root/evomem-kb/claude-research) is only refreshed
+# when someone remembers to run the mirror by hand, which is how it went stale for
+# months. This makes every commit refresh it. Best effort and non-blocking: the
+# commit must never fail, hang or slow down because the mirror did.
+MIRROR="${EVOMEM_MIRROR:-$HOME/sessions/2026-11-10-evomem-fixes/mirror_claude_research.py}"
+LOG="${EVOMEM_MIRROR_LOG:-$HOME/.evomem-mirror.log}"
+[ -f "$MIRROR" ] || exit 0
+( setsid nohup python3 "$MIRROR" >>"$LOG" 2>&1 & ) >/dev/null 2>&1 || true
+exit 0
