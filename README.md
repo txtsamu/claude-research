@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-10 | [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | investigation |
 | 2026-11-10 | [hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md](hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md) | investigation |
 | 2026-11-10 | [evomem-usage-review-vs-upstream-2026-11-10.md](evomem-usage-review-vs-upstream-2026-11-10.md) | investigation |
 | 2026-11-10 | [evomem-claude-code-capture-broken-and-stale-kb-2026-11-10.md](evomem-claude-code-capture-broken-and-stale-kb-2026-11-10.md) | investigation |
@@ -280,6 +281,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | diskos, snowsky-disc, usb-gadget, configfs, acm, serial, ecm, rndis, usb-debug, source-menu | current: USB Debug row (single ACM serial shell, overlay on Local, ordered exit) built and checked with a PC attached; USB Ethernet impossible: the kernel has no ECM/RNDIS/NCM/EEM, TUN or PPP | 2026-11-10 |
 | [redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md](redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md) | android, apple-music, usb-dac, bit-perfect, redmi-note-12-pro, ruby, mt6877, audioflinger | current: 192 kHz plays end to end over USB DAC; 3.5 mm jack HAL capped at 44.1/48 kHz (resampled); 96 kHz was the song; software volume bypassed (media volume 15 = 0 dB, tested); Hi-ResAudio needs root, mtkclient unlock researched but not done | 2026-11-09 |
 | [redmi-10-selene-dac-compat-and-dap-setup-research.md](redmi-10-selene-dac-compat-and-dap-setup-research.md) | android, redmi-10, selene, mt6768, magisk, usb-dac, otg, dap, poweramp, miui | current: no Magisk module for DAC detection on MTK/Android 11; Hi-ResAudio refuses Android 11; jack hi-res at 192/96 kHz tested and reverted (CPU cost, weird sound); only lasting change is the Poweramp volume-key grant | 2026-11-09 |
 | [home-nixos-flake-lock-update-check-2026-11-06.md](home-nixos-flake-lock-update-check-2026-11-06.md) | nixos, home, flake-lock, nixpkgs, update, dry-activate, ci, k3s, cloudflared, kernel | current: PR #10 checked (CI green, build ok, dry-activate lists the restarts), not deployed | 2026-11-06 |
