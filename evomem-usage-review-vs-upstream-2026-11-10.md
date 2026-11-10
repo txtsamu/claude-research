@@ -3,14 +3,14 @@ type: investigation
 tags: [evomem, evonic, knowledge-base, claude-code-hooks, review]
 created: 2026-11-10
 last_verified: 2026-11-10
-status: implemented 2026-11-10 (Hermes plugin v0.2.0 live in log-only mode; evomem MCP bridge still configured)
+status: implemented 2026-11-10 (Hermes plugin v0.2.0 live in all 12 Hermes homes, distilled docs in log-only mode; MCP bridge removed)
 ---
 
 # evomem: is our usage correct? (review against anvie/evomem and anvie/evonic)
 
 ## Time estimate
 
-Review: about 10 minutes (measured). Implementation: launched 14:35 WIB, backup 2 s, four parallel agents (measured: hook 24 s, KB migration 2 min, recall/tools 10.6 min, writer/distiller 19 min), gateway restarted 14:58, verified with a real chat 15:03, so about 28 minutes in total. The planned 15 minutes was optimistic: the writer/distiller agent set the pace, and the gateway needs about 4 minutes to reconnect after a restart (measured; earlier restarts took 1.5 to 3.7 minutes).
+Review: about 10 minutes (measured). The MCP audit and the Cloudflare/TrueNAS fixes are in [hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md](hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md). Implementation: launched 14:35 WIB, backup 2 s, four parallel agents (measured: hook 24 s, KB migration 2 min, recall/tools 10.6 min, writer/distiller 19 min), gateway restarted 14:58, verified with a real chat 15:03, so about 28 minutes in total. The planned 15 minutes was optimistic: the writer/distiller agent set the pace, and the gateway needs about 4 minutes to reconnect after a restart (measured; earlier restarts took 1.5 to 3.7 minutes).
 
 ## Question
 
@@ -57,8 +57,8 @@ At the start of the session `/api/stats` and `/api/search` timed out at 60 s whi
 **Correction (found during implementation)**
 All 12 hook entries in `~/.claude/settings.json` call `hook.py` with no event argument, so the event is always "unknown" and `session-end` (the only caller of `trigger_sync`) never fired from Claude Code. The notes were pushed by a Hermes cron job, `evomem-claude-sync` (every 5 min, `/root/.hermes/cron/jobs.json`), which rsynced the JSONL from fedora and ran `sync_to_evomem.py`. The mirror step of that job (`mirror_claude_research.py`, hardlinking claude-research docs into the KB) is wanted and was left running.
 
-**Other observation**
-- `home` runs 13 long-lived `/root/evomem-bridge/mcp_server.py` processes (12 started 3.5 days ago at boot, one 1 day ago). MCP was removed on the fedora side on 2026-11-06, but these come from the Hermes side; whether they are needed or leaked was not checked.
+**Other observation (resolved)**
+- `home` ran 13 long-lived `/root/evomem-bridge/mcp_server.py` processes (12 started 3.5 days ago at boot, one 1 day ago). They were the Hermes stdio MCP bridge, one per Hermes MCP session. After the bridge entry was removed from the Hermes configs and the gateway restarted, none are left (`ps` count 0).
 
 ## Addendum: how Hermes memory works and how it is wired to evomem
 
@@ -75,7 +75,7 @@ gh api repos/anvie/evonic/contents/backend/agent_runtime/evomem_writer.py --jq .
 Hermes memory:
 - Built-in store: `~/.hermes/memories/MEMORY.md` (limit 4000 chars, currently 4048 bytes) and `USER.md` (limit 1375), injected into every session, writes need approval (`write_approval: true`).
 - On top of that, exactly one external provider plugin (`memory.provider`), with hooks: `system_prompt_block`, `prefetch` (per-turn recall injected into the prompt), `get_tool_schemas`/`handle_tool_call`, `sync_turn`, `on_memory_write`, `on_pre_compress`, `on_session_end`. Bundled providers: byterover, retaindb.
-- Current setup: `memory.provider: evomem` is a user plugin (`~/.hermes/plugins/evomem/__init__.py`) that is capture-only. It appends every turn (user 500 chars, assistant 2000 chars) and every memory write to JSONL, then runs `sync_to_evomem.py`, which turns the JSONL into one markdown note per session and calls `/api/sync`. `prefetch` and `system_prompt_block` return "" and it exposes no tools, so Hermes never gets evomem recall automatically. Search and capture go through a separate MCP server (`mcp_servers.evomem` -> `/root/evomem-bridge/mcp_server.py`), which is why `home` has many of those processes.
+- Setup before this work (replaced, see Implementation): `memory.provider: evomem` was a user plugin (`~/.hermes/plugins/evomem/__init__.py`) that was capture-only. It appended every turn (user 500 chars, assistant 2000 chars) and every memory write to JSONL, then ran `sync_to_evomem.py`, which turned the JSONL into one markdown note per session and called `/api/sync`. `prefetch` and `system_prompt_block` returned "" and it exposed no tools, so Hermes never got evomem recall automatically. Search and capture went through a separate MCP server (`mcp_servers.evomem` -> `/root/evomem-bridge/mcp_server.py`), which is why `home` had many of those processes. Each of the 11 profiles also carried its own copy of that plugin in `profiles/<name>/plugins/evomem/`.
 
 How the author's own agent platform (Evonic) uses evomem (`evomem_writer.py`):
 - Curated docs, not transcripts: frontmatter with `title`, `type`, `description`, `tags`, `aliases`, `created`, `updated`.
@@ -112,30 +112,28 @@ Backup first (2 s): `/root/evomem-backups/hermes-curation-20261110-143511/` on `
    - Subagent, cron and flush contexts do nothing. No raw transcripts are stored.
 4. Gateway: `systemctl restart hermes-gateway.service` at 14:58; fully connected 15:02:33 (3 platforms).
 5. Verification: 66 + 76 unit tests, plus a local smoke test against production (read-only), plus a 10.2 s end-to-end distill with the real model on `home` (two valid docs, KB unchanged), plus a real `hermes chat -Q` that called `evomem_search` through the plugin (0.02 s) and logged `Memory provider 'evomem' registered (5 tools)`.
-6. crawl4ai MCP server removed on request from the main `config.yaml` (it was `enabled: false`) and the 11 profile configs (it was enabled there and retried every 20 s against an unreachable host since 2026-10-25); each file parsed as valid YAML afterwards and the other MCP servers are unchanged. Takes effect at the next gateway restart.
+6. crawl4ai MCP server removed on request from all 12 Hermes configs (details in the MCP audit doc).
 
-Remaining / next: review `/root/evomem-proposed/` for a few real sessions, then set `EVOMEM_WRITE_MODE=live` for the gateway (systemd environment) and remove `mcp_servers.evomem` (and the stdio bridge) from the configs once the plugin tools are trusted; the 13 `mcp_server.py` processes belong to `hermes-mcp.service` (pre-warmed bridge). Rollback of the plugin: put `plugin-replaced/` back as `/root/.hermes/plugins/evomem` and restart the gateway.
+Remaining / next: review `/root/evomem-proposed/` after a few real sessions, then switch the gateway to `EVOMEM_WRITE_MODE=live` (systemd environment) so distilled docs are written into the KB; fix the 38 docs that fail `validate`. Rollback of the plugin: put `plugin-replaced/` back as `/root/.hermes/plugins/evomem` (main home) and the `<name>.plugin-old` copies under `bridge-removal/` into each profile, restore the configs from the backups, and restart the gateway.
 
-## Follow-up: bridge removal, MCP audit, Cloudflare token (2026-11-10, later)
+## Follow-up: bridge removal and profile plugins (15:06 WIB)
 
-- Removed `mcp_servers.evomem` (the stdio bridge) from all 12 Hermes configs and replaced the old transcript-recording plugin copy that each of the 11 profiles carried in its own `profiles/<name>/plugins/evomem/` with the new plugin (user plugins are profile-scoped); added `auxiliary.evomem_distill` to each profile (copy of that profile's `memory_query_rewrite` settings, timeout 90). Backups: `/root/evomem-backups/hermes-curation-20261110-143511/bridge-removal/`. Gateway restarted 15:06:23, reconnected 15:07:16 (about 53 s; the earlier 4-minute starts were dominated by retries against the unreachable crawl4ai host). Verified with real `hermes chat -Q` calls in the default and `dev` profiles: `Memory provider 'evomem' registered (5 tools)`, `evomem_search` 0.02 s, no `evomem-bridge/mcp_server.py` processes left.
-- MCP audit (Hermes session DB `state.db`, messages with `tool_name like 'mcp%'`, history since 2026-05-07): mikrotik 68 calls (53 in last 30 days), camofox 573 (156), truenas 19 (15), proxmox 224 (last 2026-09-25), cloudflare 5 (last 2026-08-19), notion 0, gowa 0. Per-server health (`hermes mcp test <name>`, then one read-only call through the MCP client on `home`): all 7 connect; mikrotik, proxmox, notion return real data; cloudflare returned 401 (invalid token, also invalid for the separate Claude Code config); truenas REST API returns HTTP 500 for every endpoint including `core/ping` (NAS-side problem, MCP server is fine); gowa answers but `logged_in=false`.
-- Cloudflare: a new user API token was supplied and written to all 12 Hermes configs and the Claude Code project config (backups: `.../cf-token-update/`, `~/sessions/2026-11-10-evomem-usage-check/claude.json.pre-cf-token`). Token check: `/user/tokens/verify` active, can read zones and list tunnels, but 401 on Workers KV and 403 on account read, so tools needing those scopes still fail. The Cloudflare MCP server returns zone data, but its results use a non-standard wrapper that the Python MCP SDK rejects; Hermes's own client was not tested. Gateway needs a restart to pick up the new env.
-- The token was pasted into chat, so it also reached the local hook log (`~/evomem-bridge/hooks/data/sessions/*.jsonl`, copied to `home` by the Hermes cron). Scrubbed from those files on both machines; it remains in the Claude Code session transcript.
-- Cloudflare MCP replacement (later the same day): the old `@cloudflare/mcp-server-cloudflare` stdio package fails inside Hermes with a `CallToolResult` validation error (its results use a non-standard `toolResult` wrapper), so it was switched to Cloudflare's official hosted server `https://mcp.cloudflare.com/mcp` (Streamable HTTP, `Authorization: Bearer <token>`, Code Mode: a few search/execute tools instead of 89). Test results: Python urllib's default user agent is blocked by Cloudflare (error 1010) but httpx (Hermes) and curl are not; with the current token the server answers `403 insufficient_scope: Token lacks required user:read or account:read scope`, so the token needs `User Details: Read` or `Account Settings: Read` added in the dashboard. Hermes entries were written with `enabled: false` (a failing entry makes gateway start slow, as crawl4ai did); set `enabled: true` and restart the gateway once the scope is added. Claude Code entry replaced with `type: http`. Backups: `.../cf-remote-switch/`, `~/sessions/2026-11-10-evomem-usage-check/claude.json.pre-cf-remote`. Sources: [Cloudflare MCP servers changelog 2026-07-28](https://developers.cloudflare.com/changelog/post/2026-07-28-cloudflare-mcp-servers-mcp-2026-07-28/), [cloudflare/mcp-server-cloudflare mirror listing](https://mcpservers.org/servers/cloudflare/mcp-server-cloudflare).
-- Cloudflare resolved (15:52 WIB): after two retests showed the edited user token still lacked `user:read`/`account:read` (probe sweep: DNS, tunnels, Access, Workers-read only), a new account-owned token (`cfat_...`) was supplied. It passes `/accounts/<id>/tokens/verify`, can read the account, KV, R2 and tunnels, and the hosted server `https://mcp.cloudflare.com/mcp` accepts it (tools: docs, search, execute, whoami). Written to all 12 Hermes configs (`enabled: true`, backups `.../cf-account-token/`) and the Claude Code project config (backup `~/sessions/2026-11-10-evomem-usage-check/claude.json.pre-cf-account-token`); gateway restarted 15:51 (about 1 minute); a real `hermes chat -Q` call to `mcp__cloudflare__whoami` succeeded in 0.26 s. The R2 access keys pasted alongside were not used or stored; token and keys were scrubbed from the hook logs but remain in the Claude Code session transcript. The earlier user token should be revoked. Testing without MCP: direct `curl`/Python calls to `https://api.cloudflare.com/client/v4/...` (token verify, then a per-resource GET sweep) maps a token's scopes.
-- Commands: see the probe scripts in `~/sessions/2026-11-10-evomem-usage-check/build/smoke/` (`mcp_calls2.py`, `mcp_probe.py`, `mcp_probe2.py`, `tn_probe.py`, `cf_check.py`, `set_cf_token.py`, `rm_bridge.py`).
+- Removed `mcp_servers.evomem` (the stdio bridge) from all 12 Hermes configs and replaced the old transcript-recording plugin copy in each of the 11 profiles with the new plugin (user plugins are profile-scoped, so removing the bridge alone would have left the profiles with no evomem tools). Added `auxiliary.evomem_distill` to each profile as a copy of that profile's own `memory_query_rewrite` settings with `timeout: 90` (10 profiles use the local `Bonsai-2-27B-CRACK` endpoint for it, so distillation there is only as available as that server; failures are swallowed and produce no doc). Backups: `/root/evomem-backups/hermes-curation-20261110-143511/bridge-removal/` (configs and `<name>.plugin-old`).
+- Gateway restarted 15:06:23, reconnected 15:07:16 (about 53 s). Verified with real `hermes chat -Q` calls in the default and `dev` profiles: `Memory provider 'evomem' registered (5 tools)`, `evomem_search` completed in 0.02 s, and no `evomem-bridge/mcp_server.py` processes remained.
+- MCP audit, crawl4ai, Cloudflare and TrueNAS: see [hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md](hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md).
 
 ## Suggested changes (status)
 
-1. Stop writing full tool output into the KB: summarize each session to prompts plus a short outcome, or store transcripts outside the KB directory.
-2. Add `description` to generated notes and use `type: note` (or move them under a workspace `index.md` as upstream expects); run `evomem validate --all`.
-3. Escape or strip leading `>` from transcript text so it cannot create typed edges.
-4. Sync only changed files and not while a session note is still being appended (for example at session end only), and raise the sync client timeout above the worst-case sync duration.
-5. Decide whether the 13 `mcp_server.py` processes on `home` are still needed.
+1. Stop writing full tool output into the KB. Done: no transcripts are written to the KB; the plugin stores only curated docs.
+2. Add `description` to generated notes and use `type: note`; run `evomem validate --all`. Done for generated docs (the writer always sets `description` and coerces `session`/`group` to `note`; validated 7/7 on a throwaway KB). Open: 38 existing docs still fail validation (34 `claude-research` docs lack `title` and `description`, 4 `lessons` lack `description`).
+3. Escape or strip leading `>` from transcript text so it cannot create typed edges. Done in the writer (`> key:` lines are neutralized); the dangling-link count dropped from 1,276 to 33 after the rebuild.
+4. Sync only changed files, not while a note is being appended, and use a longer client timeout. Done: no per-turn sync, a debounced sync (5 s, 60 s client timeout) only after a curated write, the fedora hook sync is off, and the old transcript sync script is a no-op.
+5. Decide whether the 13 `mcp_server.py` processes are needed. Done: they were the stdio bridge; it is removed and none remain.
+6. New, open: distilled docs are still in log-only mode (`EVOMEM_WRITE_MODE=log`); after reviewing `/root/evomem-proposed/`, set `live`.
 
 ## References
 
 - https://github.com/anvie/evomem (README, `src/server/mod.rs`, `src/validate.rs`, `src/capture.rs`, `src/cli.rs`)
 - https://github.com/anvie/evonic (README, memory engine section)
+- MCP follow-up: [hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md](hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md)
 - Related local write-ups: [evomem-utcp-endpoint-fork-and-deploy.md](evomem-utcp-endpoint-fork-and-deploy.md), [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md)

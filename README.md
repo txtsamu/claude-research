@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-10 | [hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md](hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md) | investigation |
 | 2026-11-10 | [evomem-usage-review-vs-upstream-2026-11-10.md](evomem-usage-review-vs-upstream-2026-11-10.md) | investigation |
 | 2026-11-09 | [horizon-offline-launcher-linux-prepare-failing.md](horizon-offline-launcher-linux-prepare-failing.md) | troubleshooting |
 | 2026-11-09 | [redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md](redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md) | investigation |
