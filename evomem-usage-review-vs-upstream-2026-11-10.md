@@ -81,6 +81,21 @@ How the author's own agent platform (Evonic) uses evomem (`evomem_writer.py`):
 - Atomic file writes, then a debounced (5 s) `sync`; one evomem per agent; FTS5 fallback if evomem is down; a "KB Organizer" sub-agent extracts entities, dedups and links after conversations.
 - Evonic is AGPL-3.0, so copying its code has licence consequences; re-implementing the idea does not.
 
+### Second memory system on Hermes, and does `hermes update` remove it?
+
+Checked in `/opt/hermes-source` (read-only, source reading only; no `hermes update` was run):
+
+```bash
+ssh moo@home 'sudo grep -n -i -E "one external|already registered" /opt/hermes-source/agent/memory_manager.py'
+ssh moo@home 'sudo sed -n 1,60p /opt/hermes-source/plugins/memory/__init__.py'      # loader order
+ssh moo@home 'sudo sed -n 1,40p /opt/hermes-source/hermes_cli/memory_provider_migration.py'
+ssh moo@home 'cd /opt/hermes-source && sudo git status --short'                     # empty = no local patches
+```
+
+- Built-in MEMORY.md/USER.md is always on, plus at most ONE external provider (`memory_manager.py`: "Only one external memory provider is allowed"). evomem as the external provider is therefore already the "second" system. A different external provider (byterover, honcho, ...) cannot run at the same time; evomem would have to drop to MCP-only (`mcp_servers.evomem`, which does not use the provider slot but gives no automatic capture or prefetch).
+- Update safety: the plugin lives in `/root/.hermes/plugins/evomem/` (outside the git checkout and venv), the `mcp_servers` entry and `plugins.enabled` live in `config.yaml`, and the bridge scripts live in `/root/evomem-bridge/`. `hermes update` only rewrites the source tree and venv; its `rmtree` calls act on recovery staging dirs. `memory_provider_migration.py` only acts on a fixed list of providers that left core (`hindsight, honcho, mem0, supermemory, openviking, retaindb, byterover, holographic`), and evomem is not in it. `/opt/hermes-source` has no local patches.
+- Remaining risks: a future change to the `MemoryProvider` interface could break the plugin (it would fail to load, not be deleted); a bundled provider named `evomem` would shadow the user plugin (loader order: bundled, then user); the hard-coded `/root/evomem-bridge` paths must stay.
+
 ## Suggested changes (none applied)
 
 1. Stop writing full tool output into the KB: summarize each session to prompts plus a short outcome, or store transcripts outside the KB directory.
