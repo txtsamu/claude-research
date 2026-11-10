@@ -3,14 +3,14 @@ type: investigation
 tags: [evomem, evonic, knowledge-base, claude-code-hooks, review]
 created: 2026-11-10
 last_verified: 2026-11-10
-status: findings-only (no changes made)
+status: implemented 2026-11-10 (Hermes plugin v0.2.0 live in log-only mode; evomem MCP bridge still configured)
 ---
 
 # evomem: is our usage correct? (review against anvie/evomem and anvie/evonic)
 
 ## Time estimate
 
-About 10 minutes of tool calls (measured, one session): repo reads about 2 min, local hook and server inspection about 5 min, write-up about 3 min. No fix was applied.
+Review: about 10 minutes (measured). Implementation: launched 14:35 WIB, backup 2 s, four parallel agents (measured: hook 24 s, KB migration 2 min, recall/tools 10.6 min, writer/distiller 19 min), gateway restarted 14:58, verified with a real chat 15:03, so about 28 minutes in total. The planned 15 minutes was optimistic: the writer/distiller agent set the pace, and the gateway needs about 4 minutes to reconnect after a restart (measured; earlier restarts took 1.5 to 3.7 minutes).
 
 ## Question
 
@@ -54,6 +54,9 @@ Upstream facts:
 **The earlier "evomem is hung" observation**
 At the start of the session `/api/stats` and `/api/search` timed out at 60 s while `/health` was fine. About 20 minutes later they answered normally (stats 1.2 s, search 0.5 s). During the outage the DB WAL was being written (mtime within seconds) and `last_synced_at` in stats (07:18:31 UTC) matched that write. So the timeouts were most likely a long sync holding the store mutex, not a dead service. Not directly proven: the lock was not observed. Correction to an earlier chat remark: `ps` showed 0.0% CPU and 6 MB RSS, but `%CPU` in `ps` is a lifetime average and does not show current load, so that was not evidence of idleness.
 
+**Correction (found during implementation)**
+All 12 hook entries in `~/.claude/settings.json` call `hook.py` with no event argument, so the event is always "unknown" and `session-end` (the only caller of `trigger_sync`) never fired from Claude Code. The notes were pushed by a Hermes cron job, `evomem-claude-sync` (every 5 min, `/root/.hermes/cron/jobs.json`), which rsynced the JSONL from fedora and ran `sync_to_evomem.py`. The mirror step of that job (`mirror_claude_research.py`, hardlinking claude-research docs into the KB) is wanted and was left running.
+
 **Other observation**
 - `home` runs 13 long-lived `/root/evomem-bridge/mcp_server.py` processes (12 started 3.5 days ago at boot, one 1 day ago). MCP was removed on the fedora side on 2026-11-06, but these come from the Hermes side; whether they are needed or leaked was not checked.
 
@@ -96,7 +99,24 @@ ssh moo@home 'cd /opt/hermes-source && sudo git status --short'                 
 - Update safety: the plugin lives in `/root/.hermes/plugins/evomem/` (outside the git checkout and venv), the `mcp_servers` entry and `plugins.enabled` live in `config.yaml`, and the bridge scripts live in `/root/evomem-bridge/`. `hermes update` only rewrites the source tree and venv; its `rmtree` calls act on recovery staging dirs. `memory_provider_migration.py` only acts on a fixed list of providers that left core (`hindsight, honcho, mem0, supermemory, openviking, retaindb, byterover, holographic`), and evomem is not in it. `/opt/hermes-source` has no local patches.
 - Remaining risks: a future change to the `MemoryProvider` interface could break the plugin (it would fail to load, not be deleted); a bundled provider named `evomem` would shadow the user plugin (loader order: bundled, then user); the hard-coded `/root/evomem-bridge` paths must stay.
 
-## Suggested changes (none applied)
+## Implementation (2026-11-10)
+
+Backup first (2 s): `/root/evomem-backups/hermes-curation-20261110-143511/` on `home` holds the old plugin (`plugin-replaced/`), `config.yaml` (and `.pre-deploy`), the hook scripts, `kb-markdown.tgz` (all KB markdown), `old-db/` and `crawl4ai-removal/`.
+
+1. KB migration (11 s downtime, rebuild 6 s, measured). `sync_to_evomem.py` on `home` replaced by a no-op (original `.orig-20261110`); `sessions/` (878) and `claude/` (299) moved to `/root/evomem-archive/` (README there has the rollback); stopped `evomem.service`, moved `.evomem.db*` away, `evomem --knowledge /root/evomem-kb init` then `sync`, started the service. Result: docs 1233 -> 56, chunks 54232 -> 514, DB 694 MB (+80 MB WAL) -> 5.2 MB, dangling links 1276 -> 33. `validate --all`: 38 invalid (34 `claude-research` docs lack `title`/`description`, 4 `lessons` lack `description`); not fixed.
+2. Claude Code hook on fedora: `trigger_sync()` in `~/evomem-bridge/hooks/hook.py` returns unless `EVOMEM_HOOK_SYNC=1` (original `hook.py.orig-20261110`).
+3. New Hermes plugin v0.2.0 in `/root/.hermes/plugins/evomem/` (`__init__.py`, `recall.py`, `tools.py`, `writer.py`, `distill.py`, `plugin.yaml`; sources in `~/sessions/2026-11-10-evomem-usage-check/build/plugin/`):
+   - `prefetch()` runs a bounded (1.2 s) background search for the current query and injects hits; hits tagged only `weak_semantic` are dropped, because on a small KB the hash-vector matches outrank real keyword matches (measured: `weak_semantic` scored 0.041 vs 0.035 for a `keyword_exact` hit).
+   - Tools `evomem_search/think/graph/doc/capture` call the REST API directly with short timeouts.
+   - `on_session_end` and `on_pre_compress` distil the conversation with the auxiliary model (`auxiliary.evomem_distill`, deepseek-flash, added to `config.yaml`) into curated docs (description, tags, inline `[[links]]`, secrets redacted, `> key:` lines neutralized); trivial sessions (under 2 user turns or 300 characters) are skipped. `EVOMEM_WRITE_MODE=log` (default) writes proposals to `/root/evomem-proposed/` only; set `live` to write into the KB.
+   - Subagent, cron and flush contexts do nothing. No raw transcripts are stored.
+4. Gateway: `systemctl restart hermes-gateway.service` at 14:58; fully connected 15:02:33 (3 platforms).
+5. Verification: 66 + 76 unit tests, plus a local smoke test against production (read-only), plus a 10.2 s end-to-end distill with the real model on `home` (two valid docs, KB unchanged), plus a real `hermes chat -Q` that called `evomem_search` through the plugin (0.02 s) and logged `Memory provider 'evomem' registered (5 tools)`.
+6. crawl4ai MCP server removed on request from the main `config.yaml` (it was `enabled: false`) and the 11 profile configs (it was enabled there and retried every 20 s against an unreachable host since 2026-10-25); each file parsed as valid YAML afterwards and the other MCP servers are unchanged. Takes effect at the next gateway restart.
+
+Remaining / next: review `/root/evomem-proposed/` for a few real sessions, then set `EVOMEM_WRITE_MODE=live` for the gateway (systemd environment) and remove `mcp_servers.evomem` (and the stdio bridge) from the configs once the plugin tools are trusted; the 13 `mcp_server.py` processes belong to `hermes-mcp.service` (pre-warmed bridge). Rollback of the plugin: put `plugin-replaced/` back as `/root/.hermes/plugins/evomem` and restart the gateway.
+
+## Suggested changes (status)
 
 1. Stop writing full tool output into the KB: summarize each session to prompts plus a short outcome, or store transcripts outside the KB directory.
 2. Add `description` to generated notes and use `type: note` (or move them under a workspace `index.md` as upstream expects); run `evomem validate --all`.
