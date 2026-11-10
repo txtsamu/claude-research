@@ -3,7 +3,7 @@ type: investigation
 tags: [hermes, mcp, cloudflare, truenas, crawl4ai, audit]
 created: 2026-11-10
 last_verified: 2026-11-10
-status: partly resolved (Cloudflare fixed; TrueNAS read-only key created but the REST-based tool cannot use it; gowa logged out; idle servers not yet removed)
+status: mostly resolved (Cloudflare fixed; TrueNAS replaced by a read-only WebSocket MCP server; gowa logged out; idle servers not yet removed)
 ---
 
 # Hermes MCP servers: usage audit, health check, Cloudflare and TrueNAS fixes
@@ -86,7 +86,18 @@ midclt call api_key.create '{"name":"hermes-mcp-2026-11","username":"hermes-mcp"
 - Health check of the NAS: pools `boot-pool` and `data` ONLINE (`data` 58% used, 3 TB free), cifs/iscsitarget/nfs/ssh running, 2 alerts (REST API deprecation, update available). The REST alert also says REST was used 5,463 times in 24 h from the `home` host; the broken Hermes key cannot be the source (its id does not exist), so another client on that host (probably the Kubernetes storage driver, not confirmed) also depends on REST and will break at 26.04.
 - Historic Hermes usage of the `truenas` tool was only read-only listings (smb/nfs share lists, iSCSI targets and sessions, NFS config, pool list), so a read-only owner is enough. Created user `hermes-mcp` (id 73, `READONLY_ADMIN`, no password, no shell, not SMB) and API key id 3.
 - Finding: over the deprecated REST API (`/api/v2.0/...`) the new key authenticates (`core/ping` 200) but every other endpoint returns an empty 403 (system, pool, sharing, iscsi, service, alert, disk, user, api_key), so the `truenas-mcp` npm package (REST) cannot work with a read-only key. Over the supported JSON-RPC 2.0 WebSocket API (`wss://<nas>/api/current`, `auth.login_with_api_key`) the same key works: `system.version`, `pool.query`, `sharing.smb.query`, `iscsi.target.query` return data and `auth.me` shows only `*_READ` roles.
-- Not applied: the Hermes configs still hold the old (deleted) key, so the `truenas` tool is still broken. Options: (1) replace `truenas-mcp` with a small read-only stdio MCP server that speaks the WebSocket API (also survives the 26.04 REST removal); (2) give the key a full-admin owner so REST accepts it (works now, but the tool can reboot or shut down the NAS and it dies at 26.04); (3) look for an existing WebSocket-based TrueNAS MCP server.
+- Options considered: (1) replace `truenas-mcp` with a small read-only stdio MCP server that speaks the WebSocket API (survives the 26.04 REST removal); (2) give the key a full-admin owner so REST accepts it (works now, but the tool can reboot or shut down the NAS and it dies at 26.04); (3) look for an existing WebSocket-based server. Option 1 was chosen.
+
+### TrueNAS resolution: read-only WebSocket MCP server (17:29 to 17:37 WIB)
+
+About 8 minutes measured from timestamps (estimate was 10): write 3 min, test and fix 3 min, deploy and verify 2 min.
+
+- Source: `/root/hermes-mcp-servers/truenas-ws/server.py` on `home` (copy and tests in `~/sessions/2026-11-10-evomem-usage-check/build/truenas-ws/`: `server.py`, `test_server.py`, `e2e_real.py`, `sweep.py`, `switch_configs.py`). It uses the MCP Python SDK 2.0 already in `/opt/hermes-venv` (`from mcp.server.mcpserver import MCPServer`; the older `mcp.server.fastmcp` does not exist there) and aiohttp, one authenticated WebSocket to `wss://<nas>/api/current` with reconnect, and `auth.login_with_api_key`.
+- Tools (all marked read-only): `truenas_system_info`, `truenas_pools`, `truenas_datasets`, `truenas_shares`, `truenas_iscsi`, `truenas_services`, `truenas_alerts`, `truenas_disks`, `truenas_query` (generic, any allowed method). Safety: an allowlist of read methods (no create/update/delete/start/stop/reboot), redaction of any field whose name contains secret, passw, hash, token, key, private, chap, credential or passphrase (booleans such as `key_loaded` are kept), output capped at 12,000 characters, the API key masked in errors.
+- A method sweep with the read-only key showed what that role can call: all pool, dataset, disk, share, iSCSI, service, interface, alert and config reads work; `zfs.snapshot.query` and `system.build_time` return `[EACCES] Not authorized`, `update.check_available` does not exist, and `pool.processes` and `disk.temperature_agg` need arguments, so those were removed from the allowlist and no snapshot tool is offered.
+- Tests: 16 unit and end-to-end tests with a fake WebSocket server (allowlist, no write verbs, parameter clamping, redaction, truncation, reconnect after a dropped socket, interleaved events, timeout, wrong key, key masking, full MCP stdio round trip) run on `home` with the Hermes venv: `cd /tmp/tnws-test && /opt/hermes-venv/bin/python3 -m unittest test_server` (do not use `python3 -I`, it hides the current directory). The tests found one real bug (`encryption_key` and `key_material` were not redacted) and a cosmetic one (double spaces after stripping HTML from alerts). Against the real NAS 9 of 9 tools worked and `pool.dataset.delete` and `user.query` were refused; two outputs were slimmed (iSCSI sessions and extents) because they hit the size cap.
+- Rollout: the `truenas` entry in all 12 Hermes configs now runs `/opt/hermes-venv/bin/python3 /root/hermes-mcp-servers/truenas-ws/server.py` with `TRUENAS_URL`, the new key (id 3, read-only user `hermes-mcp`) and `TRUENAS_VERIFY_SSL`; backups in `/root/evomem-backups/hermes-curation-20261110-143511/truenas-ws-switch/`. Gateway restarted (back in about 1 minute); `hermes mcp test truenas` lists 9 tools; a real `hermes chat -Q` call used `truenas_pools` (0.57 s) and `truenas_services` (0.08 s) and reported `data` ONLINE and cifs, iscsitarget, nfs, ssh running.
+- Side effects: the tool names changed (old: one `truenas` tool with category/action). The Hermes skills `devops/truenas-nas-administration/SKILL.md` and `devops/homelab-mcp-setup/references/truenas-mcp.md` still describe the old tool and were not edited. The local copy of the key was shredded; the key now exists only in the Hermes configs.
 
 ## Cloudflare: three failures in a row, then fixed
 
@@ -103,8 +114,8 @@ Secrets handling: pasted tokens and R2 keys reached the local hook log (`~/evome
 
 ## Status and next steps
 
-- Done: crawl4ai and the evomem bridge removed; Cloudflare working in Hermes and Claude Code.
-- Open: TrueNAS tool (read-only user `hermes-mcp` and key id 3 exist, but REST refuses read-only keys; needs a WebSocket-based server or a full-admin key, see the fix attempt above); gowa WhatsApp session logged out; optional removal of idle servers (proxmox, gowa, notion if not wanted); revoke the old `cfut_` token and rotate the R2 secret key.
+- Done: crawl4ai and the evomem bridge removed; Cloudflare working in Hermes and Claude Code; TrueNAS working again (see above).
+- Done: TrueNAS tool replaced by a read-only WebSocket MCP server (works for the new read-only key; survives the REST removal in TrueNAS 26.04); gowa WhatsApp session logged out; optional removal of idle servers (proxmox, gowa, notion if not wanted); revoke the old `cfut_` token and rotate the R2 secret key.
 - Probe scripts: `~/sessions/2026-11-10-evomem-usage-check/build/smoke/` (`mcp_calls2.py`, `mcp_probe.py`, `mcp_probe2.py`, `tn_probe.py`, `tn_probe2.py`, `cf_check.py`, `cf_remote.py`, `cf_new_test.py`, `rm_bridge.py`, `cf_enable.py`).
 
 ## References
