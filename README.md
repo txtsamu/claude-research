@@ -44,6 +44,7 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-11-10 | [hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md](hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md) | investigation |
 | 2026-11-10 | [evomem-usage-review-vs-upstream-2026-11-10.md](evomem-usage-review-vs-upstream-2026-11-10.md) | investigation |
 | 2026-11-10 | [evomem-claude-code-capture-broken-and-stale-kb-2026-11-10.md](evomem-claude-code-capture-broken-and-stale-kb-2026-11-10.md) | investigation |
+| 2026-11-10 | [diskos-boot-starting-state-and-boot-net-errors-2026-11-10.md](diskos-boot-starting-state-and-boot-net-errors-2026-11-10.md) | investigation |
 | 2026-11-09 | [horizon-offline-launcher-linux-prepare-failing.md](horizon-offline-launcher-linux-prepare-failing.md) | troubleshooting |
 | 2026-11-09 | [redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md](redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac.md) | investigation |
 | 2026-11-09 | [redmi-10-selene-dac-compat-and-dap-setup-research.md](redmi-10-selene-dac-compat-and-dap-setup-research.md) | investigation |

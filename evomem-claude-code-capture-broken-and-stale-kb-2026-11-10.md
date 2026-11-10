@@ -12,7 +12,7 @@ Question from the user during a diskOS session: "investigate why evomem seems no
 
 ## Time estimate
 
-Measured: the investigation subagent took about 2.2 minutes (134 s, 28 tool calls); my spot-check of its main claims took about 1 minute. Fixes are not applied; see "Proposed fixes" (each is a few minutes of edits, the mirror fix depends on access to the homelab host).
+Measured: the investigation subagent took about 2.2 minutes (134 s, 28 tool calls); my spot-check of its main claims took about 1 minute. The fixes were applied the same day: see "Fixes applied" (about 12 min measured, most of it the mirror work).
 
 ## Bottom line
 
@@ -72,16 +72,24 @@ The CLI neither filters nor warns, and `evomem think` does the same. Absent cont
 
 Server down or slow; cold-search timeout; stale cached vocabulary; the rtk hook rewriting `evomem` commands; instruction files failing to load.
 
-## Proposed fixes (none applied, need the user's decision)
+## Fixes applied (same day, after the user said "apply the evomem fixes")
 
-1. Choose one capture strategy for Claude Code: (a) pass the event to the hook (`hook.py session-start`, `prompt-submit`, `post-tool-use`, `session-end`) plus a curated distill step like Hermes's instead of raw transcripts; or (b) drop the hooks and rely on explicit `evomem capture` at the end of non-trivial sessions, with a rule in CLAUDE.md.
-2. Rewrite `~/.claude/evomem.md` and the skill text: no auto-capture, history before 2026-11-10 is archived, capture is manual, treat `weak_semantic`-only results as "not found".
-3. Fix the mirror: on home check whether `mirror_claude_research.py` is still scheduled and that `/root/evomem-kb/claude-research` is populated from `~/claude-research`; add `title`/`description` frontmatter; re-sync.
-4. Make the CLI drop `weak_semantic`-only hits by default or print "no strong match" (the Hermes plugin already does).
-5. Add `Bash(evomem:*)` to the allow list; remove stale `mcp__evomem__*` entries.
-6. Do not batch `evomem` with commands the rtk hook rewrites.
+Backups first: `~/sessions/2026-11-06-evomem-utcp/backups/*.bak-20261110` (CLI, `settings.json`, `settings.local.json`, `evomem.md`, `SKILL.md`); on `home` `/root/evomem-backups/claude-research-kb-pre-mirror-20261110.tgz`. Working dir: `~/sessions/2026-11-10-evomem-fixes/`.
 
-Not inspected: home's cron/mirror state, server logs, the archive.
+1. Capture strategy: option (b), manual. Removed the 11 `hook.py` entries from `~/.claude/settings.json` (only the rtk `PreToolUse` Bash hook is left), with a python json edit and a validity check:
+   ```bash
+   python3 - <<'PY'   # drop every hook whose command contains evomem-bridge/hooks/hook.py, delete emptied events
+   ```
+   Result: `hooks` = `{'PreToolUse': 1}`, `grep -c hook.py settings.json` = 0. The 185 files / 56 MB in `~/evomem-bridge/hooks/data/sessions` were left in place (not deleted).
+2. Instructions: rewrote `~/.claude/evomem.md` and updated `~/.claude/skills/evomem/SKILL.md` (no auto-capture, history archived, "no strong match" means not found, fall back to grepping `~/claude-research`, do not batch with rtk-rewritten commands, capture by hand at the end of a non-trivial session).
+3. `settings.local.json`: removed the `mcp__evomem__*` entries from allow and deny, added `Bash(evomem *)`.
+4. CLI `~/sessions/2026-11-06-evomem-utcp/bin/evomem`: `search` hides hits whose evidence is only `weak_semantic` and prints `no strong match: N weak_semantic hit(s) hidden ...`; `--all` shows them. Tested: `evomem search snowsky disc debug` now returns the diskOS docs after the mirror, and an off-topic query returns "no strong match".
+5. Mirror. Root cause found read-only on `home` (`ssh home`, passwordless `sudo`, NixOS): `/root/claude-research` no longer exists, no cron/timer runs `mirror_claude_research.py` (the only matching job is the retired `evomem-claude-sync`), and the 34 indexed docs are static copies from 2026-09-06 (hardlink count 1). Fix: new `~/sessions/2026-11-10-evomem-fixes/mirror_claude_research.py` makes COPIES of `~/claude-research/*.md` (not README.md; originals untouched) with `title` (H1) and `description` (first paragraph, max 220 chars) added, `type` coerced to `note` when it is not in the validator's list (`note|session|group|person|place|venue|event|organization|company|product|contact`; the original value is kept as `kind:`), and unquoted `key: a: b` values quoted (4 docs had broken YAML); then tars them to `/root/evomem-kb/claude-research` on `home` over ssh and POSTs `/api/sync`. Iterations: first push 169 added with 4 YAML errors, then fixed the quoting, then the type list, then the 4 `lessons/` docs (added `description`) and the 5 server-only docs (pulled, transformed, pushed back). Final: KB 58 -> 231 docs, `sync` errors `[]`, `evomem validate --all` on home: 211 valid, 0 invalid (was 0 of 38 valid).
+6. `~/.claude/evomem.md` rule now says to run `python3 ~/sessions/2026-11-10-evomem-fixes/mirror_claude_research.py` after each new write-up (about 5 s), then one `evomem capture`. Not done: a git `post-commit` hook to run it automatically.
+
+Time (measured): fixes 1-4 about 4 min, mirror investigation and script with its four iterations about 8 min.
+
+Not inspected: server logs and the archive. Not changed: the Hermes distiller (still `EVOMEM_WRITE_MODE=log`), the 56 MB of local hook data.
 
 ## Commands used (all read-only)
 
