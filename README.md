@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-11 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | troubleshooting |
 | 2026-11-10 | [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | investigation |
 | 2026-11-10 | [hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md](hermes-mcp-servers-audit-cloudflare-truenas-2026-11-10.md) | investigation |
 | 2026-11-10 | [evomem-usage-review-vs-upstream-2026-11-10.md](evomem-usage-review-vs-upstream-2026-11-10.md) | investigation |
@@ -230,6 +231,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | hermes, hermes-gateway, telegram, systemd, home, runtime-draining, restart, cron | 2026-11-11 |
 | [immich-medium-tests-leak-exiftool-and-postgres.md](immich-medium-tests-leak-exiftool-and-postgres.md) | immich, vitest, exiftool, testcontainers, ryuk, podman, memory, orphan-processes | 2026-11-05 |
 | [arm4-uptime-kuma-flapping-and-persistent-journal.md](arm4-uptime-kuma-flapping-and-persistent-journal.md) | arm4, armbian, uptime-kuma, victoriametrics, journald, armbian-ramlog, cloudflared, flapping | 2026-10-29 |
 | [evomem-search-timeout-cached-vocabulary-fix.md](evomem-search-timeout-cached-vocabulary-fix.md) | evomem, mcp, timeout, search, latency, sqlite, embeddings | 2026-10-27 |
