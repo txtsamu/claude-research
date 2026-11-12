@@ -11,3 +11,7 @@ Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 ### Domain docs
 
 Single-context layout (root `CONTEXT.md` + `docs/adr/`, created lazily as needed). See `docs/agents/domain.md`.
+
+### Session notes
+
+Every session gets a root-level kebab-case note and a push. Format: see the "Document every session in claude-research and push" instruction in `~/.claude/CLAUDE.md` and `~/.config/opencode/AGENTS.md`.
