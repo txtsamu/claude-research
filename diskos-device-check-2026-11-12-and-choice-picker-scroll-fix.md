@@ -23,6 +23,11 @@ Request: "verify on the Disc" — check the 2026-11-11 work that had never been 
 | Working Mode picker (Quick Settings > source) | Local Playback (check) with USB Audio under it, then USB DAC, Bluetooth Receiving, USB Storage, USB Debug ("Shell over the USB cable"). One-line descriptions. |
 | Settings > Audio > Max Volume | Round chevrons and a round knob; value `100`; description fully visible ("Cap the maximum volume level (protects your ears / headphones)."). Two +10 taps went 100 → 120 and stopped there (row max); two -10 taps back to 100. `diskos.conf` followed each step. |
 | Settings > Display > Theme | Long picker opens with `terminal` marked (fourth row) and the swatches draw. |
+| Quick Settings > power off | Opens the "Power off?" dialog ("Closes the card safely, then switches the device off" / Cancel / Power off). Cancelled so the Disc stayed up for the remaining checks. |
+
+## Device state afterwards
+
+The Disc was left on the terminal theme, EQ Off, Max Volume 100. About 5 minutes after the last touch it dropped off Wi-Fi by itself: `ssh disc` answered "No route to host", port 2222 was closed and there was no ARP entry, with `stock_power_save=300` in `diskos.conf`. That is the stock idle power-save, so it had already powered itself off when asked to power it off; the shutdown could not be driven from the shell at that point. Expect the same after an idle check session: the device leaves the network without a toast.
 
 ## The bug the check found
 
