@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-12 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | how-to |
 | 2026-11-11 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | troubleshooting |
 | 2026-11-10 | [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | investigation |
 | 2026-11-11 | [diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md](diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md) | troubleshooting |
@@ -148,6 +149,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | diskos, snowsky-disc, verification, apps-page, equalizer, settings, quick-settings, max-volume, working-mode, tinj, screenshots, upstream | 2026-11-12 |
 | [px2-perses-monitoring-added.md](px2-perses-monitoring-added.md) | perses, victoriametrics, vmagent, proxmox, px2, node-exporter, blackbox, dashboard, k3s, home, monitoring, pve-exporter | 2026-11-07 |
 | [memos-k3s-deploy-on-home.md](memos-k3s-deploy-on-home.md) | memos, memogram, telegram, k3s, metallb, truenas-iscsi, service-links, caddy, route-manager | 2026-11-07 |
 | [hermes-to-evonic-migration.md](hermes-to-evonic-migration.md) | hermes, evonic, telegram, cron, systemd-timers, nixos, home, migration, evomem, multi-agent, profiles | 2026-11-06 |

@@ -48,6 +48,7 @@ Process notes: the agent and I shared one worktree (`~/diskos/diskos-eqapps`) wi
 ## Not verified
 
 - Nothing was seen on the Disc. My `tinj` touch commands did not move the screen after the hot-load (the taps were logged, the screenshots stayed on Home), so the new Apps tile, the preset list and the "EQ read failed" toast were not looked at. The user asked for the merge anyway.
+- Update 2026-11-12: the tile, the preset list and applying a preset were checked on the Disc, and the picker's scroll-to-selection was fixed; see [[diskos-device-check-2026-11-12-and-choice-picker-scroll-fix]]. The "EQ read failed" toast is still unexercised.
 - No EQ preset was applied or listened to; the Disc stayed on Off.
 
 ## Time estimate
