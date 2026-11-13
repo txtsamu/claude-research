@@ -132,6 +132,39 @@ The package's `%post` tries to import a key into the RPM database while the RPM 
 - No tenant/licence was available, so the sign-in flow and policy sync are untested end to end.
 - Whether the repo path auto-upgrades cleanly (`dnf upgrade`) across a major version was not exercised.
 
+## Uninstall and cleanup (same day)
+
+The package's removal is incomplete. Its `%preun` deletes the systemd unit, but the repo file, the imported signing key, `/opt/paloaltonetworks`, `/var/log/pab` and `/etc/default/prisma-access-browser` all survive `dnf remove`. Full sweep:
+
+```bash
+sudo systemctl disable --now pab-protection.service
+sudo dnf remove -y prisma-access-browser-stable
+sudo rm -f /etc/yum.repos.d/prisma-access-browser.repo
+sudo rm -f /etc/default/prisma-access-browser
+sudo rmdir /opt/paloaltonetworks /var/log/pab
+sudo rpmkeys --delete 50ad129e9687023e085c68e18f8b8dd2f5f7c303
+sudo dnf clean all
+```
+
+`/etc/default/prisma-access-browser` contained only `repo_add_once="true"`, so it is scriptlet litter, not configuration worth keeping. The BCC workaround also came out, since nothing else on the box wanted it:
+
+```bash
+sudo dnf remove -y python3-bcc   # also takes llvm20-libs, compiler-rt20, clang20-resource-files: 317 MiB
+```
+
+Post-removal verification:
+
+```
+$ rpm -qa | grep -iE 'prisma|paloalto|talon|bcc'
+(nothing)
+$ systemctl list-unit-files | grep -i pab
+(nothing)
+$ sudo find / -xdev \( -iname '*prisma-access*' -o -iname '*paloaltonetworks*' \)
+(nothing)
+```
+
+`journalctl` still holds 63 historical lines from the crash-looping protector service. They are log history, not files, and age out on their own.
+
 ## Related
 
 - [[cosmic-de-install-fedora43]]
