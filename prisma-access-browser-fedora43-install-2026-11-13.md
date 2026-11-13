@@ -165,6 +165,42 @@ $ sudo find / -xdev \( -iname '*prisma-access*' -o -iname '*paloaltonetworks*' \
 
 `journalctl` still holds 63 historical lines from the crash-looping protector service. They are log history, not files, and age out on their own.
 
+## Second sweep: user-level leftovers (later same day)
+
+`dnf remove` never touches the per-user browser profile, so a follow-up "uninstall and clean up leftover files" request found the package already gone but 289 MB of user data still on disk:
+
+```
+$ du -sh "$HOME/.config/Palo Alto Networks" "$HOME/.cache/Palo Alto Networks"
+257M    /home/moo/.config/Palo Alto Networks
+32M     /home/moo/.cache/Palo Alto Networks
+$ ls ~/.cache/libdnf5/ | grep prisma
+prisma-access-browser-1b17910d51609d01
+prisma-access-browser-f2a7aa2133ee3c0f
+```
+
+The 257 MB profile held a Chromium tree (`Default/Bookmarks`, `History`, `Login Data`, extensions under `Default/Extensions/gdhaibkimkeghllnpodfpoamchapggea`). It was safe to drop: 0 bookmarks, 43 history rows, all from the failed sign-in attempts.
+
+```bash
+rm -rf "$HOME/.config/Palo Alto Networks" "$HOME/.cache/Palo Alto Networks"
+rm -rf "$HOME"/.cache/libdnf5/prisma-access-browser-*
+```
+
+Also removed a 16K Firefox `localStorage` entry for `docs.paloaltonetworks.com` (`~/.mozilla/firefox/<profile>/storage/default/https+++docs.paloaltonetworks.com`), a trace of reading the install docs, not part of the app.
+
+Final state, both user and system wide:
+
+```
+$ find "$HOME" -xdev \( -iname '*prisma-access*' -o -iname '*paloaltonetworks*' -o -iname '*palo alto networks*' \) \
+    -not -path '*/claude-research/*' -not -path '*/sessions/*' -not -path '*/node_modules/*'
+(nothing)
+$ sudo find / -xdev \( -iname '*prisma-access*' -o -iname '*paloaltonetworks*' -o -iname 'pab-protection*' \)
+(nothing)
+$ rpm -qa | grep -iE 'prisma|paloalto|talon'
+(nothing)
+```
+
+Only `journalctl -u pab-protection.service` history remains (91 lines after the second launch attempt). Deleting it would need `journalctl --vacuum-time`, which is not worth nuking unrelated logs for.
+
 ## Related
 
 - [[cosmic-de-install-fedora43]]
