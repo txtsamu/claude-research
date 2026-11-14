@@ -2,7 +2,7 @@
 type: investigation
 tags: [samsung, tizen, tv, root, kants2, uep, kernel-exploit, armv7l, dotnet, dotnet-launcher, aul, capabilities, remotepc, cifs, smack, ghidra, reverse-engineering, persistence, profile.d, raw-block, sdb]
 created: 2026-10-23
-last_verified: 2026-10-29
+last_verified: 2026-11-14
 status: current
 ---
 
@@ -988,7 +988,7 @@ UEP is built into the kernel, not a loadable module: `/sys/module/uep` exposes o
 `version` (`0.0.1`), no parameters, no `.text`/`.data` sections, and `/proc/kallsyms` and
 `/proc/modules` give nothing usable.
 
-#### Mechanism, measured 2026-10-28: two layers, and the verdict is per-inode
+#### Mechanism: two layers, a per-inode verdict, and a mount-writability gate
 
 Re-checked live on this set (`UA43T6500AKXXD`, kernel 4.1.10 built 2026-07-28, UEP enforcing):
 
@@ -996,8 +996,10 @@ Re-checked live on this set (`UA43T6500AKXXD`, kernel 4.1.10 built 2026-07-28, U
 - A **byte-identical** copy of it (md5 `db5dfbb6504f70853a57af8967c6cd85` on both files) on the
   writable vdfs `/opt` gives `Operation not permitted`, with the kernel verdict in dmesg:
   `[E][UEP]: [SfdUepHandleVerificationResult] file …/sh_copy is not signed. Sign it.(fsname:vdfs, mnt_flags:1020)`.
-- The same copy on tmpfs (`/tmp`) gets an identical refusal, `(fsname:tmpf, mnt_flags:1020)`: the
-  flag word does not differ between the two filesystems, so mount flags are not what decides.
+- The same copy on tmpfs (`/tmp`) gets an identical refusal, `(fsname:tmpf, mnt_flags:1020)`. The
+  flag word is the same across two different filesystem types, so that word carries no signal. It
+  does *not* follow that the mount is irrelevant: the read-only control below shows that mount
+  writability does decide.
 - `/opt/hermes_root`, the SUID copy of `/bin/sh` — same md5, and `chsmack` reports the **same label
   `_`** as the original — is still refused, still "not signed". Label and payload are both
   eliminated; what is missing is state attached to the inode.
@@ -1005,9 +1007,11 @@ Re-checked live on this set (`UA43T6500AKXXD`, kernel 4.1.10 built 2026-07-28, U
   or `/tmp` gives `failed to map segment from shared object`, logged by the **same**
   `SfdUepHandleVerificationResult` handler.
 
-The verdict is therefore not a function of the file's bytes, path, label or mount: it is per-inode
-signature metadata that no copy carries. `execve` and `PROT_EXEC` mappings reach the same kernel
-handler, so "copy a signed binary somewhere writable" is closed wherever you copy it.
+So the verdict is not a function of the file's bytes, path, or SMACK label: it is per-inode
+signature metadata that no copy carries. The mount is a separate condition, and the read-only
+control below (run on a Q70T, not yet reproduced here) shows a read-only mount is accepted.
+`execve` and `PROT_EXEC` mappings reach the same kernel handler, so "copy a signed binary onto
+writable storage" is closed wherever you copy it while UEP is armed.
 
 The `[uep][bash]` line above comes from a **different, user-space** layer: `/bin/sh` and `/bin/bash`
 both contain the strings `the file is NOT signed`, `verifyFile` and `/usr/lib/libkUEPUser.so`, and
@@ -1019,6 +1023,31 @@ This settles a reading published by a third party from the same observations
 ([cfloinc/samsung-q70t-tizen-root](https://github.com/cfloinc/samsung-q70t-tizen-root), raised in
 issue #29): "the gate is the path" does not hold here. A copy that keeps the path-visible
 attributes (same bytes, same label `_`) is still refused, and the kernel calls it "not signed".
+That author accepted the correction on 2026-10-29 and moved their own docs to the per-inode
+model, then returned the read-only-mount qualification above on 2026-11-09.
+
+#### Two controls from the Q70T, reported 2026-11-09 (issue #29)
+
+cfloinc ran the two tests this set could not run (as `uid 901` there is no writable path on a
+read-only mount, so the second one was unreachable here), on `T-NKMAKUC-2743.0`:
+
+- **UEP-down retest.** With the three gates forced to `00 30 a0 e3`,
+  `LD_PRELOAD=/opt/usr/share/tvroot/libvconf-copy.so /bin/true` runs cleanly, and a copy of
+  `/bin/bash` in `/opt` executes. With UEP up, both are refused (`failed to map segment from shared
+  object` for the preload, `Operation not permitted` for exec). The executable-mapping refusal is
+  therefore UEP itself, reached through a second hook, not a separate path-based mechanism. Same
+  conclusion the shared `SfdUepHandleVerificationResult` dmesg line pointed at here.
+- **Read-only bind-mount control, UEP up.** An unsigned copy of the signed library in `/opt` is
+  refused, while the same copy behind `mount -o remount,ro,bind` is accepted: ld.so logs
+  `calling init: /opt/usr/share/tvroot/ro-bind/libvconf-copy.so`, with `/proc/mounts` showing
+  `type vdfs (ro,relatime,dncs)`.
+
+The second control changes the scope of the conclusion: an unsigned copy is executable **when the
+mount holding it is read-only**, so the per-inode verdict is conditional on mount writability
+rather than absolute. That is cfloinc's read of their own measurement, and it is the one variable
+neither side had controlled until then. The practical guidance is unchanged (copying a signed
+binary onto writable storage never yields an executable copy); "no copy is executable anywhere"
+was too strong. Reproducing both controls on this set is open.
 
 ### Primitive: `/dev/ntkhdma`
 
