@@ -16,7 +16,8 @@ By the time the measurements were wanted, the JA11 had been unplugged: `dmesg` `
 
 - USB `2972:0102`, `bcdUSB 2.01`, high speed, one configuration.
 - Chip: **KT Micro KT02H20** DSP, not a Cirrus, ESS or AKM DAC. Confirmed by the open tool `Ircama/ja11-config`, which targets `2972:0102` as a known KT02H20 device.
-- FiiO rates it at **30 mW per channel into 32 ohms** (PCM up to 384 kHz/32-bit, DSD128, 3.5 mm single-ended, mic and CTIA/OMTP inline controls).
+- FiiO rates it at **30 mW per channel into 32 ohms** (PCM up to 384 kHz/32-bit, DSD128 (DoP only), 3.5 mm single-ended, mic and CTIA/OMTP inline controls), output impedance 0.5 ohm, output noise 1.7 uV.
+- Published draw: **0.03 A / 0.16 W** (Ichos Reviews and the same reviewer on Head-Fi, 2024), idle until a headphone is plugged in.
 - DSP features, all configurable over USB HID: 5-band parametric EQ, five DAC reconstruction filters (FAST-LL, FAST-PC, Slow-LL, Slow-PC, NON-OS), and a global preamp of **-12 to +12 dB**, persistable to the dongle's flash.
 
 ## How the port powers it
@@ -45,17 +46,23 @@ That sets the supply ceiling at `5.15 V x 0.5 A = 2.6 W`.
 
 ## Power: what the JA11 actually takes
 
-The Disc has no VBUS current telemetry. `/sys/class/power_supply/cw221X-bat/current_now` reads `0`, there is no `power_now`, the OTG port exposes no accounting, and the SGM41513's ADCs measure the input side, not the boost output. So there is no honest live wattage number.
+Published measurements, not estimates. Ichos Reviews (Petros Laskis, July 2024) and the same reviewer's Head-Fi entry both state **0.03 A / 0.16 W**, and add that "the JA11 remains inactive until you connect an earphone, ensuring no power is wasted". At 5.15 V that is `0.03 A x 5.15 V = 0.155 W`, so the two figures agree.
 
-The device's own descriptor is the usable figure:
+Against the port's 2.6 W ceiling that is about **16x headroom**, and it means the `BOOST_LIM = 0.5 A` setting is nowhere near a bottleneck. Draw nothing when idle, 0.16 W when playing sensitive IEMs: that is the whole power story.
+
+The USB descriptor over-declares for safety:
 
 ```
 /sys/bus/usb/devices/1-1/bMaxPower = 98mA
 ```
 
-At 5.15 V that is **0.50 W as a declared ceiling**, against 2.6 W available. So the JA11 uses at most a fifth of what the port can supply, and a bus-powered dongle of this class idles far below that. On the battery side, a 0.5 A boost load would cost about 2.75 W; the JA11's real draw is a fraction of it. Those are estimates, not measurements.
+At 5.15 V that is 0.50 W, three times the measured figure. USB devices routinely declare a class budget rather than their real draw, which is exactly why the measured number matters.
 
-Raising `BOOST_LIM` to 1.2 A is possible in principle (write REG02 bit 7), but pointless here: the JA11 never asks for more than 98 mA, more current cannot raise its 30 mW amplifier, and writing a charger register behind the driver's back invites the watchdog to undo it.
+On the battery side, 0.16 W through the boost at 93.5 percent efficiency costs about **0.17 W**. Negligible next to the SoC, the screen and Wi-Fi.
+
+The Disc still cannot measure any of this live. `/sys/class/power_supply/cw221X-bat/current_now` reads `0`, there is no `power_now`, the OTG port exposes no accounting, and the SGM41513's ADCs measure the input side, not the boost output.
+
+Raising `BOOST_LIM` to 1.2 A is possible in principle (write REG02 bit 7), but pointless here: the JA11 measured 0.03 A against a 0.5 A allowance, more current cannot raise its 30 mW amplifier, and writing a charger register behind the driver's back invites the watchdog to undo it.
 
 ## Where the missing volume actually is
 
