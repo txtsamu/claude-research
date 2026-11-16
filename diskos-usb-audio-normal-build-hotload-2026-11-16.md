@@ -1,16 +1,18 @@
 ---
 type: build-log
-tags: [diskos, snowsky-disc, fiio, usb-audio, usb-dac, external-dac, uac, hotload, mipsel, lvgl, working-mode, screenshot]
+tags: [diskos, snowsky-disc, fiio, usb-audio, usb-dac, external-dac, uac, hotload, flash, mask-rom, mipsel, lvgl, working-mode, screenshot]
 created: 2026-11-16
 last_verified: 2026-11-16
 status: current
 ---
 
-# diskOS: USB Audio (external USB DAC) hot-loaded as a normal build row
+# diskOS: USB Audio (external USB DAC) as a normal build row, now flashed
 
-Request: "can we implement that feature to our build? i think its the same USB Audio feature because it makes my device use external USB DAC output", then "hot load latest fix to my device".
+Request: "can we implement that feature to our build? i think its the same USB Audio feature because it makes my device use external USB DAC output", then "hot load latest fix to my device", finally "lets flash our latest fix to snowsky disc".
 
-Repo `/home/moo/diskos/diskos`, branch `main`, commit `3726ebc` ("USB Audio: show the external DAC row in the normal build"), working tree clean. Binary `ui/mq_ui`, md5 `ceb84837af9264fde610f279646b1952`, size 4,349,816, built with `mipsel-linux-musl-gcc (GCC) 11.2.0` from `/opt/mipsel-n2008-musl-cross`.
+**Outcome: flashed permanently on 2026-11-16 at 18:48:38** (`result: 0x600DF10C [F001] SUCCESS`, 19m50s write, bad blocks 128 and 522 skipped, backup `g0021`). Booted on the flashed image and verified: `/usr/data/mq_ui` md5 `ceb84837af9264fde610f279646b1952`, `S97diskos_install` logged `already installed + verified -> repaired +x/symlink, booting diskOS`, the Working Mode picker shows **Local Playback / USB Audio / USB DAC / Bluetooth Receiving** with no SPDIF row, and `max_vol=120` plus `replay_gain=0` survived the write in `/usr/data/diskos.conf`. No hot-load is needed any more.
+
+Repo `/home/moo/diskos/diskos`, branch `main`, commit `3726ebc` ("USB Audio: show the external DAC row in the normal build"), working tree clean, pushed to `origin/main` the same day (`027c24b..3726ebc`). Binary `ui/mq_ui`, md5 `ceb84837af9264fde610f279646b1952`, size 4,349,816, built with `mipsel-linux-musl-gcc (GCC) 11.2.0` from `/opt/mipsel-n2008-musl-cross`.
 
 ## What changed in the source
 
@@ -65,6 +67,7 @@ To return the route to the internal DAC, the `tap` tool from `/home/moo/sessions
 
 ## Gotchas
 
+- With no DAC plugged in, the live route falls back to the internal DAC and the picker marks **Local Playback** with an asterisk, even though `usb_audio_on=1` is still saved. Plug the JA11 back in and it attaches again.
 - Every manual relaunch can race the `fiio_init.sh` watchdog, which may respawn stock `/usr/bin/mq_ui`. Poll for a PID whose `/proc/<pid>/exe` is `/usr/data/mq_ui`, then kill only instances whose exe is exactly `/usr/bin/mq_ui`. Never kill `mq_player`; that hard-reboots the MCU.
 - The hot-load is temporary. A reboot, or leaving USB Storage, makes `S97diskos_install` restore the flashed build, so USB Audio disappears again. See [[diskos-hotload-gotchas-test-outputs-usb-storage-reboot]].
 - Leaving the route on `OUT_USB` with no DAC attached means silent output. Return to Local Playback when no DAC is plugged in.
@@ -107,9 +110,9 @@ Also do not misread `workmode 1 -> 0102000C0001` in `diskos_boot.log`. It is `ui
 ## Not verified
 
 - That the JA11's analogue output is audible. The USB stream, the native-rate retune, the feature-unit volume and the feedback loop are all confirmed; the ear test is the user's.
-- Behaviour after a reboot or after leaving USB Storage, which revert to the flashed build.
+- Leaving USB Storage after the flash. The prior concern (revert to the flashed build) is now moot because the flashed build is this one, but the restart path itself was not retested.
 - Upstream PR #16's netlink `a60a` unplug/replug latching against this procfs-based route, which still may differ.
-- Permanence. Keeping the row across reboots still needs a flash of the same binary (~20 min mask-ROM write), see [[fiio-snowsky-disc-diskos-flash-fedora]].
+- DSD over the USB route. Four DSF files exist in the library; the JA11 does DSD128 as DoP, and whether `mq_player` sends DoP on this route is untested.
 
 ## References
 
