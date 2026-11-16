@@ -107,14 +107,29 @@ Quick Settings > Rescan ran it:
 scanner: merged 815 songs, skipped 0 unreadable file(s), scan_err=0
 ```
 
-After the scan: `TITLE_TAG` exists, `DURATION` is filled for 813 of 815 rows (max 964400 ms), and the count rose from 814 to 815 because the scan indexed one Opus file the stock DB did not have. The two remaining zeros are `Lake Diamond & Pearl.mp3` and `Selepas Kau Pergi.opus`. `SAMPLE_RATE`, `BIT_PER_SAMPLE`, `CHANNELS` and `BIT_RATE` stay 0 because `INS_SONG` hardcodes them and the UI reads playback format elsewhere. PCM stayed RUNNING during the scan.
+After the scan: `TITLE_TAG` exists, `DURATION` is filled for 813 of 815 rows (max 964400 ms), and the count rose from 814 to 815 because the scan indexed one Opus file the stock DB did not have. `SAMPLE_RATE`, `BIT_PER_SAMPLE`, `CHANNELS` and `BIT_RATE` stay 0 because `INS_SONG` hardcodes them and the UI reads playback format elsewhere. PCM stayed RUNNING during the scan.
+
+Two rows stayed at 0, and both files had valid durations in ffprobe: the 969 KB CBR MP3 is 60.481 s, the 4.2 MB Opus is 249.588 s. The parser had two gaps:
+
+- `ad_mp3()` only used a Xing/Info or VBRI header. A CBR file with neither returned 0.
+- `ad_opus()` required the OpusTags packet to end on the last segment of its page, rejected granule 0 on a page where no packet completed, and rejected packets over 5760 samples. This file has the tags and the first audio packet on the same page, granule 0 on that page, and a 32-frame 640 ms packet.
+
+Commit `548c3c8` fixes both:
+
+- MP3 without a VBR header falls back to `(end - first_frame) * 8 / first_frame_bitrate`.
+- Opus allows the tags packet to end early, allows granule 0 with a pending packet, and calls a new `ad_opus_last()` fallback when the strict walk returns 0 or `AD_DEFERRED`. That fallback reads the last CRC-valid page of the same serial and uses `(granule - pre_skip) * 1000 / 48000`.
+
+Host check against ffmpeg-generated FLAC, Opus, Vorbis, M4A, WAV, AIFF and three MP3 variants: every parser result was within 33 ms of ffprobe (25 ms for Opus due to pre-skip). The two problem files: MP3 60473 ms (ffprobe 60481), Opus 249581 ms (ffprobe 249587).
+
+Rebuilt UI `e35dc510361771cdb060b203f158266b` (4345304 bytes), hot-loaded, Quick Settings > Rescan (`scanner: merged 815 songs`), and the zeros went from 2 to 0: the MP3 and Opus rows now hold 60473 and 249581 ms.
 
 ## Not verified
 
 - The user's exact 2026-11-14 silent skip (only-decoder, no output) is not proven fixed. It looks like the stock player's preload path and may still happen. The next occurrence should be captured with `/usr/data/fiio/log/fiio_player.log` around the timestamp.
 - The fix is hot-loaded, not flashed. A reboot restores the flashed build from 2026-11-11; to keep it, flash with `--ui ui/mq_ui`.
 - Up Next still uses the window-function query over the whole queue. It was fine at 814 songs; the newer branch's bounded rewrite was not ported.
-- The two files with no duration were not opened to see whether their headers are malformed or the parsers simply do not handle them.
+- The duration parser has no host fixture test. It was checked against ffmpeg-generated files and the two real files, not fuzzed or tried against truncated/corrupt Ogg pages.
+- After the rescan the library has 815 songs. The extra one is the Opus file the stock DB was missing; this was a side effect of the rescan, not a code change.
 
 ## References
 
