@@ -107,6 +107,17 @@ What this does not prove: that the analogue output of the JA11 is audible, which
 
 Also do not misread `workmode 1 -> 0102000C0001` in `diskos_boot.log`. It is `ui_set_workmode(1)`, which is play mode **Shuffle** (`docs/COMMAND_MAP.md`), not a source-mode switch.
 
+## Release
+
+Tag **`v1.2.1-fork.6`** at `3726ebc`, published 2026-11-16 19:09 WIB (12:09Z), marked stable and Latest on `txtsamu/diskos`. Assets follow fork build 5's pattern: `mq_ui` (4,349,816 bytes, sha256 `c768949312b43d1c56f6681a4c2dc41100e7c2c2160176c6cf1b66b2c5007350`) and `SHA256SUMS`. No flash image is attached, since `diskos_*.bin` embeds FiiO's rootfs.
+
+One difference from build 5 worth remembering: build 5 shipped `mq_ui` built with `-DDISKOS_TEST_OUTPUTS`, so it carried both USB Audio and SPDIF Output. Build 6 ships the normal build, so USB Audio is present and SPDIF is not. The attached binary is the exact one flashed on the Disc.
+
+```bash
+gh release create v1.2.1-fork.6 -R txtsamu/diskos \
+  --title "..." --notes-file notes.md ./mq_ui ./SHA256SUMS
+```
+
 ## Not verified
 
 - That the JA11's analogue output is audible. The USB stream, the native-rate retune, the feature-unit volume and the feedback loop are all confirmed; the ear test is the user's.
