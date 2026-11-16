@@ -97,12 +97,24 @@ Final device state: 9 minutes uptime after the recovery reboot, new UI running, 
 - An invalid play-list frame hangs the stock player. Only a reboot recovered; pause and a valid play did not.
 - I set `PLAY_GAP=1` while testing gapless and restored it to 0. The player DB and the UI config both showed 1 at one point.
 
+## Follow-up: why DURATION was 0
+
+The stock `song.db` had no `TITLE_TAG` column and every metadata column was 0. That is the stock player's scanner schema. diskOS's scanner (`ui/scanner.c`) adds `TITLE_TAG`, computes `DURATION` with `audio_duration_ms_cancel()` from `audiodur.h`, and writes it. It had not run on this database.
+
+Quick Settings > Rescan ran it:
+
+```text
+scanner: merged 815 songs, skipped 0 unreadable file(s), scan_err=0
+```
+
+After the scan: `TITLE_TAG` exists, `DURATION` is filled for 813 of 815 rows (max 964400 ms), and the count rose from 814 to 815 because the scan indexed one Opus file the stock DB did not have. The two remaining zeros are `Lake Diamond & Pearl.mp3` and `Selepas Kau Pergi.opus`. `SAMPLE_RATE`, `BIT_PER_SAMPLE`, `CHANNELS` and `BIT_RATE` stay 0 because `INS_SONG` hardcodes them and the UI reads playback format elsewhere. PCM stayed RUNNING during the scan.
+
 ## Not verified
 
 - The user's exact 2026-11-14 silent skip (only-decoder, no output) is not proven fixed. It looks like the stock player's preload path and may still happen. The next occurrence should be captured with `/usr/data/fiio/log/fiio_player.log` around the timestamp.
 - The fix is hot-loaded, not flashed. A reboot restores the flashed build from 2026-11-11; to keep it, flash with `--ui ui/mq_ui`.
 - Up Next still uses the window-function query over the whole queue. It was fine at 814 songs; the newer branch's bounded rewrite was not ported.
-- `CHANNELS` and `SONG_MIMETYPE` are 0/empty for all 814 songs and every `DURATION` is 0 in `SONG`. The UI computes durations separately, so this was not changed.
+- The two files with no duration were not opened to see whether their headers are malformed or the parsers simply do not handle them.
 
 ## References
 
