@@ -8,7 +8,7 @@ status: current
 
 # diskOS UI: six concepts, one owner each
 
-Repo `txtsamu/diskos`, branch `main`, base commit `027c24b`, work `45b04f4..98108bb`.
+Repo `txtsamu/diskos`, branch `main`, base commit `027c24b`, work `45b04f4..9014389`.
 
 The request was the six candidates from an architecture review of the player UI: finish the Working Mode switch, collapse the screen registry, extract Restart and Flash mode, replace the 30-field Player struct with a view, move the Now Playing fan-out, and delete the shallow playstate module.
 
@@ -54,6 +54,17 @@ The pinned musl-cross-make toolchain was missing. It was built on the Fedora hos
 `227df8b99103f9c59f6570babf892978e293082f` with `ui/toolchain/mcm-config.mak`, installed to
 `/opt/mipsel-n2008-musl-cross`, and pinned for this checkout in the ignored `ui/config.mk`. `make -C ui -j32` now
 links `mq_ui` for MIPS32r2/FP64/NaN2008 with GCC 11.2.0 and musl 1.2.6.
+
+## Flash result
+
+The latest UI (`ui/mq_ui`, md5 `30c46d1b27cc35eedc8f6c07c0f00008`) was flashed on 2026-11-16 from the V2.57 stock
+zip. Start 16:32:15, finish 16:52:15, about 20 minutes as estimated. `usbboot` exit 0, `result: 0x600DF10C [F001]
+SUCCESS`, `flash verified OK`. NAND scan found two bad blocks (128, 522); the writer skipped them, capacity 768 blocks
+for a 768-block image, no retries. Backup generation `g0020` was committed. The device needs a power-cycle to boot and
+install diskOS from `/opt/diskos` on first boot.
+
+`agents/AGENTS.md` now requires a flash request to state the estimated wall-clock finish time before starting and to
+repeat the actual time in the result.
 
 ## Verification
 
