@@ -132,7 +132,7 @@ Rebuilt UI `e35dc510361771cdb060b203f158266b` (4345304 bytes), hot-loaded, Quick
 - Assets: `mq_ui` (4346184 bytes, md5 `2557afb5f30364cb4a45a0289796575d`, built with `-DDISKOS_TEST_OUTPUTS`) and `SHA256SUMS`; `sha256sum -c` passes.
 - The attached binary and the device build are the same source; the device build was made without the test-only UI rows.
 
-The installer built a public image from the same source (`diskos_public.bin`, 100663392 bytes, md5 `a0cf4071b69032824310333bc5e76fb0`) and the flash was running when the release was published. Update this section with the flash result.
+The installer built a public image from the same source (`diskos_public.bin`, 100663392 bytes, md5 `a0cf4071b69032824310333bc5e76fb0`) and flashed it over mask-ROM on 2026-11-16. Start 13:53:19, finish 14:13:27 (20m08s). `usbboot exit=0`, `result: 0x600DF10C [F001] SUCCESS`, `flash verified OK`, `backup g0019: committed`. The writer found 2 bad blocks (128, 522), skipped them, and retried 0 times; capacity was 768 blocks for a 768-block image. The device still needed a power-cycle to boot the new image when this note was written.
 
 ## Not verified
 
