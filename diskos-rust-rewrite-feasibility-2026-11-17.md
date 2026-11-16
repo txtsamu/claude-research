@@ -20,6 +20,17 @@ A full UI rewrite is a different question. The blocker is not rustc, it is LVGL 
 
 Best risk-adjusted path: Rust sidecar processes first, then a Rust installer CLI, then one Rust UI screen. Do not start with a full rewrite.
 
+## Session log
+
+1. Read the current codebase: `ui/` is 102 app C files plus vendored LVGL 9.2.2, FreeType 2.13.3, SQLite and generated fonts, built static with the mipsel hard-float musl toolchain. The installer is ~8k lines of Python. Host tools are small C programs.
+2. Checked the host: Fedora 43 x86_64, no rustc installed. Installed a throwaway nightly under `/tmp/opencode` with `rust-src`; no repo files were touched.
+3. Reproduced the stock-target failure with a tiny C object: soft-float and nan=legacy objects are rejected by the device's hard-float, NaN2008 CRT.
+4. Dumped the built-in `mipsel-unknown-linux-musl` target spec, changed the float features to `+fpxx,+nooddspreg,+nan2008`, set the cross linker, and built `std` with `-Zbuild-std`.
+5. Fixed absolute CRT paths and the `-lunwind` request by aliasing `libgcc_eh.a` to `libunwind.a`.
+6. Produced a 530,072-byte static MIPS32r2 hard-float binary and ran it under `qemu-mipsel-static`; it printed `hello mips 3.00`.
+7. Spawned a research subagent for prior art, LVGL bindings, the unwinder issue, and the unbrick path. Its findings are folded into this note.
+8. Verified the stock firmware copies and hashes after the user asked whether they still exist. All three `stock.bin` generations are identical; the official V2.57 ZIP and decrypted rootfs are also present.
+
 ## Toolchain findings
 
 Host: Fedora 43 x86_64. The repo had no Rust installed. A throwaway rustup nightly (`1.102.0-nightly`) in `/tmp/opencode` was used; nothing in the repo was modified.
