@@ -8,7 +8,7 @@ status: current
 
 # diskOS UI: six concepts, one owner each
 
-Repo `txtsamu/diskos`, branch `main`, base commit `027c24b`, work `45b04f4..64d4ad3`.
+Repo `txtsamu/diskos`, branch `main`, base commit `027c24b`, work `45b04f4..ec10a22`.
 
 The request was the six candidates from an architecture review of the player UI: finish the Working Mode switch, collapse the screen registry, extract Restart and Flash mode, replace the 30-field Player struct with a view, move the Now Playing fan-out, and delete the shallow playstate module.
 
@@ -22,6 +22,14 @@ The request was the six candidates from an architecture review of the player UI:
 - **Now Playing has a publisher.** `nowplay.c/h` owns the change rules (sequence, playing, path, title, artist) and the sink fan-out. `main.c` lost `last`, `last_playing`, `np_last_path`, `np_last_title` and `np_last_artist`, and the 29-line inline fan-out. New `nowplay_test` has eight cases.
 
 Docs added: `docs/UI_ARCHITECTURE.md`, plus GLOSSARY terms **Player view**, **Switch status**, **Restart** and **Flash mode**.
+
+An independent read-only review of the six commits found three defects, all fixed in `ec10a22`:
+
+- `theme_kits.c` was missed by my first syntax sweep (it was filtered out with the theme generated files) and lacked `screens_ui.h`; it now includes it and the sweep covers all 102 UI sources.
+- The restart confirmation modal stayed on `lv_layer_top()` after a failed restart; `restart_poll_cb` now closes it when the transaction ends.
+- `env_restart_kill` killed only the child leader and blocked the LVGL thread for up to 2 s; it now kills the process group and polls 30 x 10 ms, matching the old `kill_and_reap`.
+
+Two coverage notes from the review were also closed: `playreq_test` has the near-wrap position case again, and `nowplay_test` exercises `nowplay_invalidate()` without `force`.
 
 ## Verification
 
