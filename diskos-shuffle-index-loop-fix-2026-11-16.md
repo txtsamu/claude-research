@@ -123,6 +123,17 @@ Host check against ffmpeg-generated FLAC, Opus, Vorbis, M4A, WAV, AIFF and three
 
 Rebuilt UI `e35dc510361771cdb060b203f158266b` (4345304 bytes), hot-loaded, Quick Settings > Rescan (`scanner: merged 815 songs`), and the zeros went from 2 to 0: the MP3 and Opus rows now hold 60473 and 249581 ms.
 
+## Release: v1.2.1-fork.5
+
+`main` and `dev` are at `ade7ee1` (the changelog commit on top of `548c3c8`). Tag `v1.2.1-fork.5` is pushed and the GitHub release is live as Latest, not a prerelease:
+
+- https://github.com/txtsamu/diskos/releases/tag/v1.2.1-fork.5
+- Title: `diskOS 1.2.1 fork build 5 (stable): Shuffle hang and duration fixes`
+- Assets: `mq_ui` (4346184 bytes, md5 `2557afb5f30364cb4a45a0289796575d`, built with `-DDISKOS_TEST_OUTPUTS`) and `SHA256SUMS`; `sha256sum -c` passes.
+- The attached binary and the device build are the same source; the device build was made without the test-only UI rows.
+
+The installer built a public image from the same source (`diskos_public.bin`, 100663392 bytes, md5 `a0cf4071b69032824310333bc5e76fb0`) and the flash was running when the release was published. Update this section with the flash result.
+
 ## Not verified
 
 - The user's exact 2026-11-14 silent skip (only-decoder, no output) is not proven fixed. It looks like the stock player's preload path and may still happen. The next occurrence should be captured with `/usr/data/fiio/log/fiio_player.log` around the timestamp.
