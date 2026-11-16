@@ -70,9 +70,43 @@ To return the route to the internal DAC, the `tap` tool from `/home/moo/sessions
 - Leaving the route on `OUT_USB` with no DAC attached means silent output. Return to Local Playback when no DAC is plugged in.
 - The USB Audio row is now independent of `-DDISKOS_TEST_OUTPUTS`. Do not tell the user the row needs a test build any more. SPDIF still does.
 
+## Proving the external DAC chip is the one playing (FIIO JadeAudio JA11)
+
+The user plugged a **FIIO JadeAudio JA11** (USB `2972:0102`) and played songs. Read the stream from both sides. `/proc/asound/card1/stream0`, the USB side:
+
+```
+Status: Running
+  Interface = 2
+  Altset = 3
+  Momentary freq = 44188 Hz (0x5.8600)      <- 44156 three seconds later
+Interface 2, Altset 3: S32_LE, 2 channels, Endpoint 4 OUT (ASYNC)
+Rates: 44100 ... 48000 ... 384000
+```
+
+`/proc/asound/card1/pcm0p/sub0/`:
+
+```
+state: RUNNING          owner_pid: 1150 (= mq_player)
+format: S32_LE  channels: 2  rate: 44100  period_size: 1764  buffer_size: 3528
+```
+
+Four `hw_ptr` samples two seconds apart advanced `942575 -> 1031823 -> 1121018 -> 1210090`, about **89,170 frames per 2 s = 44.1 kHz**, the track's native rate. The earlier track ran at `rate: 48000, period 1920, buffer 3840`, so the player retunes the DAC per track instead of resampling to a fixed rate. Ten state samples over five seconds were `RUNNING` ten times, no XRUN. `card0` (the Disc's internal CS43131) reported `closed` the whole time, and `/proc/1150/fd` held `/dev/snd/pcmC1D0p` and `/dev/snd/controlC1` only.
+
+The `Momentary freq` is the decisive bit: it drifts (`44188 -> 44156`) because the JA11 is clock master and sends 16.16 async feedback while it converts. An idle or unopened device does not report a moving feedback value.
+
+`/usr/data/diskos_journal.log` shows `dacvol` attached `card1 'PCM Playback Volume' raw 0..100 (-5000..0 cdB)`, held the Player at 120 (unity) and set the DAC's own feature unit. Volume keys moved that feature unit over USB, `values=53,53 -> 62,62` climbing and back down, so control traffic works in both directions. `amixer -c1 get PCM` read `57 [57%] [-21.50dB] [on]`, unmuted. `/usr/data/diskos_boot.log` also shows `usbhid: opened event3 "FIIO JadeAudio JA11"`, so its multifunction button is bound.
+
+What this does not prove: that the analogue output of the JA11 is audible, which only the user can confirm. Everything up to the USB endpoint and the chip's feedback loop is verified.
+
+## Gotcha found in the logs
+
+`dacvol`'s `say()` uses `char b[160]` (`ui/dacvol.c:51`), so the longest attach line is truncated. Two journal lines read `hold Player at 12` where the real value is `120`; both are the entries that also carry `, safe-start cap applied`, which pushes the line past 159 bytes. Cosmetic, not a volume bug: `hold_for()` returns `VOL_MAX` for any level above zero. Worth widening the buffer if those logs get read during volume troubleshooting.
+
+Also do not misread `workmode 1 -> 0102000C0001` in `diskos_boot.log`. It is `ui_set_workmode(1)`, which is play mode **Shuffle** (`docs/COMMAND_MAP.md`), not a source-mode switch.
+
 ## Not verified
 
-- Actual playback through a real external USB DAC on this normal build (the row, the route and the switch toast were checked; audio out was not).
+- That the JA11's analogue output is audible. The USB stream, the native-rate retune, the feature-unit volume and the feedback loop are all confirmed; the ear test is the user's.
 - Behaviour after a reboot or after leaving USB Storage, which revert to the flashed build.
 - Upstream PR #16's netlink `a60a` unplug/replug latching against this procfs-based route, which still may differ.
 - Permanence. Keeping the row across reboots still needs a flash of the same binary (~20 min mask-ROM write), see [[fiio-snowsky-disc-diskos-flash-fedora]].
