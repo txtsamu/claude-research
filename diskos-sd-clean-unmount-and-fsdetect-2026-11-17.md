@@ -90,11 +90,41 @@ Binary kept at `/home/moo/diskos/diskos/ui/mq_ui` (the build also leaves `mq_ui.
 | Boot logs 7 h ahead until the UI starts | pre-diskOS RTC load | Kernel reads the local-time RTC as UTC, so S97 logs `Wed Nov 18 00:19` for a real 17:19. The UI repairs it with `hwclock -s` at `ui/main.c:1701`, then `timekeep_boot()`. A payload-side guard in `S97diskos_install` would fix the S97 timestamps but needs a reflash to take effect, and can copy a garbage RTC if it ever hangs; not worth it for log cosmetics. |
 | `weather: no usable data (resp='')` | diskOS `ui/weather.c` | The fetch runs at UI start before the Wi-Fi lease and retries with 20 s backoff (`weather_poll`). The device was unreachable at the end of the session, so the retry could not be confirmed live. |
 
+## Device run and the flash image
+
+The Disc was powered on at 19:43 and the pre-fix baseline was captured: the fresh boot still showed the two `Volume was not properly unmounted` lines, as expected (they describe the previous power-off, which used the old build).
+
+Hot-loaded at 19:44 with `~/diskos/diskos-hotload.sh /home/moo/diskos/diskos/ui/mq_ui`:
+
+```
+>> staged 24d88617ef5bc7b01d6611b886e2e7e3
+ok=1 attempts=1
+24d88617ef5bc7b01d6611b886e2e7e3  /proc/1538/exe
+```
+
+The card stayed mounted, the player was up, and the relaunch logged `boot: player ready after 606 ms`.
+
+A power-off was deliberately NOT done: S97 verifies `/usr/data/mq_ui` against the baked manifest on every boot, so the 8-byte-larger hot-load would be quarantined and the flashed (old) build restored. The hot-load is temporary by construction.
+
+Persistent image built and validated instead (installer stopped at E110 because no device was in mask-ROM mode):
+
+```
+cd ~/diskos/diskos-installer
+./diskos-installer install \
+  --firmware ~/Downloads/SNOWSKY_DISC_update_20260909_v257.zip \
+  --ui /home/moo/diskos/diskos/ui/mq_ui --variant public
+
+✓ image built: ~/.local/share/diskos-installer/build/diskos_public.bin
+  100663296 bytes md5=750cfef369f07d3669a74919b9a52809
+```
+
+Verified inside the built squashfs: `/opt/diskos/mq_ui` sha256 `96c426442550c1aaea152a61d9f536c586930c4bd3075f28fe67737c37cef2c6`, identical to the built UI, and `/etc/diskos_manifest` records `SIZE=4349824` with that same SHA256.
+
 ## Not verified
 
-- **The device was off when the build finished**, so the new `mq_ui` was not hot-loaded and the power-off path was not exercised on hardware. `ping 192.168.50.29` and an nmap of port 2222 across 192.168.50.0/24 found nothing; it likely took its idle power-off after the last input. The end-to-end check is: hot-load `24d88617ef5bc7b01d6611b886e2e7e3`, power off from Settings, power on, then `ssh disc 'dmesg | grep -i "not properly unmounted"'` should print nothing, and `diskos_boot.log` should contain `card unmounted ...` from the shutdown.
-- Whether the first boot after this fix still shows the old warning. The warning refers to the *previous* power-off, which used the old build, so expect one more occurrence, then none.
-- The 2 s (now 4 s) block during shutdown is not measured on hardware; the UI shows "Shutting down..." during it.
+- The power-off path has not run on hardware. Doing it with the hot-load would revert the build; the intended order is flash `diskos_public.bin`, then power off from Settings and power on. Expected on that boot: `diskos_boot.log` contains `card unmounted after player release in N tries`, and `dmesg` has no `Volume was not properly unmounted`.
+- The 4 s maximum block during shutdown is not measured; the UI shows "Shutting down..." during it.
+- The live player-release path is proven from the decompiled player and the unit tests, not observed end to end on the device.
 
 ## References
 
