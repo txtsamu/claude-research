@@ -69,7 +69,7 @@ Player log for that session adds:
 
 So the kernel never unmounts `/tmp/sdcard`; the MCU removes power while the filesystem is still mounted, and the FAT clean flag stays dirty. The `sync` before the handoff does flush file data, so this is not an automatic data-loss bug, but it is a real "unclean filesystem" every power-off, and the card will keep warning until something clears the flag (a mount plus clean unmount, or `fsck.vfat`).
 
-A fix would be one `umount("/tmp/sdcard")` (with `umount2(..., MNT_DETACH)` fallback, the pattern already used at `ui/main.c:1481`) between the sync success and the MCU handoff in `power.c`. Not implemented; this session was a log read only.
+A fix would be one `umount("/tmp/sdcard")` (with `umount2(..., MNT_DETACH)` fallback, the pattern already used at `ui/main.c:1481`) between the sync success and the MCU handoff in `power.c`. Implemented the same day, together with the stock player's release path: see [[diskos-sd-clean-unmount-and-fsdetect-2026-11-17]] (`15797a0`).
 
 ## Not verified
 
