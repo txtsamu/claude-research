@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [cheapest-cs43198-dap-indonesia-2026-11-18.md](cheapest-cs43198-dap-indonesia-2026-11-18.md) | investigation |
 | 2026-11-18 | [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | how-to |
 | 2026-11-12 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | how-to |
 | 2026-11-11 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | troubleshooting |
@@ -294,6 +295,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [cheapest-cs43198-dap-indonesia-2026-11-18.md](cheapest-cs43198-dap-indonesia-2026-11-18.md) | fiio, snowsky-echo, dap, cs43198, indonesia, shopping, tokopedia, aliexpress | current: cheapest real CS43198 DAP in ID is the FiiO Snowsky ECHO at Rp 1.36-1.41 jt (gray import, Tokopedia); JM21 dual CS43198 ~Rp 2.76 jt with warranty; Echo Mini/Nano are CS43131, Fosi DAP NEO geo-blocked from AliExpress | 2026-11-18 |
 | [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | diskos, snowsky-disc, usb-gadget, configfs, acm, serial, ecm, rndis, usb-debug, source-menu | current: USB Debug row (single ACM serial shell, overlay on Local, ordered exit) built and checked with a PC attached; USB Ethernet impossible: the kernel has no ECM/RNDIS/NCM/EEM, TUN or PPP | 2026-11-10 |
 | [diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md](diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md) | diskos, snowsky-disc, usb-audio, dacvol, volume-keys, key-codes, usb-serial | current: volume keys dead on USB Audio when Double click = Switch Track, and hold not working; fixed in dacvol (single, double suppression, hold 262/263), key codes, serial-shell push attempt | 2026-11-11 |
 | [diskos-working-mode-auto-via-local-2026-11-11.md](diskos-working-mode-auto-via-local-2026-11-11.md) | diskos, snowsky-disc, working-mode, srcswitch, usb-dac, usb-storage, usb-debug, usb-audio | current: non-Local Working Mode switches hop through Local by themselves (DAC, Bluetooth, Storage with a restart-safe pending target, USB Audio row); tests host-only for Storage | 2026-11-11 |
