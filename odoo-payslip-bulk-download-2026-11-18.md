@@ -46,6 +46,21 @@ The route that did work is `browse execute`, whose sandbox exposes `files.write(
 
 Merge per-slip files into one archive with `pdfunite` (poppler-utils) in chronological order.
 
+## Fixing the signature block that spilled to page 2
+
+20 of the 39 slips overflowed: the template's signature area pushed the names and titles (and in March, the signature image) onto a second, almost empty A4 page, even though page 1 still had 8 to 11 cm of unused space at the bottom.
+
+Because the Odoo paperformat is server-side, the fix was local post-processing with PyMuPDF:
+
+1. Render page 1 at 72 dpi and find the last row containing ink (threshold 250 in grayscale). That row is the true content bottom, including images, which `pdftotext` bbox ignores.
+2. Rasterize each extra page the same way and group its ink rows into bands, splitting wherever there is more than 8 blank rows. This separates the signature image from the name/title text so the dead vertical gap between them disappears.
+3. Draw page 1 onto a fresh A4 page at 1:1, then `show_pdf_page(target, src, n, clip=band)` each band below the content bottom with a 6 pt gap.
+4. Rebuild the merged document.
+
+Result: 39 of 39 slips are one page, text content identical to the originals (`get_text` compared after whitespace normalization), lowest ink at y 40 to 56 pt from the bottom edge. The untrimmed originals are kept at `/tmp/opencode/original-payslips/`.
+
+Note that PyMuPDF page coordinates use a top-left origin with y growing downward, unlike raw PDF user space. Computing clip rectangles with `height - y` mirrors them, and the bands land as blank or garbled strips.
+
 ## Gotchas
 
 - A single `browse.eval` result above roughly 100 KB comes back truncated, which silently breaks `JSON.parse`. Chunk anything binary.
@@ -59,7 +74,7 @@ Merge per-slip files into one archive with `pdfunite` (poppler-utils) in chronol
 
 - `pdfinfo` on a sample reports A4, `%PDF-` header confirmed for all 39 files.
 - `pdftotext -layout` shows the right month string, company header and salary components in each file.
-- Merged document: `pdfunite` output reports 59 pages, 4.8 MB.
+- Merged document: `pdfunite` output reports 39 pages, 4.8 MB.
 - File count in the destination directory: 39 slips plus 1 merged file.
 
 ## Not verified
