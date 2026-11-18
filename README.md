@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | troubleshooting |
 | 2026-11-18 | [cheapest-cs43198-dap-indonesia-2026-11-18.md](cheapest-cs43198-dap-indonesia-2026-11-18.md) | investigation |
 | 2026-11-18 | [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | how-to |
 | 2026-11-12 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | how-to |
@@ -243,6 +244,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | snowsky-disc, fiio, usb-audio, pipewire, wireplumber, fedora, alsa, dac | 2026-11-18 |
 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | hermes, hermes-gateway, telegram, systemd, home, runtime-draining, restart, cron | 2026-11-11 |
 | [immich-medium-tests-leak-exiftool-and-postgres.md](immich-medium-tests-leak-exiftool-and-postgres.md) | immich, vitest, exiftool, testcontainers, ryuk, podman, memory, orphan-processes | 2026-11-05 |
 | [arm4-uptime-kuma-flapping-and-persistent-journal.md](arm4-uptime-kuma-flapping-and-persistent-journal.md) | arm4, armbian, uptime-kuma, victoriametrics, journald, armbian-ramlog, cloudflared, flapping | 2026-10-29 |
