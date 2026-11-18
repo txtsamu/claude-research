@@ -75,7 +75,7 @@ Note that PyMuPDF page coordinates use a top-left origin with y growing downward
 - `pdfinfo` on a sample reports A4, `%PDF-` header confirmed for all 39 files.
 - `pdftotext -layout` shows the right month string, company header and salary components in each file.
 - Merged document: `pdfunite` output reports 39 pages, 4.8 MB.
-- File count in the destination directory: 39 slips plus 1 merged file.
+- File count in the destination directory: 39 slips plus 1 merged file, named `NN - <Bulan> <Tahun>.pdf` with `NN` running 01 to 39 in chronological order; the merged document sorts first as `00 - Slip Gaji 2023-2026 gabungan.pdf`.
 
 ## Not verified
 
