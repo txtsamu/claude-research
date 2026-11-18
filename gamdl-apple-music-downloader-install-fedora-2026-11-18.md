@@ -214,7 +214,29 @@ Created database at /home/moo/.gamdl/media.sqlite3
 Finished: 1 downloaded, 0 overwritten, 0 skipped, 0 failed, 0 finalization failures (1 discovered)
 ```
 
-`ffprobe` on the result: `aac`, 48 kHz stereo, **258 kbps**, plus an embedded mjpeg cover and a companion `.lrc` sidecar. That is the expected HLS AAC 256 profile, decrypted through the bundled L3 device with no extra device file.
+`ffprobe` on the result: `aac` (`codec_long_name=AAC (Advanced Audio Coding)`, profile **LC**), 48 kHz stereo, **258 840 bps**, 7.29 MB for 213.6 s, plus an embedded mjpeg cover and a companion `.lrc` sidecar. That is the expected HLS AAC 256 profile, decrypted through the bundled L3 device with no extra device file. It is **lossy**, not lossless; the config default `download.song_codec_priority: [aac]` is what decides that.
+
+### Lossless is refused on this setup (measured)
+
+Trying to force lossless on the same track:
+
+```bash
+gamdl rip "<song url>" --output-dir /tmp/alac-test --song-codec alac --no-tracebacks
+```
+
+```
+! ALAC selected without Wrapper. Apple Music may refuse Widevine/PlayReady
+licenses for ALAC; use Wrapper for more reliable lossless downloads
+✗ Never Gonna Give You Up (2022 Remaster): Unable to acquire or process
+decryption key (DrmLicenseError)
+Finished: 0 downloaded, 0 overwritten, 0 skipped, 1 failed
+```
+
+With tracebacks the failing call is `gamdl/drm/service.py:300 get_keys` → `DrmLicenseError("Unable to obtain or process DRM license")`. So the bundled L3 device gets no key for ALAC, exactly as the README warned. `--song-codec alac-hires` and `alac-lossless` take the same path and fail the same way.
+
+For contrast, `--song-codec atmos` on the same track fails earlier with `Requested codec or stream unavailable`, which is a stream-availability answer (this track, this storefront), not a DRM refusal.
+
+Conclusion: AAC 256 is the realistic ceiling with cookies auth plus Widevine L3. Lossless requires [wrapper-v2](https://github.com/glomatico/wrapper-v2), which brings its own authenticated session and decryption. Verify a failed codec with `--ask-song-codec`, not by assuming the install is broken.
 
 Caveat: this token dies when the Apple Music web session ends. Re-export cookies and overwrite the same file, no config change needed. If the export file disappears, auth breaks; copying it to `~/.gamdl/cookies.txt` and pointing `auth.cookies_path` there would make it less fragile.
 
