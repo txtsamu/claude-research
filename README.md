@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [diskos-ui-deepening-six-modules-and-harness-2026-11-18.md](diskos-ui-deepening-six-modules-and-harness-2026-11-18.md) | build-log |
 | 2026-11-18 | [diskos-build-harness-declare-once-tests-2026-11-18.md](diskos-build-harness-declare-once-tests-2026-11-18.md) | build-log |
 | 2026-11-18 | [outlook-bulk-inbox-cleanup-categories-browser-agent-2026-11-18.md](outlook-bulk-inbox-cleanup-categories-browser-agent-2026-11-18.md) | troubleshooting |
 | 2026-11-18 | [diskos-card-module-card-close-spine-2026-11-18.md](diskos-card-module-card-close-spine-2026-11-18.md) | build-log |
