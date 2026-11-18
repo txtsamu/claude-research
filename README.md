@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [diskos-card-module-card-close-spine-2026-11-18.md](diskos-card-module-card-close-spine-2026-11-18.md) | build-log |
 | 2026-11-18 | [wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md](wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md) | how-to |
 | 2026-11-18 | [diskos-idle-machine-idlegov-extract-2026-11-18.md](diskos-idle-machine-idlegov-extract-2026-11-18.md) | build-log |
 | 2026-11-18 | [gmail-bulk-inbox-cleanup-browser-agent-2026-11-18.md](gmail-bulk-inbox-cleanup-browser-agent-2026-11-18.md) | troubleshooting |
