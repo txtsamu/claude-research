@@ -1,0 +1,236 @@
+---
+type: how-to
+tags: [gamdl, apple-music, music, downloader, fedora, uv, widevine, drm, cli]
+created: 2026-11-18
+last_verified: 2026-11-18
+status: current
+---
+
+# Installing Gamdl 4.x (Apple Music downloader) on Fedora 43 with uv
+
+Gamdl is Glomatico's command-line Apple Music downloader: songs, albums, playlists, artist pages, your own library, music videos, and uploaded videos. Version 4.0.x is a rewrite: subcommands (`rip`, `search`, `library`, `sync`, `organize`, `database`, `auth`, `config`), YAML config at `~/.gamdl/config.yml`, a native (Rust, abi3) mux/decrypt extension, and a bundled Widevine L3 device in the `[widevine]` extra.
+
+Installed on the workstation (Fedora 43, Python 3.14.10 system, `uv` 0.11.6). The resulting tool env actually runs on CPython 3.13 because `uv` picked an available interpreter for the `>=3.10` requirement; the shipped wheel is `cp310-abi3-manylinux_2_17_x86_64`, so no Rust toolchain or build step was needed.
+
+## Time estimate
+
+| Step | Time |
+|---|---|
+| `uv tool install "gamdl[widevine]"` (warm cache, prebuilt wheel) | ~20 to 40 s, estimate, not instrumented |
+| DRM sanity check (bundled Widevine device loads) | ~2 s, measured by feel, one-shot command |
+| `gamdl auth` wizard (cookies or token route) | 1 to 3 min, dominated by exporting cookies from the browser |
+| First `gamdl rip` of a single song | ~10 to 20 s per track, depends on codec |
+
+Total to a working downloader: well under 5 minutes if you already have an Apple Music subscription and a signed-in browser.
+
+## Prerequisites verified on this box
+
+```bash
+cat /etc/os-release | head -3      # Fedora 43 Workstation
+python3 --version                  # Python 3.14.10
+uv --version                       # uv 0.11.6
+which ffmpeg                       # /usr/bin/ffmpeg (not required by 4.x, native muxer)
+```
+
+Gamdl 4.x needs Python 3.10+ and, only if no prebuilt wheel matches, Rust plus native build deps. Check wheels before assuming a build:
+
+```bash
+curl -s https://pypi.org/pypi/gamdl/json | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print(d['info']['version'], d['info']['requires_python'])
+print([u['filename'] for u in d['urls']])
+"
+```
+
+At the time of writing: `4.0.2`, `>=3.10`, with `manylinux_2_17_x86_64` and `aarch64` abi3 wheels, so Linux installs never touch Rust.
+
+## Install
+
+Use `uv tool install` rather than a hand-made venv. It keeps Gamdl in an isolated environment under `~/.local/share/uv/tools/gamdl` and symlinks the `gamdl` entry point into `~/.local/bin`, which is already on `PATH` here.
+
+```bash
+uv tool install "gamdl[widevine]"
+```
+
+The `[widevine]` extra is the important part: it pulls `pywidevine` and Gamdl embeds a Widevine **L3** device in `gamdl/drm/service.py`, so no `.wvd` file is needed for normal 256 kbps AAC downloads.
+
+Alternatives, for the record:
+
+```bash
+uv tool install "gamdl[playready]"   # needs your own .prd device via --device-path
+uv tool install gamdl                # base only, protected streams will fail without DRM/wrapper
+```
+
+Verify:
+
+```bash
+which gamdl      # /home/moo/.local/bin/gamdl
+gamdl --version  # Gamdl 4.0.2
+gamdl --help     # auth, config, database, library, organize, rip, search, sync
+```
+
+Confirm the DRM backend really loads, since a broken CDM only shows up mid-download otherwise:
+
+```bash
+/home/moo/.local/share/uv/tools/gamdl/bin/python - <<'EOF'
+import asyncio
+from gamdl.drm.service import _make_cdm, DrmBackend
+async def m():
+    cdm = await _make_cdm(DrmBackend.WIDEVINE, None)
+    print("Widevine CDM OK:", type(cdm).__name__)
+asyncio.run(m())
+EOF
+```
+
+Output: `Widevine CDM OK: Cdm`.
+
+## Config location and shape
+
+Skipping the wizard still creates the file on first run:
+
+```bash
+gamdl config path       # /home/moo/.gamdl/config.yml
+gamdl config show       # effective settings
+gamdl config validate   # Valid config_version=1
+```
+
+Defaults that matter:
+
+- `auth.mode: null` means "ask me on first use".
+- `output.directory: null`, so the first download prompts and remembers the answer. `$XDG_MUSIC_DIR` here is `/home/moo/Music`.
+- `download.overwrite: false`, existing files are skipped, use `--overwrite`.
+- `download.song_codec_priority: [aac]`, i.e. HLS AAC 256 kbps.
+- `download.max_height: 1080` for video.
+- `database.disabled: false`, a SQLite index at `~/.gamdl/media.sqlite3` lets re-runs skip already-downloaded catalog IDs before touching the network.
+
+## Authentication
+
+Three modes. `gamdl auth` is an interactive TUI, so run it in a real terminal, not piped or through an agent shell.
+
+### 1. Media user token (fastest)
+
+Sign in at <https://music.apple.com/>, open DevTools, Application, Cookies, `https://music.apple.com`, and copy the value of the `media-user-token` cookie. Then either
+
+```bash
+gamdl auth     # choose "Media User Token", paste it
+```
+
+or store it in the config:
+
+```yaml
+auth:
+  mode: media-user-token
+  media_user_token: "YOUR_TOKEN"
+```
+
+Treat that token like a password. Apple invalidates it when the session ends, at which point re-export.
+
+### 2. Browser cookies (Netscape `cookies.txt`)
+
+Export cookies for `music.apple.com` while signed in with "Get cookies.txt LOCALLY" (Chromium) or "Export Cookies" (Firefox), save to the default path `~/.gamdl/cookies.txt` (`auth.cookies_path`), then `gamdl auth` and pick Cookies. The file must contain the `media-user-token` cookie; that is literally what Gamdl reads.
+
+```bash
+ls -l ~/.gamdl/cookies.txt   # check it exists and chmod 600 it
+chmod 600 ~/.gamdl/cookies.txt
+```
+
+### 3. Wrapper v2 (only if you want reliable ALAC)
+
+[wrapper-v2](https://github.com/glomatico/wrapper-v2) is a local service that holds an authenticated Apple Music session and does its own playback/decryption. Gamdl talks to it at `http://127.0.0.1` and its decrypt port `10020`.
+
+```yaml
+auth:
+  mode: wrapper
+  wrapper_url: http://127.0.0.1
+```
+
+Worth the extra setup only for lossless: Apple often refuses Widevine L3 licenses for ALAC streams, and the README warns about exactly that. With the bundled L3 device, `aac` (256 kbps) is the reliable path; `alac` is a gamble without Wrapper.
+
+## Everyday usage
+
+Gamdl 4.x is subcommand-first. URLs go after `rip`; passing them bare is the 3.x syntax and will not work.
+
+```bash
+# one song
+gamdl rip "https://music.apple.com/us/album/never-gonna-give-you-up-2022-remaster/1624945511?i=1624945512"
+
+# several URLs in one session
+gamdl rip "<url1>" "<url2>"
+
+# whole album or playlist, no prompts
+gamdl rip "<album-or-playlist-url>"
+
+# album/playlist with a track picker
+gamdl rip "<url>" --select
+
+# by ISRC, no URL needed
+gamdl rip isrc:USUM71703085
+
+# artist page, auto-pick categories
+gamdl rip "<artist-url>" --artist-auto-select main-albums,singles-eps,music-videos
+
+# your saved library
+gamdl library
+gamdl library --library-auto-select albums,playlists
+
+# search and pick
+gamdl search "Thriller" --type song
+gamdl search "Thriller" --type album --feeling-lucky
+gamdl search "Caravan Palace" --search-api itunes
+```
+
+Interactive keys: arrows move, Space marks items in multi-select, Ctrl+A selects all, Enter confirms or starts the download, B backs out of a search category.
+
+Format and metadata overrides, per command:
+
+```bash
+gamdl rip "<url>" --song-codec alac                 # best ALAC tier, single codec
+gamdl rip "<url>" --song-codec-priority alac,atmos,aac
+gamdl rip "<url>" --ask-song-codec                  # pick a stream interactively
+gamdl rip "<video-url>" --music-video-codec-priority h265,h264 --max-height 2160
+gamdl rip "<url>" --save-cover --file-cover-size max
+gamdl rip "<url>" --lyrics-file-format enhanced-lrc --embedded-lyrics-format lrc
+gamdl rip "<url>" --no-lyrics-file --exclude-tags comment,cover
+gamdl rip "<url>" --output-dir /home/moo/Music/Apple
+gamdl rip "<url>" --no-progress --no-tracebacks     # scripts
+```
+
+Library maintenance:
+
+```bash
+gamdl database info
+gamdl database scan --dry-run && gamdl database scan
+gamdl database prune --dry-run
+gamdl organize --dry-run          # always dry-run before changing templates
+gamdl sync playlists --dry-run
+gamdl sync playlists              # fetch missing playlist tracks
+```
+
+Codecs available for songs: `aac`, `aac-he`, `aac-binaural`, `aac-downmix`, `aac-he-binaural`, `aac-he-downmix`, `aac-web`, `aac-he-web`, `atmos`, `ac3`, `alac`, `alac-lossless`, `alac-hires`. `aac` is HLS and works with Widevine L3; `aac-web` needs Widevine/PlayReady even when Wrapper is connected; `atmos` is E-AC-3 JOC at roughly 768 kbps.
+
+## Gotchas hit or worth knowing
+
+- **Not every track offers every codec.** A failed ALAC or Atmos request is a stream-availability problem, not a broken install. Test with `--ask-song-codec` to see what the manifest actually advertises.
+- **ALAC without Wrapper is unreliable.** The README explicitly warns that Apple may refuse Widevine/PlayReady licenses for lossless. AAC first, lossless only after Wrapper.
+- **Above 1080p video needs L1 or SL3000.** The bundled device is L3. Raising `--max-height` past 1080 will warn and probably fail to license.
+- **Rebooting the tool env.** `uv tool upgrade gamdl` to update; `uv tool list` to inspect; `uv tool uninstall gamdl` to remove. Config and database live outside the env, in `~/.gamdl`.
+- **Old 3.x SQLite indexes cannot be opened by 4.x.** Move the old DB aside instead of letting it confuse the index.
+- **Tracebacks can leak signed URLs and tokens.** Review before pasting into an issue; `--no-tracebacks` hides them.
+- **`gamdl auth` and the first-run wizard need a TTY.** They cannot be driven from a piped/agent shell.
+
+## What was verified vs assumed
+
+Verified on this machine: install completes from the PyPI abi3 wheel, `gamdl --version` reports 4.0.2, `gamdl --help` lists all subcommands, config created and validates (`config_version=1`), bundled Widevine device constructs a `Cdm`, `ffmpeg` and `~/Music` present.
+
+Not verified: an actual authenticated download, because that needs the account owner's Apple Music session. Cookie/token lifetime and per-track codec availability are account- and region-dependent; treat the codec tables here as the README's typical figures, not guarantees.
+
+## References
+
+- [glomatico/gamdl README (branch 4.0)](https://github.com/glomatico/gamdl/blob/4.0/README.md)
+- [gamdl on PyPI](https://pypi.org/project/gamdl/)
+- [wrapper-v2](https://github.com/glomatico/wrapper-v2)
+- [uv tool install docs](https://docs.astral.sh/uv/guides/tools/)
+- [Apple Music web player](https://music.apple.com/)
+
+Related: [[xiaomi-phone-music-library-sync-adb]], [[truenas-music-dedupe-and-tag-cleanup]], [[redmi-note-12-pro-ruby-apple-music-192khz-jack-vs-usb-dac]]

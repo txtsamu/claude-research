@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | how-to |
 | 2026-11-12 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | how-to |
 | 2026-11-11 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | troubleshooting |
 | 2026-11-10 | [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | investigation |
@@ -149,6 +150,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | gamdl, apple-music, music, downloader, fedora, uv, widevine, drm, cli | 2026-11-18 |
 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | diskos, snowsky-disc, verification, apps-page, equalizer, settings, quick-settings, max-volume, working-mode, tinj, screenshots, upstream | 2026-11-12 |
 | [px2-perses-monitoring-added.md](px2-perses-monitoring-added.md) | perses, victoriametrics, vmagent, proxmox, px2, node-exporter, blackbox, dashboard, k3s, home, monitoring, pve-exporter | 2026-11-07 |
 | [memos-k3s-deploy-on-home.md](memos-k3s-deploy-on-home.md) | memos, memogram, telegram, k3s, metallb, truenas-iscsi, service-links, caddy, route-manager | 2026-11-07 |
