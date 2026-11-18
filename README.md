@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [diskos-transport-command-vocabulary-2026-11-18.md](diskos-transport-command-vocabulary-2026-11-18.md) | build-log |
 | 2026-11-18 | [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | troubleshooting |
 | 2026-11-18 | [cheapest-cs43198-dap-indonesia-2026-11-18.md](cheapest-cs43198-dap-indonesia-2026-11-18.md) | investigation |
 | 2026-11-18 | [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | how-to |
