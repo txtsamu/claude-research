@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md](wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md) | how-to |
 | 2026-11-18 | [diskos-idle-machine-idlegov-extract-2026-11-18.md](diskos-idle-machine-idlegov-extract-2026-11-18.md) | build-log |
 | 2026-11-18 | [gmail-bulk-inbox-cleanup-browser-agent-2026-11-18.md](gmail-bulk-inbox-cleanup-browser-agent-2026-11-18.md) | troubleshooting |
 | 2026-11-18 | [diskos-transport-command-vocabulary-2026-11-18.md](diskos-transport-command-vocabulary-2026-11-18.md) | build-log |
@@ -155,6 +156,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md](wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md) | wrapper-v2, apple-music, gamdl, fairplay, drm, podman, quadlet, fedora, alac, lossless | 2026-11-18 |
 | [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | gamdl, apple-music, music, downloader, fedora, uv, widevine, drm, cli | 2026-11-18 |
 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | diskos, snowsky-disc, verification, apps-page, equalizer, settings, quick-settings, max-volume, working-mode, tinj, screenshots, upstream | 2026-11-12 |
 | [px2-perses-monitoring-added.md](px2-perses-monitoring-added.md) | perses, victoriametrics, vmagent, proxmox, px2, node-exporter, blackbox, dashboard, k3s, home, monitoring, pve-exporter | 2026-11-07 |
