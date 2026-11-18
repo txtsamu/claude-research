@@ -147,6 +147,77 @@ auth:
 
 Worth the extra setup only for lossless: Apple often refuses Widevine L3 licenses for ALAC streams, and the README warns about exactly that. With the bundled L3 device, `aac` (256 kbps) is the reliable path; `alac` is a gamble without Wrapper.
 
+## Configured auth on this box (cookies mode)
+
+A full-browser Netscape export was provided at `/home/moo/cookies (1).txt` (1369 lines, every site, not just Apple). Gamdl only ever reads the `media-user-token` cookie for `music.apple.com`, and that export had one unique token duplicated across `.music.apple.com`, `.apps.apple.com`, `.podcasts.apple.com`, and `.tv.apple.com`, so pointing at the file directly works.
+
+Check the export before trusting it, without printing the secret:
+
+```bash
+head -1 "/home/moo/cookies (1).txt"        # must be "# Netscape HTTP Cookie File"
+awk -F'\t' '$6=="media-user-token"{print $1}' "/home/moo/cookies (1).txt" | sort | uniq -c
+awk -F'\t' '$6=="media-user-token"{print length($7)}' "/home/moo/cookies (1).txt"
+```
+
+That file also carries Google, x.ai, and shop session cookies, so it was tightened to owner-only:
+
+```bash
+chmod 600 "/home/moo/cookies (1).txt"
+```
+
+Config was written directly instead of through the interactive `gamdl auth` wizard, which needs a TTY:
+
+```python
+import yaml, pathlib
+p = pathlib.Path.home()/".gamdl/config.yml"
+cfg = yaml.safe_load(p.read_text())
+cfg["auth"]["mode"] = "cookies"
+cfg["auth"]["cookies_path"] = "/home/moo/cookies (1).txt"
+p.write_text(yaml.safe_dump(cfg, sort_keys=False))
+```
+
+```bash
+chmod 600 ~/.gamdl/config.yml
+gamdl config validate   # Valid config_version=1
+```
+
+Authentication was then proven without downloading anything, because `AppleMusicApi.from_cookies` fetches account metadata on construction:
+
+```bash
+/home/moo/.local/share/uv/tools/gamdl/bin/python - <<'EOF'
+import asyncio
+from gamdl.api import AppleMusicApi
+async def m():
+    api = await AppleMusicApi.from_cookies("/home/moo/cookies (1).txt")
+    print("AUTH OK, storefront:", api.storefront)
+    await api.aclose()
+asyncio.run(m())
+EOF
+```
+
+Result: `AUTH OK, storefront: id` (Indonesia), so metadata and search default to that storefront. Pass `--storefront us` for US-only catalogue items if needed.
+
+End-to-end proof, one song into a throwaway directory:
+
+```bash
+gamdl rip "https://music.apple.com/us/album/never-gonna-give-you-up-2022-remaster/1624945511?i=1624945512" \
+  --output-dir /tmp/opencode/gamdl-test --no-progress
+```
+
+Output:
+
+```
+✓ Authenticated
+Created database at /home/moo/.gamdl/media.sqlite3
+✓ Never Gonna Give You Up (2022 Remaster): downloaded →
+/tmp/opencode/gamdl-test/Rick Astley/Whenever You Need Somebody (2022 Remaster)/01 Never Gonna Give You Up (2022 Remaster).m4a
+Finished: 1 downloaded, 0 overwritten, 0 skipped, 0 failed, 0 finalization failures (1 discovered)
+```
+
+`ffprobe` on the result: `aac`, 48 kHz stereo, **258 kbps**, plus an embedded mjpeg cover and a companion `.lrc` sidecar. That is the expected HLS AAC 256 profile, decrypted through the bundled L3 device with no extra device file.
+
+Caveat: this token dies when the Apple Music web session ends. Re-export cookies and overwrite the same file, no config change needed. If the export file disappears, auth breaks; copying it to `~/.gamdl/cookies.txt` and pointing `auth.cookies_path` there would make it less fragile.
+
 ## Everyday usage
 
 Gamdl 4.x is subcommand-first. URLs go after `rip`; passing them bare is the 3.x syntax and will not work.
@@ -221,9 +292,9 @@ Codecs available for songs: `aac`, `aac-he`, `aac-binaural`, `aac-downmix`, `aac
 
 ## What was verified vs assumed
 
-Verified on this machine: install completes from the PyPI abi3 wheel, `gamdl --version` reports 4.0.2, `gamdl --help` lists all subcommands, config created and validates (`config_version=1`), bundled Widevine device constructs a `Cdm`, `ffmpeg` and `~/Music` present.
+Verified on this machine: install completes from the PyPI abi3 wheel, `gamdl --version` reports 4.0.2, `gamdl --help` lists all subcommands, config created and validates (`config_version=1`), bundled Widevine device constructs a `Cdm`, `ffmpeg` and `~/Music` present, cookies auth succeeds (`storefront: id`), and a real AAC download completes with a 258 kbps m4a, embedded cover, and `.lrc` sidecar.
 
-Not verified: an actual authenticated download, because that needs the account owner's Apple Music session. Cookie/token lifetime and per-track codec availability are account- and region-dependent; treat the codec tables here as the README's typical figures, not guarantees.
+Not verified: video downloads, ALAC/Atmos, library and playlist sync, and token lifetime. Per-track codec availability is account- and region-dependent; treat the codec tables here as the README's typical figures, not guarantees.
 
 ## References
 
