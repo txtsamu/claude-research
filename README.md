@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-18 | [diskos-idle-machine-idlegov-extract-2026-11-18.md](diskos-idle-machine-idlegov-extract-2026-11-18.md) | build-log |
 | 2026-11-18 | [gmail-bulk-inbox-cleanup-browser-agent-2026-11-18.md](gmail-bulk-inbox-cleanup-browser-agent-2026-11-18.md) | troubleshooting |
 | 2026-11-18 | [diskos-transport-command-vocabulary-2026-11-18.md](diskos-transport-command-vocabulary-2026-11-18.md) | build-log |
 | 2026-11-18 | [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | troubleshooting |
