@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-19 | [redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md](redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md) | investigation |
 | 2026-11-19 | [diskos-flash-build-7-2026-11-19.md](diskos-flash-build-7-2026-11-19.md) | how-to |
 | 2026-11-19 | [diskos-fork-build-7-release-2026-11-19.md](diskos-fork-build-7-release-2026-11-19.md) | how-to |
 | 2026-11-18 | [diskos-ui-deepening-six-modules-and-harness-2026-11-18.md](diskos-ui-deepening-six-modules-and-harness-2026-11-18.md) | build-log |
@@ -310,6 +311,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md](redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md) | android, hyperos, xiaomi, redmi-note-12-pro, ruby, adb, fuse, sdcard, duplicate-folders, storage, readdir | current: 7 of 42 root entries are returned twice by readdir through FUSE (same inode, no data duplicated); symlink theory and `ls -lid` / `find -type l` tests refuted on this device; MediaStore rebuild documented as the wrong fix | 2026-11-19 |
 | [cheapest-cs43198-dap-indonesia-2026-11-18.md](cheapest-cs43198-dap-indonesia-2026-11-18.md) | fiio, snowsky-echo, dap, cs43198, indonesia, shopping, tokopedia, aliexpress | current: cheapest real CS43198 DAP in ID is the FiiO Snowsky ECHO at Rp 1.36-1.41 jt (gray import, Tokopedia); JM21 dual CS43198 ~Rp 2.76 jt with warranty; Echo Mini/Nano are CS43131, Fosi DAP NEO geo-blocked from AliExpress | 2026-11-18 |
 | [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | diskos, snowsky-disc, usb-gadget, configfs, acm, serial, ecm, rndis, usb-debug, source-menu | current: USB Debug row (single ACM serial shell, overlay on Local, ordered exit) built and checked with a PC attached; USB Ethernet impossible: the kernel has no ECM/RNDIS/NCM/EEM, TUN or PPP | 2026-11-10 |
 | [diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md](diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md) | diskos, snowsky-disc, usb-audio, dacvol, volume-keys, key-codes, usb-serial | current: volume keys dead on USB Audio when Double click = Switch Track, and hold not working; fixed in dacvol (single, double suppression, hold 262/263), key codes, serial-shell push attempt | 2026-11-11 |
