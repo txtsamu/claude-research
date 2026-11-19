@@ -16,7 +16,8 @@ The file manager showed the same folder twice, and opening either copy showed th
 - Each `adb shell` round trip: under a second on USB.
 - The one slow command, `adb shell "ls -1R /sdcard | wc -l"` (184,602 lines), took long enough to be backgrounded and was **not timed**. Everything else is instant.
 - The independent verification pass and the MediaStore web research ran in the background and were not timed.
-- No fix was applied, so no fix time is known.
+- The `pm clear` attempt took under two minutes end to end, including roughly 20 seconds where `adb` lost the device. Not precisely timed.
+- No fix succeeded, so no working fix time is known.
 
 ## Summary
 
@@ -29,6 +30,7 @@ The file manager showed the same folder twice, and opening either copy showed th
 - Only the root of internal storage is affected. `DCIM/`, `Download/`, `Android/`, `Pictures/`, `Music/`, `MIUI/`, `Movies/` each list cleanly with no duplicates inside.
 - No official AOSP bug report was found. Community reports of the same symptom exist and all describe it as cosmetic, with one important warning: **deleting the "duplicate" deletes the real folder**, because both names point at the same inode.
 - A second pass over the same device refuted the symlink explanation and found that two of the commonly suggested `adb` checks give false answers here: `ls -lid` cannot distinguish an alias from a duplicate on a case-insensitive volume, and `find /sdcard -maxdepth 1 -type l` reports the `/sdcard` mount alias itself. Details in "Verification of the symlink theory".
+- `pm clear com.google.android.providers.media.module` was then actually run. It returned `Success`, restarted the provider process, and rebuilt nothing: the playlist row kept the same `_id` and all 7 duplicates remained. On this build MediaProvider is an APEX app, and `pm clear` wipes `/data/user/0/...`, not the live database in the APEX data area. See "Attempted rebuild".
 
 ## Environment
 
@@ -259,7 +261,7 @@ So the "an alias reports 0 items" reading does not apply. Both rows of every pai
 
 ## Impact of rebuilding MediaStore
 
-Clearing Media Storage (Settings, or `pm clear com.google.android.providers.media.module`) deletes the index database `external.db` plus the provider's app data, then triggers a rescan of the volume. On Android 11 and later `external.db` lives in the Mainline module `com.google.android.providers.media.module`; before that it lived in `com.android.providers.media`.
+Clearing Media Storage (Settings, or `pm clear com.google.android.providers.media.module`) deletes the index database `external.db` plus the provider's app data, then triggers a rescan of the volume. On Android 11 and later `external.db` lives in the Mainline module `com.google.android.providers.media.module`; before that it lived in `com.android.providers.media`. Caveat for this device: the `pm clear` form does nothing here, see "Attempted rebuild" below. The list describes what a real rebuild costs.
 
 ### What survives
 
@@ -303,14 +305,62 @@ adb shell "content query --uri content://media/external/audio/playlists --projec
 
 A full MediaStore rebuild is the wrong tool for a cosmetic duplicate listing. It cannot repair a `readdir` artifact in the FUSE layer, and it costs the state above for no benefit. Reboot first, and leave the store alone.
 
+## Attempted rebuild
+
+Ran anyway, to see whether the artifact was database-backed. It is not.
+
+Pre-checks, all clear:
+
+```bash
+adb shell "for t in images video; do printf 'trashed_%s ' \$t; content query --uri content://media/external/\$t/media --projection _id --where 'is_trashed=1' 2>&1 | grep -c '^Row:'; done"
+# trashed_images 0
+# trashed_video 0
+adb shell "content query --uri content://media/external/file --projection _id --where 'is_pending=1' 2>&1 | grep -c '^Row:'"
+# 0
+```
+
+No trashed or pending rows, so the database held nothing unrecoverable. Then:
+
+```bash
+adb shell pm clear com.google.android.providers.media.module
+# Success
+```
+
+Immediately afterwards the provider had a new pid (3595 to 16717) and the storage was still mounted, but `adb` dropped off USB for a few seconds and came back as `transport_id=2`. The phone did not reboot (`/proc/uptime` still showed 17.5 days), so this was the FUSE daemon restart taking adbd down with it.
+
+The result:
+
+| Check | Before | After |
+|---|---|---|
+| Images | 2,619 | 2,619 |
+| Videos | 15 | 15 |
+| Audio | 847 | 847 |
+| Playlist row | `_id=1000376972`, `PlayMe.m3u8` | **same `_id`** |
+| Duplicate names at root | 7 | 7 |
+
+The identical playlist `_id` is the decisive one. A rebuilt database that rescanned `PlayMe.m3u8` would have assigned a new rowid. It kept the old one, so the live database was never touched.
+
+### Why `pm clear` was a no-op
+
+MediaProvider on this build is an APEX module:
+
+```
+codePath=/apex/com.android.mediaprovider/priv-app/MediaProviderGoogle@372042780
+dataDir=/data/user/0/com.google.android.providers.media.module
+```
+
+APEX modules keep their live state in the APEX data area, `/data/misc/apexdata/com.android.mediaprovider/`, while `pm clear` empties the ordinary `/data/user/0/...` data directory. The clear succeeded on the empty path and left the real `external.db` alone. Reading the APEX path to confirm directly is denied to the `shell` user, so this is a strong inference from the identical row IDs rather than a byte-level check.
+
+A genuine rebuild would need the database file deleted, which needs root. This device has none: bootloader locked, `ro.debuggable=0`, no `su`. So `pm clear` is the strongest non-root option, and it is not a rebuild on this ROM.
+
 ## What to try (not yet tested)
 
-Ordered by risk, none applied during this session:
+Ordered by risk. Item 4 is now tested and closed.
 
 1. Reboot the phone. Remounts the FUSE layer and drops any cached directory state. Cheapest and most likely to clear a listing artifact.
 2. Restart MediaProvider only: `adb shell am force-stop com.google.android.providers.media.module` (the package exists alongside the legacy `com.android.providers.media`). Caveat: MediaProvider hosts the FUSE daemon on modern Android, so stopping it can leave the storage mount dead until the system respawns it. Reboot is the safer version of the same idea.
 3. Clear the file manager app's cache. If the duplicate is painted from a cached listing in the app rather than from `readdir`, this alone fixes the display. It does not explain the `find` result though.
-4. `adb shell pm clear com.google.android.providers.media.module` as a last resort. Rebuilds MediaStore from the files on disk. Files are not touched, but see "Impact of rebuilding MediaStore" for what is actually lost. It is not a fix for this symptom.
+4. `adb shell pm clear com.google.android.providers.media.module` as a last resort. **Tested, and it is a no-op on this build.** It reports `Success`, restarts the provider, and leaves the database intact, because MediaProvider is an APEX app whose state lives outside `/data/user/0`. It is not a fix for this symptom and not a rebuild here.
 
 ## References
 
