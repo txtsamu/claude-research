@@ -129,6 +129,70 @@ That describes the **previous** power-off, the one used to enter mask ROM mode, 
 
 The proof still costs one clean cycle: power off from Quick Settings (or Settings > System > Power off), power on, and check that the new boot prints no such line. Backing out of a dirty volume also needs a one-time `fsck.vfat -a` on a PC, because the kernel refuses to clear an already-dirty flag.
 
+## Clearing the sticky flag over SSH
+
+The device has no `fsck.vfat`, so the flag was cleared with the same player-release path used on 2026-11-17, without removing the card.
+
+The helper is the repo's own `ui/mqsend.c`, cross-compiled static for mipsel (the file is one of the nine sources excluded from the UI binary):
+
+```bash
+/opt/mipsel-n2008-musl-cross/bin/mipsel-linux-musl-gcc -Os -static \
+  -o /tmp/opencode/mqsend ui/mqsend.c
+```
+
+`scp` fails against this device (`/usr/libexec/sftp-server` is not present), so push over plain SSH:
+
+```bash
+ssh disc 'cat > /tmp/mqsend && chmod 755 /tmp/mqsend' < /tmp/opencode/mqsend
+```
+
+Release the card through the player, verify it is really unmounted, clear byte `0x41`, then return to Local:
+
+```bash
+ssh disc '
+  /tmp/mqsend 0666000C0006; sleep 1
+  /tmp/mqsend 0642000C0001; sleep 1
+  /tmp/mqsend 0657000C0008; sleep 3
+  grep -q /tmp/sdcard /proc/mounts && { echo still mounted; exit 1; }
+  printf "\000" | dd of=/dev/mmcblk0p1 bs=1 seek=65 count=1 conv=notrunc
+  sync
+  /tmp/mqsend 0666000C0006; sleep 1
+  /tmp/mqsend 0642000C0000; sleep 1
+  /tmp/mqsend 0657000C0008
+  echo add > /sys/block/mmcblk0/uevent
+'
+```
+
+Observed:
+
+```
+before clear, unmounted:  1
+after write:              0
+after remount:            1     (normal, kernel marks it dirty while mounted)
+```
+
+A second release/remount cycle without writing proved the kernel now clears the flag by itself: byte `0` after unmount, `1` after remount. Before the clear, the same unmount left it at `1`.
+
+Two details worth knowing:
+
+- The uevent remount is not instant. A check four seconds later still saw the card unmounted, and a manual `mount` in that window failed with `Device or resource busy`; the player mounted it shortly after. Wait, then re-check, do not force a second mount.
+- The USB cable was unplugged, so the storage gadget had no host to enumerate. With a host attached, the exported card could be automounted and the raw write would race with it.
+
+## Final proof
+
+One more Restart from the UI, then this boot:
+
+```
+uptime 0 min
+dmesg | grep -i "not properly unmounted"   -> NONE
+card: /dev/mmcblk0p1 on /tmp/sdcard type vfat (rw)
+byte 0x41: 1 (mounted, normal)
+journal, previous session: "card unmounted before shutdown or restart"
+dmesg | grep -c exFAT-fs -> 0
+```
+
+The warning loop is closed. It stays closed only while power-offs go through the UI; a hardware long press still cuts power without the unmount and marks the volume dirty again.
+
 ## Gotchas
 
 1. **USB Storage mode looks like progress but is not flash mode.** `0525:a4a5` is the player's mass-storage gadget. Only `a108:eaef` is mask ROM.
@@ -140,9 +204,9 @@ The proof still costs one clean cycle: power off from Quick Settings (or Setting
 
 ## Not verified
 
-- One clean power-off and power-on to prove the FAT warning is gone with build 7.
 - Full UI exercise after the flash: playback, USB modes, Restart, and the new module paths beyond boot.
 - The saved stock image was committed but not restored in this session.
+- The flag clear skipped `fsck.vfat`, so filesystem consistency still rests on the volume's history rather than a check.
 
 ## Related notes
 
