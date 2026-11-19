@@ -403,6 +403,52 @@ Best remaining hypothesis, stated as a hypothesis: the volume is case-insensitiv
 4. `adb shell pm clear com.google.android.providers.media.module`. **Tested, no-op on this build.** See "Attempted rebuild".
 5. Root-level `fsck.f2fs` or a raw `getdents` on `/dev/block/dm-52`. The only route left that could both diagnose and repair the lower file system. It needs an unlocked bootloader, which wipes the device on Xiaomi and is not worth it for a cosmetic artifact.
 
+## Second space theory
+
+The owner's hypothesis: a Xiaomi second space (dual space) was created once and later deleted, and the duplicate folders are leftovers from that. Tested, and it does not explain the doubling.
+
+### What the sources say about deleting a second space
+
+- Xiaomi's own support page states that deleting the second space destroys all app data inside it, and that anything needed must be moved to the first space or a PC first.
+- Users do report leftovers after deletion. A Reddit thread on storage staying full after removing a second space is a common shape of complaint, and a Xiaomiui housekeeping guide explicitly tells people to clear residual folders after deleting one.
+- No report was found of a deleted second space producing duplicate folder *names* in the main space. The reports are about unreclaimed space and leftover cache, not about doubled listings.
+
+### What the device shows
+
+```
+$ adb shell "pm list users"
+Users:
+	UserInfo{0:Owner:4c13} running
+$ adb shell "ls -1 /storage/emulated/"
+0
+obb
+$ adb shell "pm list packages | grep -iE 'secondspace|dualspace|second.space|multiuser'"
+(no output)
+$ adb shell "grep -c 999 /proc/self/mountinfo"
+0
+```
+
+Only user 0 exists. There is no second-space package, no `999` mount, and no second entry under `/storage/emulated/`. The space is gone, not half-deleted.
+
+### Why it cannot be the cause
+
+A second space is a separate Android user with its own storage at `/storage/emulated/999`, not a second dentry inside user 0's directory. Deleting it can orphan bytes under `/data/media/999`, and it can leave caches behind, but it cannot make the same directory name appear twice in `/storage/emulated/0`.
+
+Two physical directories with the same name, or the same name in different case, are also impossible here. The lower filesystem itself is case-insensitive, proven on the f2fs bind mount that bypasses FUSE entirely:
+
+```
+$ adb shell "mkdir /storage/emulated/0/Android/data/zzcaseA; mkdir /storage/emulated/0/Android/data/ZZCASEA"
+mkdir: '/storage/emulated/0/Android/data/ZZCASEA': File exists
+```
+
+So casefold is a property of the f2fs directories, not something FUSE emulates on top. No pair of twin directories can exist to be listed.
+
+What the second space may explain is *history*: those folders were created, migrated or restored at some point, which is why they exist and why their timestamps differ. It does not explain two rows for one inode.
+
+### What remains unchecked
+
+Whether orphaned bytes from the old `/data/media/999` still occupy space. Reading `/data/media` needs root. The observable proxy is `/data` usage: 161 GB used, 64 GB free on the 225 GB partition. If the owner ever sees unexplained usage that does not match the visible files, that is where it would be, and it is a storage problem rather than a listing problem.
+
 ## References
 
 - [Reddit, r/AndroidQuestions: Duplicate folders in file manager](https://www.reddit.com/r/AndroidQuestions/comments/q7moys/duplicate_folders_in_file_manager/)
@@ -418,6 +464,11 @@ Best remaining hypothesis, stated as a hypothesis: the volume is case-insensitiv
 - [Simple Gallery issue: support built-in trash of Android 11 and above](https://github.com/SimpleMobileTools/Simple-Gallery/issues/2343)
 - [XDA: Android 11 has a hidden Recycle Bin for trashed photos and videos](https://www.xda-developers.com/android-11-hidden-recycle-bin-trashed-photos-videos/)
 - [Android Developers: Access media files from shared storage](https://developer.android.com/training/data-storage/shared/media)
+- [Xiaomi support: How to delete the Second space](https://www.mi.com/global/support/article/KA-716458/)
+- [Xiaomi support: Does the second space take up the storage](https://www.mi.com/global/support/faq/details/KA-492586/)
+- [Xiaomiui: Clean exits on MIUI, delete account data and remove leftovers](https://xiaomiui.net/clean-exits-on-miui-delete-account-data-revoke-tokens-and-remove-leftovers-66026/)
+- [Reddit r/Xiaomi: storage still full after deleting second space](https://www.reddit.com/r/Xiaomi/comments/oln36w/storage_is_still_full_after_deleting_second_space/)
+- [TechBone: Xiaomi delete Second Space](https://www.techbone.net/xiaomi/smartphone/delete-second-space)
 
 ## Related
 
