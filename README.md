@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-19 | [diskos-fork-build-7-release-2026-11-19.md](diskos-fork-build-7-release-2026-11-19.md) | how-to |
 | 2026-11-18 | [diskos-ui-deepening-six-modules-and-harness-2026-11-18.md](diskos-ui-deepening-six-modules-and-harness-2026-11-18.md) | build-log |
 | 2026-11-18 | [diskos-build-harness-declare-once-tests-2026-11-18.md](diskos-build-harness-declare-once-tests-2026-11-18.md) | build-log |
 | 2026-11-18 | [outlook-bulk-inbox-cleanup-categories-browser-agent-2026-11-18.md](outlook-bulk-inbox-cleanup-categories-browser-agent-2026-11-18.md) | troubleshooting |
@@ -160,6 +161,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [diskos-fork-build-7-release-2026-11-19.md](diskos-fork-build-7-release-2026-11-19.md) | diskos, release, github, fork, tag, mq_ui, cross-build, podman, snowsky-disc, stable | 2026-11-19 |
 | [wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md](wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md) | wrapper-v2, apple-music, gamdl, fairplay, drm, podman, quadlet, fedora, alac, lossless | 2026-11-18 |
 | [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | gamdl, apple-music, music, downloader, fedora, uv, widevine, drm, cli | 2026-11-18 |
 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | diskos, snowsky-disc, verification, apps-page, equalizer, settings, quick-settings, max-volume, working-mode, tinj, screenshots, upstream | 2026-11-12 |
