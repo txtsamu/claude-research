@@ -31,6 +31,7 @@ The file manager showed the same folder twice, and opening either copy showed th
 - No official AOSP bug report was found. Community reports of the same symptom exist and all describe it as cosmetic, with one important warning: **deleting the "duplicate" deletes the real folder**, because both names point at the same inode.
 - A second pass over the same device refuted the symlink explanation and found that two of the commonly suggested `adb` checks give false answers here: `ls -lid` cannot distinguish an alias from a duplicate on a case-insensitive volume, and `find /sdcard -maxdepth 1 -type l` reports the `/sdcard` mount alias itself. Details in "Verification of the symlink theory".
 - `pm clear com.google.android.providers.media.module` was then actually run. It returned `Success`, restarted the provider process, and rebuilt nothing: the playlist row kept the same `_id` and all 7 duplicates remained. On this build MediaProvider is an APEX app, and `pm clear` wipes `/data/user/0/...`, not the live database in the APEX data area. See "Attempted rebuild".
+- A cold boot does not clear it either. After `adb reboot`, a fresh FUSE daemon and a manual unlock, the listing is byte-identical: 35 visible dirents, the same 7 duplicated. See "Cold boot".
 
 ## Environment
 
@@ -178,7 +179,9 @@ Practical consequences:
 
 What was ruled out, with the evidence above: a second physical directory, a case-variant twin, dual apps or a second storage user (`/storage/emulated/` contains only `0` and `obb`), an external SD card (`sm list-volumes` shows only `emulated;0`), a second MTP volume, `ls` misprinting, and a race between cached and live results.
 
-Not established: which component holds the stale entry (MediaProvider's FUSE daemon, the kernel FUSE layer, or the f2fs lower file system), and whether a reboot clears it. No official bug report explains the mechanism.
+Not established: which component holds the stale entry (MediaProvider's FUSE daemon, the kernel FUSE layer, or the f2fs lower file system). No official bug report explains the mechanism.
+
+Established after the first write-up: a reboot does not clear it, and `pm clear` on MediaProvider does not rebuild the store on this build. Both were tested, see below.
 
 ## Community reports found online
 
@@ -353,14 +356,52 @@ APEX modules keep their live state in the APEX data area, `/data/misc/apexdata/c
 
 A genuine rebuild would need the database file deleted, which needs root. This device has none: bootloader locked, `ro.debuggable=0`, no `su`. So `pm clear` is the strongest non-root option, and it is not a rebuild on this ROM.
 
-## What to try (not yet tested)
+## Cold boot
 
-Ordered by risk. Item 4 is now tested and closed.
+Rebooted with `adb reboot`, waited for `sys.boot_completed=1`, then unlocked the phone by hand (user 0 sits in `RUNNING_LOCKED` until the first unlock, so `/storage/emulated/0` lists nothing until then; that is normal and not data loss).
 
-1. Reboot the phone. Remounts the FUSE layer and drops any cached directory state. Cheapest and most likely to clear a listing artifact.
-2. Restart MediaProvider only: `adb shell am force-stop com.google.android.providers.media.module` (the package exists alongside the legacy `com.android.providers.media`). Caveat: MediaProvider hosts the FUSE daemon on modern Android, so stopping it can leave the storage mount dead until the system respawns it. Reboot is the safer version of the same idea.
-3. Clear the file manager app's cache. If the duplicate is painted from a cached listing in the app rather than from `readdir`, this alone fixes the display. It does not explain the `find` result though.
-4. `adb shell pm clear com.google.android.providers.media.module` as a last resort. **Tested, and it is a no-op on this build.** It reports `Success`, restarts the provider, and leaves the database intact, because MediaProvider is an APEX app whose state lives outside `/data/user/0`. It is not a fix for this symptom and not a rebuild here.
+Result after a fresh boot, a fresh FUSE daemon and a newly unlocked user:
+
+```
+$ adb shell "ls -1 /storage/emulated/0 | wc -l; ls -1a /storage/emulated/0 | wc -l"
+35
+42
+$ adb shell "ls -1 /storage/emulated/0 | sort | uniq -d"
+Android
+DCIM
+Download
+MIUI
+Movies
+Music
+Pictures
+```
+
+Identical to the pre-reboot state: 35 visible dirents, 42 including dot entries, the same 7 duplicated, and the same media counts (2,619 images, 15 videos, 847 audio, 1 playlist).
+
+So the artifact is not cached state in the running FUSE daemon. It survives a cold boot, which means it is reintroduced from below each time the volume is mounted.
+
+### Where it comes from, and what is still unknown
+
+The mount table shows one FUSE view for the volume and a direct f2fs mount of the same block device for `Android/data` and `Android/obb`:
+
+```
+3478 /storage/emulated             fuse
+3571 /mnt/pass_through/0/emulated  f2fs
+5940 /storage/emulated/0/Android/data  f2fs
+6080 /storage/emulated/0/Android/obb   f2fs
+```
+
+Every non-`/storage/emulated` path (`/mnt/pass_through/0/emulated/0`, `/mnt/runtime/default/emulated/0`, `/mnt/user/0/emulated/0`, `/mnt/installer/0/emulated/0`) returns nothing readable to the `shell` user, and the bind mounts for `Android/data` and `Android/obb` cannot be walked upwards out of their own roots. So comparing the FUSE listing against the raw f2fs listing would need root, and without that the layer that duplicates the entries cannot be identified.
+
+Best remaining hypothesis, stated as a hypothesis: the volume is case-insensitive, the seven affected names are exactly the directories that get written by apps with inconsistent casing, and an f2fs casefold directory can end up with a legacy dentry alongside a newer one. If `readdir` returns both and the FUSE layer reports the canonical name for both, the visible result is two identical rows for one inode. That would explain the specific seven, the stability across boots, and why untouched directories such as `Documents` are clean. It is unverified and would need `debugfs`/`fsck.f2fs` on the raw partition to settle.
+
+## What to try
+
+1. Reboot. **Tested, no effect.** See "Cold boot".
+2. Restart MediaProvider only: `adb shell am force-stop com.google.android.providers.media.module`. Not worth trying. Note that the `pm clear` restart already took `adb` down for about 20 seconds; this is the same hazard with the same result.
+3. Clear the file manager app's cache. Only relevant if the app paints a stale listing. The underlying `getdents` stream really is doubled, so this cannot be the whole story.
+4. `adb shell pm clear com.google.android.providers.media.module`. **Tested, no-op on this build.** See "Attempted rebuild".
+5. Root-level `fsck.f2fs` or a raw `getdents` on `/dev/block/dm-52`. The only route left that could both diagnose and repair the lower file system. It needs an unlocked bootloader, which wipes the device on Xiaomi and is not worth it for a cosmetic artifact.
 
 ## References
 
