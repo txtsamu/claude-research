@@ -2,7 +2,7 @@
 type: investigation
 tags: [fiio, snowsky-disc, diskos, usb-audio, usb-host, otg, uac, reverse-engineering, ghidra, rea, mips, mq_player, iem, dsp-dongle]
 created: 2026-10-19
-last_verified: 2026-10-19
+last_verified: 2026-11-20
 status: current
 ---
 
@@ -214,6 +214,43 @@ User confirmed audio in the IEMs. Format check (`/proc/asound/card1/pcm0p/sub0/h
 
 Not verified: whether the Disc's software volume/EQ alters samples — keep Disc volume max / EQ off and use the dongle's volume for strict bit-perfect.
 
+### Build 7 and the FiiO JadeAudio JA11 (2026-11-20)
+
+Request: "check if usb audio play with correct bitrate or not". Build 7 (`80b0b0e1ef69b776a83f8e954a915061`), Disc as USB host, JA11 at `2972:0102`, player pid 1150. Whole check: about 10 minutes of SSH reads plus two short track switches, no long steps.
+
+Three independent readings: the player's open fd names the track, the FLAC STREAMINFO gives its native rate, and ALSA gives the wire rate.
+
+```bash
+ssh disc 'ls -l /proc/$(pidof mq_player)/fd | grep sdcard'
+ssh disc 'f="/tmp/sdcard/Music/.../track.flac"; b=$(dd if="$f" bs=1 skip=18 count=4 2>/dev/null | od -An -tu1); set -- $b; echo "rate=$(( ($1<<12) | ($2<<4) | ($3>>4) )) bps=$(( ((($3&1)<<4)|($4>>4))+1 ))"'
+ssh disc 'cat /proc/asound/card1/pcm0p/sub0/hw_params'
+ssh disc 'cat /proc/asound/card1/stream0'
+```
+
+Result:
+
+| Track | Native | ALSA wire | `stream0` |
+|---|---|---|---|
+| THE BOOK 2 / 06 Kaibutsu.flac | 96 kHz / 24-bit | `S32_LE` 96000 | Altset 3, Momentary 96000, Packet 120 |
+| Mocca / Friends / 01 - On the Night Like This.flac | 44.1 kHz / 16-bit | `S32_LE` 44100 | Altset 3, Momentary 44070 |
+
+The switch used the player's own play-list frame, the same one `playreq_play_list()` builds, sent with the repo's `ui/mqsend.c` helper:
+
+```bash
+/tmp/mqsend "0100001700000003Friends"        # 44.1 kHz album, track 1
+/tmp/mqsend "0100001A00050003THE BOOK 2"     # restore, track 6
+```
+
+Frame layout: tag `0100`, 4 hex total length (`16 + name length`), 4 hex zero-based start index (`track - 1`), 4 hex list type (`3` = album), then the album name. "Friends" is 7 chars, so `0x17` = 23 = 16 + 7. "THE BOOK 2" is 10 chars, so `0x1A` = 26 = 16 + 10, and track 6 is index 5.
+
+Four seconds after the switch the fd was `Friends (2004)/01 - On the Night Like This.flac` and ALSA reported 44100. After the restore it was `Kaibutsu.flac` and 96000 again. No resampling to a fixed 48 or 96 kHz.
+
+`hw_ptr` advanced 480672 frames in 5 s and 288900 in 3 s at 96 kHz (nominal 480000 and 288000; the extra is shell and sampling jitter, not a rate error). `state: RUNNING`, no xruns, no URB errors, no disconnect during either switch. The 44070 Hz momentary figure at 44.1 kHz is the asynchronous feedback estimate, 0.07 percent below nominal, which is normal.
+
+`S32_LE` is the container, not the source depth: the JA11 exposes 16, 24 and 32 bit alternatives and the kernel picked its 32-bit alt for both files. The earlier Chu2 test above got `S24_3LE` for the same reasons, so the container follows what the dongle advertises. Strict bit-perfect still depends on EQ, DRE, gain and the volume path.
+
+Caveats: this covers the Disc as USB host to a dongle. The opposite direction, Disc as USB DAC gadget, was not tested because the gadget read `state: not attached`. The test restarted the same track from 0 after the restore.
+
 ## Open items
 
 - Unplugging the dongle while on USB Audio: player has `on_usb_audio_remove` / USB_HOST_NULL handling; diskOS does not yet auto-return to the internal DAC. Switch Working Mode back to Local Playback manually.
@@ -227,3 +264,5 @@ Not verified: whether the Disc's software volume/EQ alters samples — keep Disc
 - [diskos docs/HARDWARE.md — USB host audio route "absent from normal builds"](https://github.com/b0hemia/diskos/blob/main/docs/HARDWARE.md)
 - [diskos docs/DEV_WORKFLOW.md — hot-reload over SSH, `--ui` reflash](https://github.com/b0hemia/diskos/blob/main/docs/DEV_WORKFLOW.md)
 - [txtsamu/diskos fix/usb-dac-workmode](https://github.com/txtsamu/diskos/tree/fix/usb-dac-workmode)
+- [Linux UAC2 gadget function (f_uac2.c)](https://github.com/torvalds/linux/blob/master/drivers/usb/gadget/function/f_uac2.c)
+- [configfs-usb-gadget-uac2 ABI](https://github.com/torvalds/linux/blob/master/Documentation/ABI/testing/configfs-usb-gadget-uac2)
