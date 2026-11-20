@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-20 | [vesktop-update-fedora-rpm-2026-11-20.md](vesktop-update-fedora-rpm-2026-11-20.md) | how-to |
 | 2026-11-19 | [redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md](redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md) | investigation |
 | 2026-11-19 | [diskos-flash-build-7-2026-11-19.md](diskos-flash-build-7-2026-11-19.md) | how-to |
 | 2026-11-19 | [diskos-fork-build-7-release-2026-11-19.md](diskos-fork-build-7-release-2026-11-19.md) | how-to |
@@ -163,6 +164,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [vesktop-update-fedora-rpm-2026-11-20.md](vesktop-update-fedora-rpm-2026-11-20.md) | vesktop, discord, fedora, rpm, update-alternatives, electron, vencord | 2026-11-20 |
 | [diskos-flash-build-7-2026-11-19.md](diskos-flash-build-7-2026-11-19.md) | diskos, flash, mask-rom, installer, build-7, mq_ui, snowsky-disc, fat, unmount, verification | 2026-11-19 |
 | [diskos-fork-build-7-release-2026-11-19.md](diskos-fork-build-7-release-2026-11-19.md) | diskos, release, github, fork, tag, mq_ui, cross-build, podman, snowsky-disc, stable | 2026-11-19 |
 | [wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md](wrapper-v2-apple-music-fps-podman-fedora-2026-11-18.md) | wrapper-v2, apple-music, gamdl, fairplay, drm, podman, quadlet, fedora, alac, lossless | 2026-11-18 |
