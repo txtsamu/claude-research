@@ -8,7 +8,7 @@ status: current
 
 # Disk usage audit on the Fedora 43 desktop, and the orphaned flatpak Steam tree
 
-Question: what fills the 475 GB NVMe on this workstation, and what is safe to reclaim? Result: the main finding was a 32 GB **orphaned flatpak Steam data tree** with no Steam app attached to it, which was backed up and deleted, taking the disk from 282 GB used (60%) to 267 GB used (57%). Also 48 GB of `uv` cache, left untouched. A secondary gotcha: on this box `du` totals overstate disk usage by about a third because btrfs compresses with `zstd:1`, so `du` must never be read as free space.
+Question: what fills the 475 GB NVMe on this workstation, and what is safe to reclaim? Two cleanups were carried out: a 32 GB **orphaned flatpak Steam data tree** with no Steam app attached to it, and the 48 GB `uv` cache. Together they were **79 G apparent but only 22.3 GiB on disk**, taking the disk from 282 G used (60%) to 260 G used (56%). The main lesson: on btrfs with `compress=zstd:1`, `du` reports apparent size and overstates real cost by 2x on game data and 6x on Python caches, so never size a cleanup from `du` alone.
 
 ## Time estimate
 
@@ -88,14 +88,28 @@ du -xhd1 /home/moo 2>/dev/null | sort -rh | head -25
 | `Music/` | 8.3 G | |
 | `.config/`, `.npm/`, `diskos/` | 6.4 / 5.1 / 4.2 G | |
 
-## 3. Gotcha: `du` overstates this disk by roughly a third
+## 3. Gotcha: `du` reports apparent size, so it badly overstates this disk
 
-`du -x` sums to about 410 G (104 G root side + 306 G home side) while btrfs says 273.9 GiB is used. The ~33% gap is `compress=zstd:1` at work: `du` counts logical file blocks, btrfs stores them compressed. Consequences:
+`du -x` sums to about 410 G (104 G root side + 306 G home side) while btrfs says 273.9 GiB is used. The gap is `compress=zstd:1`, and it is **not** uniform: it depends entirely on how compressible a tree is.
 
-- Never read a `du` total on this box as "space on disk". Cross-check with `df` or `btrfs filesystem usage`.
-- The inverse also holds: deleting 100 G of `du` numbers frees less than 100 G on disk.
+First, establish what `du` is even reporting, by comparing block count against apparent size:
 
-The attempt to measure the real ratio with `compsize /home` failed. Running it without root hit `Operation not permitted` on root-owned files; running it through `sudo -n` reached the NFS photo mount and aborted with `/home/moo/nfs_photos/.../x.jpg: Not btrfs (or SEARCH_V2 unsupported)`. A clean measurement would need `compsize` pointed at one subvolume at a time with the NFS mounts excluded, or run while the NFS mounts are unmounted. So the one-third figure stays a derived estimate, not a measurement.
+```bash
+for d in ~/.cache/tinygrad ~/.cache/pip ~/.local/share/Steam/steamapps/common/Stray ~/archive/ComfyUI ~/sessions; do
+  b=$(du -sh "$d" | cut -f1); a=$(du -sh --apparent-size "$d" | cut -f1); echo "$d blocks=$b apparent=$a"
+done
+# tinygrad      blocks=14G    apparent=14G
+# pip           blocks=2.6G   apparent=2.6G
+# Stray         blocks=6.2G   apparent=6.2G
+# ComfyUI       blocks=17G    apparent=16G
+# sessions      blocks=8.9G   apparent=8.8G
+```
+
+`blocks == apparent` everywhere, so on this system `du` is **not** reporting compressed disk blocks. It is reporting file lengths. Never read a `du` total here as "space on disk"; always cross-check with `df` or `btrfs filesystem usage`.
+
+How wrong it can be, measured (see sections 6 and 7): an unpacked-Python cache compressed **6.4x**, while game assets landed near **2x**. One overall ratio does not exist, which is why a single "du overstates by a third" figure is misleading. The honest rule is per-tree measurement.
+
+`compsize` could not be used to get authoritative ratios: it hits `SEARCH_V2: Operation not permitted` on this kernel (btrfs-progs v7.1 against 7.3.3-100.fc43), even on directories the user owns, and it aborts entirely on the NFS mounts. The ratios here come from `btrfs filesystem usage` deltas around real deletions instead, which is arguably better evidence anyway.
 
 ## 4. The find: two Steam trees, one Steam
 
@@ -164,19 +178,19 @@ Note on the app IDs, for future reference: 1030300 Silksong, 312520 Rain World, 
 
 ## 5. Reclaimable, ranked
 
-| Item | Logical | Risk |
-|---|---|---|
-| ~~Orphaned flatpak Steam tree~~ | 32 G | **done, freed 15.0 GiB** (section 6) |
-| `uv` cache `~/.cache/uv` | 48 G | none, `uv cache prune` or `uv cache clean` |
-| `archive/installers` | 20 G | old installers, judgement call |
-| tinygrad cache | 14 G | may be weights, check before deleting |
-| `/var/tmp` buildah cache + ghidra | 4.2 G | disposable scratch |
-| pip cache | 2.6 G | `pip cache purge` |
-| `/root/models` | 57 G | user's call, not a cache |
+`Apparent` is what `du` shows. `On disk` is what actually frees, and it is only known after measuring. Two rows are now measured, so the table no longer pretends they are equal.
 
-With the Steam tree already gone, clearing the remaining five removable items frees roughly 90 G of logical space.
+| Item | Apparent | On disk (measured) | Risk |
+|---|---|---|---|
+| ~~Orphaned flatpak Steam tree~~ | 32 G | **15.0 GiB** | **done** (section 6) |
+| ~~`uv` cache `~/.cache/uv`~~ | 48 G | **7.3 GiB** | **done** (section 7) |
+| `archive/installers` | 20 G | unknown, probably near 1:1 | old installers, judgement call |
+| tinygrad cache | 14 G | unknown | may be weights, check before deleting |
+| `/var/tmp` buildah cache + ghidra | 4.2 G | unknown | disposable scratch |
+| pip cache | 2.6 G | unknown, likely tiny (compressed wheels) | `pip cache purge` |
+| `/root/models` | 57 G | near 1:1, model weights do not compress | user's call, not a cache |
 
-## 6. Deletion performed
+## 6. Deletion performed: flatpak Steam orphan
 
 Authorised by the user after the save-data check above. Safety checks first, then remove:
 
@@ -221,12 +235,48 @@ The first backup attempt used the natural form, `cd "$S"; tar -cf out.tar --excl
 
 Related trap: `pkill -f <pattern>` matches the `bash -c` command line running it, so cleaning up that job killed its own shell twice (exit 143). Use `pkill -f` on a pattern that cannot appear in the invoking command, or kill by PID.
 
-## 7. What was not done
+## 7. Deletion performed: `uv` cache
 
-- **The flatpak Steam orphan was backed up and deleted** (section 6). Everything else listed in section 5 was left in place.
-- **No precise compression ratio for the whole filesystem**, because `compsize` failed on the NFS mount (see section 3). The one ratio measured, 47% on the Steam tree, applies to already-compressed game data only.
+Authorised after section 5. Checked for running `uv` processes first (`pgrep -af '/uv '`), then:
+
+```bash
+uv --version          # uv 0.11.6 (x86_64-unknown-linux-gnu)
+time uv cache clean
+# Clearing cache at: /home/moo/.cache/uv
+# Removed 249355 files (46.5GiB)
+# real 0m6.046s
+```
+
+Measured effect:
+
+| | Before | After |
+|---|---|---|
+| `df` used | 267 G (57%) | 260 G (56%) |
+| `df` free | 204 G | 210 G |
+| btrfs Used | 266.19 GiB | 258.89 GiB |
+
+**46.5 GiB apparent became 7.30 GiB on disk, a 6.4x compression ratio.** The cache was unpacked Python source and metadata, exactly the kind of data `zstd:1` eats. Repeated reads of `btrfs filesystem usage` minutes later showed 258.89 GiB, so this is real and not delayed-ref lag.
+
+This is the correction to flag for the next audit: the "48 G `uv` cache" headline was **apparent size**, and the actual reclaimable amount was about 7 GiB. Sizing reclaim from `du` output alone would have oversold it by 6x. Game data behaves the opposite way (section 6, 32 G apparent to 15 GiB disk).
+
+## 8. What was not done
+
+- **Both cleanup targets were executed**: the flatpak Steam orphan (section 6) and the `uv` cache (section 7). Everything else listed in section 5 was left in place.
+- **No whole-filesystem compression ratio**, because `compsize` is blocked by `SEARCH_V2: Operation not permitted` on this kernel. Two per-tree ratios were measured instead: 2.1x for the Steam tree, 6.4x for the `uv` cache.
+- **No measurement of the remaining rows** in section 5. `archive/installers`, tinygrad, `/var/tmp` and the pip cache are still unknown on-disk sizes, and the pip cache is likely far smaller in real terms than its 2.6 G apparent figure.
 - **No judgement on `archive/` or `/root/models`**, since those hold real data, not caches.
-- **The native and flatpak Steam libraries were not compared file-by-file**, only by stated size and app IDs. The 7.7 G Silksong pair is a strong duplicate signal but was not checksummed. This no longer matters, since the flatpak copy is gone.
+- **The native and flatpak Steam libraries were not compared file-by-file**, only by stated size and app IDs. This no longer matters, since the flatpak copy is gone.
+- **No verification that a project still builds** after the `uv` cache clean. `uv` re-downloads on demand, so the first build after this will be slow, but that was not tested.
+
+## Session outcome
+
+| Step | Apparent | Freed on disk |
+|---|---|---|
+| Flatpak Steam orphan | 32 G | 15.0 GiB |
+| `uv` cache clean | 46.5 GiB | 7.3 GiB |
+| **Total** | **~79 G** | **22.3 GiB** |
+
+Disk went from 282 G used / 189 G free (60%) to **260 G used / 210 G free (56%)**. A 79 G "reclaimable" headline delivered 22 GiB, which is the single most useful lesson here.
 
 ## References
 
