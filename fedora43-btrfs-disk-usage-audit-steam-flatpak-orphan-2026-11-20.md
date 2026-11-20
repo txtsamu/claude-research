@@ -109,7 +109,17 @@ done
 
 How wrong it can be, measured (see sections 6 and 7): an unpacked-Python cache compressed **6.4x**, while game assets landed near **2x**. One overall ratio does not exist, which is why a single "du overstates by a third" figure is misleading. The honest rule is per-tree measurement.
 
-`compsize` could not be used to get authoritative ratios: it hits `SEARCH_V2: Operation not permitted` on this kernel (btrfs-progs v7.1 against 7.3.3-100.fc43), even on directories the user owns, and it aborts entirely on the NFS mounts. The ratios here come from `btrfs filesystem usage` deltas around real deletions instead, which is arguably better evidence anyway.
+`compsize` could not be used to get authoritative ratios: it hits `SEARCH_V2: Operation not permitted` on this kernel (btrfs-progs v7.1 against 7.3.3-100.fc43), even on directories the user owns, and it aborts entirely on the NFS mounts.
+
+**Use `btrfs filesystem du -s` instead.** It works on this box, uses a different ioctl, and prints exactly what is needed:
+
+```bash
+btrfs filesystem du -s /home/moo/archive/installers
+#      Total   Exclusive  Set shared  Filename
+#   19.74GiB     19.74GiB       0.00B  /home/moo/archive/installers
+```
+
+`Total` is apparent, `Exclusive` is the real blocks on disk. Run this before any future cleanup instead of arguing from `du`. It also settles the per-file case, since it accepts a list, and it showed the ISO directory at 1:1 (19.74 GiB apparent, 19.74 GiB exclusive) because ISO images are already compressed.
 
 ## 4. The find: two Steam trees, one Steam
 
@@ -277,6 +287,32 @@ This is the correction to flag for the next audit: the "48 G `uv` cache" headlin
 | **Total** | **~79 G** | **22.3 GiB** |
 
 Disk went from 282 G used / 189 G free (60%) to **260 G used / 210 G free (56%)**. A 79 G "reclaimable" headline delivered 22 GiB, which is the single most useful lesson here.
+
+## 9. Appendix: what is in `archive/installers`
+
+Inspected at the user's request. **19.74 GiB real on disk**, and unlike the caches it is 1:1 with apparent size, because ISO images are already compressed.
+
+| File | Real | mtime | Identity |
+|---|---|---|---|
+| `iso/windows11-iot-enterptrise-25h2.iso` | 6.82 GiB | 2026-06-26 | Windows 11 IoT Enterprise 25H2 x64, label `CENA_X64FREO_EN-US_DV9`. Filename has a typo, `enterptrise` |
+| `iso/ubuntu-24.04.4-desktop-amd64.iso` | 6.20 GiB | 2026-02-18 | official Ubuntu 24.04.4 LTS desktop, label `Ubuntu 24.04.4 LTS amd64`. Superseded point release |
+| `iso/Tiny11Core-25H2-English-Pro-2026-07-05.iso` | 2.96 GiB | 2026-09-20 | Tiny11 Core, a community-debloated Windows 11 build (NTDEV). **Unofficial** image |
+| `iso/rhre-20260209.iso` | 2.50 GiB | 2026-06-14 | GPT disk image, not ISO 9660: BIOS boot 1 M, EFI 50 M, two Linux fs (250 M + 2.2 G). Strings show `vmlinuz-6.17.10-100.fc41.x86_64`, so a Fedora 41 x86_64 system image. No label; purpose not identified |
+| `Nusantara-v5.8-13-selene-Gapps-OFFICIAL-11052023-0904.zip` | 1.16 GiB | 2026-08-18 | Nusantara Project Android 13 custom ROM with GApps, codename `selene`. Likely tied to the Redmi work |
+| `tsetup.7.1.3.tar.xz` | 75 MiB | 2026-09-02 | Telegram Desktop 7.1.3 tarball |
+| `com.vivo.vhome_..._apk` | 32 MiB | 2026-07-27 | Vivo VHome APK from APKMirror |
+
+How the identity was established, since none of it is in the filenames:
+
+```bash
+blkid -p iso/*.iso | grep LABEL        # volume labels
+file -b iso/rhre-20260209.iso          # DOS/MBR boot sector, GPT, not ISO 9660
+fdisk -l iso/rhre-20260209.iso         # partition layout
+strings -n 6 iso/rhre-20260209.iso | grep -E 'vmlinuz'   # distro fingerprint
+btrfs filesystem du -s iso/*.iso       # real on-disk size per file
+```
+
+Reclaimable here is real, not apparent: the Ubuntu ISO (6.20 GiB) is a superseded point release, and Tiny11 Core (2.96 GiB) duplicates the purpose of the official Windows image. Removing those two frees 9.16 GiB. Nothing was deleted; the user was asked first.
 
 ## References
 
