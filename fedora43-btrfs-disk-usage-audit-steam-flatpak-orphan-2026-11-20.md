@@ -8,7 +8,7 @@ status: current
 
 # Disk usage audit on the Fedora 43 desktop, and the orphaned flatpak Steam tree
 
-Question: what fills the 475 GB NVMe on this workstation, and what is safe to reclaim? Result: 282 GB used (60%), 189 GB free, not urgent. The main finding is a 32 GB **orphaned flatpak Steam data tree** with no Steam app attached to it, plus 48 GB of `uv` cache. A secondary gotcha: on this box `du` totals overstate disk usage by about a third because btrfs compresses with `zstd:1`, so `du` must never be read as free space.
+Question: what fills the 475 GB NVMe on this workstation, and what is safe to reclaim? Result: the main finding was a 32 GB **orphaned flatpak Steam data tree** with no Steam app attached to it, which was backed up and deleted, taking the disk from 282 GB used (60%) to 267 GB used (57%). Also 48 GB of `uv` cache, left untouched. A secondary gotcha: on this box `du` totals overstate disk usage by about a third because btrfs compresses with `zstd:1`, so `du` must never be read as free space.
 
 ## Time estimate
 
@@ -166,22 +166,67 @@ Note on the app IDs, for future reference: 1030300 Silksong, 312520 Rain World, 
 
 | Item | Logical | Risk |
 |---|---|---|
+| ~~Orphaned flatpak Steam tree~~ | 32 G | **done, freed 15.0 GiB** (section 6) |
 | `uv` cache `~/.cache/uv` | 48 G | none, `uv cache prune` or `uv cache clean` |
-| Orphaned flatpak Steam tree | 32 G | none, installs are re-downloadable, no saves present |
 | `archive/installers` | 20 G | old installers, judgement call |
 | tinygrad cache | 14 G | may be weights, check before deleting |
 | `/var/tmp` buildah cache + ghidra | 4.2 G | disposable scratch |
 | pip cache | 2.6 G | `pip cache purge` |
 | `/root/models` | 57 G | user's call, not a cache |
 
-Clearing the first six frees roughly 120 G of logical space, somewhere north of 75 G on disk after compression.
+With the Steam tree already gone, clearing the remaining five removable items frees roughly 90 G of logical space.
 
-## 6. What was not done
+## 6. Deletion performed
 
-- **Nothing was deleted.** This session was read-only inspection; the user was asked before any removal.
-- **No precise compression ratio**, because `compsize` failed on the NFS mount (see section 3).
+Authorised by the user after the save-data check above. Safety checks first, then remove:
+
+```bash
+S=/home/moo/.var/app/com.valvesoftware.Steam
+case "$S" in /home/moo/.var/app/com.valvesoftware.Steam) ;; *) exit 1 ;; esac
+test -d "$S"
+flatpak info com.valvesoftware.Steam >/dev/null 2>&1 && exit 1   # refuse if app reinstalled
+findmnt -rn -T "$S"        # confirms no mount point or nested mount
+time rm -rf --one-file-system "$S"
+```
+
+Result, measured:
+
+| | Before | After |
+|---|---|---|
+| `df` used | 282 G (60%) | 267 G (57%) |
+| `df` free | 189 G | 204 G |
+| btrfs Used | 281.30 GiB | 266.28 GiB |
+
+- **Freed 15.0 GiB on disk from 32 G of `du`**, so this tree compressed at roughly 47%. Game assets are already compressed, so `zstd:1` had almost nothing to squeeze. Do not expect the ~33% overall figure on game data.
+- `rm -rf` took **4.055 s** (measured).
+- `~/.var/app` now holds four dirs, all matching an installed flatpak. Native Steam is untouched at 34 G.
+
+### Backup taken first
+
+```bash
+B=/home/moo/archive/steam-flatpak-orphan-backup-2026-11-20
+tar -cf "$B/steam-flatpak-small-data.tar" -C "$S" \
+  .local/share/Steam/userdata \
+  .local/share/Steam/steamapps/appmanifest_*.acf \
+  .local/share/Steam/steamapps/libraryfolders.vdf \
+  config data
+gzip -9 "$B/steam-flatpak-small-data.tar"
+```
+
+The result is `~/archive/steam-flatpak-orphan-backup-2026-11-20/steam-flatpak-small-data.tar.gz`, **6.9 MB, 178 entries** (160 in `userdata`). It holds the save metadata, the app manifests (a record of what was installed) and the library config, but not the 30 G of game files, since those are re-downloadable.
+
+### Dead end worth remembering: `tar --exclude` with `-C dir .`
+
+The first backup attempt used the natural form, `cd "$S"; tar -cf out.tar --exclude='.local/share/Steam/steamapps/common' ... .`. The excludes **did not match**, because with `-C` plus a `.` operand tar stores members as `./.local/...`, and the patterns were written without the `./`. The result was that tar began archiving all 32 G; it was killed after 180 s having written a 3.7 GB partial tar plus a 1.6 GB partial zst. Both were removed. The fix is to list the wanted paths explicitly instead of excluding the unwanted ones; that needs no pattern matching and cannot silently do the wrong thing.
+
+Related trap: `pkill -f <pattern>` matches the `bash -c` command line running it, so cleaning up that job killed its own shell twice (exit 143). Use `pkill -f` on a pattern that cannot appear in the invoking command, or kill by PID.
+
+## 7. What was not done
+
+- **The flatpak Steam orphan was backed up and deleted** (section 6). Everything else listed in section 5 was left in place.
+- **No precise compression ratio for the whole filesystem**, because `compsize` failed on the NFS mount (see section 3). The one ratio measured, 47% on the Steam tree, applies to already-compressed game data only.
 - **No judgement on `archive/` or `/root/models`**, since those hold real data, not caches.
-- **The native and flatpak Steam libraries were not compared file-by-file**, only by stated size and app IDs. The 7.7 G Silksong pair is a strong duplicate signal but was not checksummed.
+- **The native and flatpak Steam libraries were not compared file-by-file**, only by stated size and app IDs. The 7.7 G Silksong pair is a strong duplicate signal but was not checksummed. This no longer matters, since the flatpak copy is gone.
 
 ## References
 
