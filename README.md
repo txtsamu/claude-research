@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-20 | [fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md](fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md) | investigation |
 | 2026-11-20 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | investigation |
 | 2026-11-20 | [vesktop-update-fedora-rpm-2026-11-20.md](vesktop-update-fedora-rpm-2026-11-20.md) | how-to |
 | 2026-11-19 | [redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md](redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md) | investigation |
@@ -57,7 +58,6 @@ One combined view across all three tables below, so the latest work is visible a
 | 2026-11-18 | [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | troubleshooting |
 | 2026-11-18 | [cheapest-cs43198-dap-indonesia-2026-11-18.md](cheapest-cs43198-dap-indonesia-2026-11-18.md) | investigation |
 | 2026-11-18 | [gamdl-apple-music-downloader-install-fedora-2026-11-18.md](gamdl-apple-music-downloader-install-fedora-2026-11-18.md) | how-to |
-| 2026-11-12 | [diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md](diskos-device-check-2026-11-12-and-choice-picker-scroll-fix.md) | how-to |
 | 2026-11-11 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | troubleshooting |
 | 2026-11-10 | [diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md](diskos-usb-debug-source-menu-serial-no-ethernet-2026-11-10.md) | investigation |
 | 2026-11-11 | [diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md](diskos-usb-audio-volume-keys-double-click-and-hold-2026-11-11.md) | troubleshooting |
@@ -314,6 +314,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md](fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md) | disk, btrfs, fedora43, compression, zstd, du, steam, flatpak, uv-cache, podman | current: 282 GB of 475 GB used (60%); `du` overstates by ~33% because of `compress=zstd:1`, cross-check with `btrfs filesystem usage`; found a 32 GB orphaned `~/.var/app/com.valvesoftware.Steam` tree with no flatpak app installed since May 2026, no saves inside, safe to delete; 48 GB `uv` cache; nothing deleted | 2026-11-20 |
 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | fiio, snowsky-disc, diskos, usb-audio, otg, reverse-engineering, ghidra, rea, mips | current: USB Audio fixed (switch-then-wait), verified 24/96 to Chu2; build 7 with the JA11 re-checked 2026-11-20, 44.1 and 96 kHz follow the file with no resampling; rea refuses NaN2008 MIPS | 2026-11-20 |
 | [redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md](redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md) | android, hyperos, xiaomi, redmi-note-12-pro, ruby, adb, fuse, sdcard, duplicate-folders, storage, readdir | current: 7 of 42 root entries are returned twice by readdir through FUSE (same inode, no data duplicated); symlink theory and `ls -lid` / `find -type l` tests refuted; `pm clear` on the APEX MediaProvider is a no-op (same playlist `_id`, duplicates unchanged); a cold boot does not clear it either; deleted second space ruled out (only user 0, no 999 mount, f2fs is casefold); a real rebuild needs root | 2026-11-19 |
 | [cheapest-cs43198-dap-indonesia-2026-11-18.md](cheapest-cs43198-dap-indonesia-2026-11-18.md) | fiio, snowsky-echo, dap, cs43198, indonesia, shopping, tokopedia, aliexpress | current: cheapest real CS43198 DAP in ID is the FiiO Snowsky ECHO at Rp 1.36-1.41 jt (gray import, Tokopedia); JM21 dual CS43198 ~Rp 2.76 jt with warranty; Echo Mini/Nano are CS43131, Fosi DAP NEO geo-blocked from AliExpress | 2026-11-18 |
