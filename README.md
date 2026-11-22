@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-22 | [comfyui-removal-2026-11-22.md](comfyui-removal-2026-11-22.md) | how-to |
 | 2026-11-22 | [diskos-firmware-re-status-2026-11-22.md](diskos-firmware-re-status-2026-11-22.md) | investigation |
 | 2026-11-22 | [opencode-orvix-provider-from-hermes-agent-2026-11-22.md](opencode-orvix-provider-from-hermes-agent-2026-11-22.md) | how-to |
 | 2026-11-20 | [fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md](fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md) | investigation |
@@ -214,6 +215,7 @@ One combined view across all three tables below, so the latest work is visible a
 | [home-nixos-merge-and-deploy-prs-2-and-4.md](home-nixos-merge-and-deploy-prs-2-and-4.md) | nixos, home, flake, github, rebase, systemd-hardening, flake-lock, deploy, ci | 2026-10-02 |
 | [technitium-cloudflare-doh-forwarder.md](technitium-cloudflare-doh-forwarder.md) | technitium, dns, doh, dns-over-https, cloudflare, google, quad9, home, privacy, forwarder | 2026-09-26 |
 | [mikrotik-hardening-round2-2026-09-24.md](mikrotik-hardening-round2-2026-09-24.md) | mikrotik, routeros, hardening, security, firewall, ssh, mac-server, services, hex-s | 2026-09-24 |
+| [comfyui-removal-2026-11-22.md](comfyui-removal-2026-11-22.md) | comfyui, removal, uninstall, cleanup, fedora, systemd, firewalld, caddy, technitium, nixos, rocm, gguf | 2026-11-22 |
 | [comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md](comfyui-qwen-image-2-1-gguf-fedora-comfy-lan.md) | comfyui, qwen-image, gguf, rocm, gfx1101, fedora, caddy, technitium, nixos, openwebui, image-generation | 2026-09-21 |
 | [mikrotik-config-backup-private-github.md](mikrotik-config-backup-private-github.md) | mikrotik, routeros, backup, github, git, security | 2026-09-21 |
 | [bonsai-27b-prismml-ternary-gguf-deploy.md](bonsai-27b-prismml-ternary-gguf-deploy.md) | llama-server, llama.cpp, prismml, gguf, ternary, quantization, rocm, hip, gfx1101, openwebui, qwen, huggingface | 2026-09-21 |

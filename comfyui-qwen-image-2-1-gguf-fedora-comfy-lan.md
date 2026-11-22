@@ -3,10 +3,13 @@ type: how-to
 tags: [comfyui, qwen-image, gguf, rocm, gfx1101, fedora, caddy, technitium, nixos, openwebui, image-generation]
 created: 2026-09-21
 last_verified: 2026-09-21
-status: current
+status: superseded - removed 2026-11-22, see [[comfyui-removal-2026-11-22]]; recipe still valid if reinstalled
 ---
 
 # ComfyUI + Qwen-Image 2.1 GGUF on fedora (RX 7800 XT), exposed at comfy.lan, wired for Open WebUI
+
+> **Removed 2026-11-22.** Service, firewall rule, 31G of dirs/models, Caddy vhost and DNS record are
+> all gone. This page is kept as the reinstall recipe only. See [[comfyui-removal-2026-11-22]].
 
 **Goal:** replace the `llama-server` Bonsai-27B instance on fedora with an image model
 ([abenzerps/Qwen-Image-2.1-Uncensored-GGUF](https://huggingface.co/abenzerps/Qwen-Image-2.1-Uncensored-GGUF)),
