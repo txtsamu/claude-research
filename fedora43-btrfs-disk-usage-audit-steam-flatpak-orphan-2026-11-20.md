@@ -2,13 +2,13 @@
 type: investigation
 tags: [disk, btrfs, fedora43, compression, zstd, du, steam, flatpak, uv-cache, podman, disk-usage-audit]
 created: 2026-11-20
-last_verified: 2026-11-20
+last_verified: 2026-11-22
 status: current
 ---
 
 # Disk usage audit on the Fedora 43 desktop, and the orphaned flatpak Steam tree
 
-Question: what fills the 475 GB NVMe on this workstation, and what is safe to reclaim? Two cleanups were carried out: a 32 GB **orphaned flatpak Steam data tree** with no Steam app attached to it, and the 48 GB `uv` cache. Together they were **79 G apparent but only 22.3 GiB on disk**, taking the disk from 282 G used (60%) to 260 G used (56%). The main lesson: on btrfs with `compress=zstd:1`, `du` reports apparent size and overstates real cost by 2x on game data and 6x on Python caches, so never size a cleanup from `du` alone.
+Question: what fills the 475 GB NVMe on this workstation, and what is safe to reclaim? Three cleanups were carried out: a 32 GB **orphaned flatpak Steam data tree** with no Steam app attached to it, the 48 GB `uv` cache, and four installer ISOs/APKs. Together they were **94 G apparent but only 37.7 GiB on disk**, taking `/` from 282 G used (60%) to 222 G used (48%). The main lesson: on btrfs with `compress=zstd:1`, `du` reports apparent size and overstates real cost by 6x on Python caches and 2x on game data, while already-compressed data such as ISOs is 1:1, so never size a cleanup from `du` alone. Use `btrfs filesystem du -s` for the real number.
 
 ## Time estimate
 
@@ -194,7 +194,8 @@ Note on the app IDs, for future reference: 1030300 Silksong, 312520 Rain World, 
 |---|---|---|---|
 | ~~Orphaned flatpak Steam tree~~ | 32 G | **15.0 GiB** | **done** (section 6) |
 | ~~`uv` cache `~/.cache/uv`~~ | 48 G | **7.3 GiB** | **done** (section 7) |
-| `archive/installers` | 20 G | unknown, probably near 1:1 | old installers, judgement call |
+| ~~`archive/installers`, four files~~ | 15.55 G | **15.44 GiB** | **done** (section 9) |
+| `archive/installers` remainder | 4.19 G | 4.19 GiB, 1:1 | Tiny11, Nusantara ROM, tsetup. Kept |
 | tinygrad cache | 14 G | unknown | may be weights, check before deleting |
 | `/var/tmp` buildah cache + ghidra | 4.2 G | unknown | disposable scratch |
 | pip cache | 2.6 G | unknown, likely tiny (compressed wheels) | `pip cache purge` |
@@ -271,22 +272,12 @@ This is the correction to flag for the next audit: the "48 G `uv` cache" headlin
 
 ## 8. What was not done
 
-- **Both cleanup targets were executed**: the flatpak Steam orphan (section 6) and the `uv` cache (section 7). Everything else listed in section 5 was left in place.
+- **Both cache cleanups and the installer removal were executed**: the flatpak Steam orphan (section 6), the `uv` cache (section 7) and four files from `archive/installers` (section 9). The rest of section 5 was left in place.
 - **No whole-filesystem compression ratio**, because `compsize` is blocked by `SEARCH_V2: Operation not permitted` on this kernel. Two per-tree ratios were measured instead: 2.1x for the Steam tree, 6.4x for the `uv` cache.
 - **No measurement of the remaining rows** in section 5. `archive/installers`, tinygrad, `/var/tmp` and the pip cache are still unknown on-disk sizes, and the pip cache is likely far smaller in real terms than its 2.6 G apparent figure.
 - **No judgement on `archive/` or `/root/models`**, since those hold real data, not caches.
 - **The native and flatpak Steam libraries were not compared file-by-file**, only by stated size and app IDs. This no longer matters, since the flatpak copy is gone.
 - **No verification that a project still builds** after the `uv` cache clean. `uv` re-downloads on demand, so the first build after this will be slow, but that was not tested.
-
-## Session outcome
-
-| Step | Apparent | Freed on disk |
-|---|---|---|
-| Flatpak Steam orphan | 32 G | 15.0 GiB |
-| `uv` cache clean | 46.5 GiB | 7.3 GiB |
-| **Total** | **~79 G** | **22.3 GiB** |
-
-Disk went from 282 G used / 189 G free (60%) to **260 G used / 210 G free (56%)**. A 79 G "reclaimable" headline delivered 22 GiB, which is the single most useful lesson here.
 
 ## 9. Appendix: what is in `archive/installers`
 
@@ -312,7 +303,39 @@ strings -n 6 iso/rhre-20260209.iso | grep -E 'vmlinuz'   # distro fingerprint
 btrfs filesystem du -s iso/*.iso       # real on-disk size per file
 ```
 
-Reclaimable here is real, not apparent: the Ubuntu ISO (6.20 GiB) is a superseded point release, and Tiny11 Core (2.96 GiB) duplicates the purpose of the official Windows image. Removing those two frees 9.16 GiB. Nothing was deleted; the user was asked first.
+Reclaimable here is real, not apparent. **Four files were removed on 2026-11-22 by user instruction:**
+
+```bash
+D=/home/moo/archive/installers
+rm -f -- "$D/iso/rhre-20260209.iso" \
+        "$D/iso/ubuntu-24.04.4-desktop-amd64.iso" \
+        "$D/iso/windows11-iot-enterptrise-25h2.iso" \
+        "$D/com.vivo.vhome_1.6.0.3-16003_minAPI28(arm64-v8a,armeabi-v7a)(nodpi)_apkmirror.com.apk"
+sync && btrfs filesystem sync /
+```
+
+| | Before | After |
+|---|---|---|
+| `df` used | 238 G (51%) | 222 G (48%) |
+| btrfs Used | 236.54 GiB | 221.10 GiB |
+| `archive/installers` real | 19.74 GiB | 4.19 GiB |
+
+**15.44 GiB freed**, against 15.55 GiB of apparent file size, so essentially 1:1 as predicted. Note the timing trap: `rm` returned in 0.021 s and an immediate `df` showed **zero** change. btrfs frees extents asynchronously, so the measurement only became meaningful after `btrfs filesystem sync /` plus a few seconds.
+
+Kept: `Tiny11Core-25H2-English-Pro-2026-07-05.iso` (2.96 GiB), the Nusantara `selene` ROM (1.16 GiB), and `tsetup.7.1.3.tar.xz` (75 MiB).
+
+## Session outcome
+
+| Step | Apparent | Freed on disk |
+|---|---|---|
+| Flatpak Steam orphan | 32 G | 15.0 GiB |
+| `uv` cache clean | 46.5 GiB | 7.3 GiB |
+| Four installer files | 15.55 G | 15.44 GiB |
+| **Total** | **~94 G** | **37.7 GiB** |
+
+Disk stood at 282 G used / 189 G free (60%) when the audit began and 222 G used / 248 G free (48%) after the installer cleanup. That headline overstates this session's work: on 2026-11-22, before the installer deletion, `df` already read 238 G used, 22 G below where the 2026-11-20 work left it, so something else was cleaned in between and is not claimed here.
+
+A 94 G "reclaimable" headline delivered 37.7 GiB, which is the single most useful lesson here. Of the three batches only the installers came near their apparent size, because ISOs do not compress.
 
 ## References
 
