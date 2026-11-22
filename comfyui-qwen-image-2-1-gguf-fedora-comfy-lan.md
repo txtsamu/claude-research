@@ -151,8 +151,9 @@ self.slots.append(s)
 
 Verified with three back-to-back jobs with different prompts (all `success`, ~45 s each at 768x768, 20 steps).
 
-> **Both patches are uncommitted local edits.** `git pull` in `~/archive/ComfyUI` or `ComfyUI-GGUF` will conflict or
-> silently drop them - re-check whether upstream fixed each one before discarding the patch (`git stash` / diff first).
+> **Both patches were uncommitted local edits.** `git pull` in `~/archive/ComfyUI` or `ComfyUI-GGUF` would conflict or
+> silently drop them. They died with the tree on 2026-11-22 ([[comfyui-removal-2026-11-22]]), so a reinstall has to
+> re-apply them by hand - re-check whether upstream fixed each one first (`git stash` / diff before discarding).
 
 ## 6. Workflow (API format)
 
@@ -209,8 +210,9 @@ ssh moo@home 'cd /home/moo/home-nixos && sudo nixos-rebuild switch --flake .#hom
 ```
 
 Side effect to know about: the local checkout already had an *undeployed* commit (`c565997`, `programs.nix-ld.enable`
-for `hermes update`), so this rebuild activated that too. Also `git status` in `~/archive/home-nixos` still shows the
-`proxy.nix` change **uncommitted/unpushed**.
+for `hermes update`), so this rebuild activated that too. The `proxy.nix` change was left **uncommitted/unpushed** at
+the time; it has since been committed and pushed as `de92898` during the 2026-11-22 removal
+([[comfyui-removal-2026-11-22]]).
 
 DNS: the `.lan` zone is explicit A records (no wildcard). Added via the Technitium API on `home`, taking the password
 from the agenix secret so it never appears on a command line or in output (see
@@ -289,7 +291,8 @@ Do **not** map `negative_prompt` - Open WebUI would write `null` into a string i
 
 - Time per image is ~45 s at 768x768/20 steps (not measured at 1024x1024/25 - expect roughly 2x).
 - The old `8083/tcp` firewall opening from the killed Bonsai llama-server is still there.
-- `~/archive/home-nixos` change is uncommitted/unpushed.
+- `~/archive/home-nixos` change: was uncommitted/unpushed here, committed and pushed as `de92898` on 2026-11-22
+  ([[comfyui-removal-2026-11-22]]).
 - Leftover test files in the Open WebUI pod's `/tmp` (`wf.json`, `nodes.json`, `owui-test.py`) vanish on the next restart.
 
 ## References

@@ -14,7 +14,8 @@ status: current
 `~/archive/ComfyUI` (17G) and `~/archive/models/qwen-image-2.1` (14G) deleted, Caddy `comfy.lan`
 vhost dropped and deployed to `home`, Technitium A record deleted, stale Caddy cert and access log
 removed. `df` went from 259G to 238G used (21G reclaimed; the tree measured 31G, the gap is
-filesystem-level, see Gotchas). Nothing was left pointing at a dead backend.
+filesystem-level, see Gotchas). Nothing was left pointing at a dead backend. The config change is
+committed and pushed as `de92898`, so `~/archive/home-nixos` is clean.
 
 Install recipe this reverses: [[comfyui-qwen-image-2-1-gguf-fedora-comfy-lan]].
 
@@ -182,6 +183,23 @@ Caddy reissues `tls internal` certs on demand, so the leftover pair is safe to d
 ssh moo@home 'sudo rm -rf /var/lib/caddy/.local/share/caddy/certificates/local/comfy.lan'
 ssh moo@home 'sudo rm -f /var/log/caddy/access-comfy.lan.log'
 ```
+
+## 8. Commit the config change
+
+The vhost removal is a real change to the deployed host config, so commit and push it rather than
+leaving the checkout dirty for the next `git pull` to trip over:
+
+```bash
+cd ~/archive/home-nixos
+git add hosts/home/proxy.nix
+git commit -m "Drop comfy.lan Caddy vhost (ComfyUI removed from fedora)"
+git push origin main
+#   9cfac00..de92898  main -> main
+git status --short      # clean
+```
+
+This repo is separate from `claude-research`; if the vhost had been the only local change, the
+alternative is `git checkout -- hosts/home/proxy.nix` (its content was already in `origin/main`).
 
 ## Gotchas
 
