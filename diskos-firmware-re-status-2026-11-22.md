@@ -95,6 +95,62 @@ Not measured for the rebuild. Rough estimate from the original run: 10 to 15 min
 - Whether `kern.rep` being empty means the project DB was deleted or was never persisted.
 - No decompilation was re-run, so the 34,960 function outputs were not re-validated against a rebuilt lane.
 
+## The 3 `wl` failures: cause and fix
+
+The three failures are not a decompiler bug in the general sense. All three abort with `Low-level Error: Backward normalization not implemented`, which comes from one place:
+
+```
+Ghidra/Features/Decompiler/src/decompile/cpp/jumptable.cc:1815
+JumpBasic2::findUnnormalized()
+```
+
+`JumpBasic2` is the second jump-table model: it handles a switch whose variable passes a two-path guard and joins in a MULTIEQUAL. `findUnnormalized` walks backward from the unnormalized variable and throws when neither MULTIEQUAL input is the normalized variable. The exception escapes `DecompInterface` and the whole function is lost, not just the table.
+
+All three are the same dispatch shape, confirmed by disassembling `wl` from the rootfs:
+
+```
+4f8b80: lbu  v0,-32(v0)
+4f8b8c: sll  v0,v0,0x2
+4f8b90: addu v0,v0,a0        # a0 = 0x5bb040
+4f8b98: lw   v0,0(v0)
+4f8ba8: jr   v0
+```
+
+A byte index into an absolute-address table, minus 32. The table at `0x5bb040` holds 224 entries, 40 distinct destinations in `0x4f8884` to `0x4fb4e8`, all inside the function. `0x4fa368` and `0x533db0` use the same `lbu` / `sll` / `addu` / `lw` / `jr` sequence with their own tables.
+
+Upstream status: nothing. The only hit is an unanswered discussion, [NationalSecurityAgency/ghidra#5945](https://github.com/NationalSecurityAgency/ghidra/discussions/5945) (Nov 2023, 0 replies). No issue, no PR. The most recent commit touching `jumptable.cc` is 2026-10-26 (`GP-7423 Add findCbranch to checkCommonCbranch`), unrelated.
+
+### Fix A: patch and rebuild the decompiler (permanent)
+
+Replace the throw with the basic-model fallback:
+
+```cpp
+  else
+    JumpBasic::findUnnormalized(maxaddsub,maxleftright,maxext);
+```
+
+The base method re-reads `normalvn` from `pathMeld.getVarnode(varnodeIndex)` and sets `switchvn = normalvn`, so the identity mapping is safe; only the label reverse-emulation degrades.
+
+Build, in `Ghidra/Features/Decompiler/src/decompile/cpp` of the install:
+
+```
+make ghidra_opt
+cp ghidra_opt ../../../../os/linux_x86_64/decompile
+```
+
+`make install_ghidraopt` also exists but copies to `$(GHIDRA_BIN)` which is the `ghidra.bin` layout, absent from a release install, so copy manually. Verified available here: g++ 15.3.1, GNU Make 4.4.1, and the `os/linux_x86_64/decompile` binary plus `Makefile` are both present.
+
+### Fix B: jump-table override, no rebuild
+
+`JumpBasicOverride` bypasses `JumpBasic2` entirely. `JumpTable.writeOverride(Function)` writes the override as `switch` / `case_N` label symbols in the function's `override` namespace, `HighFunction` re-reads it on load, and the decompiler receives it in the function XML. A script per failing switch, with the destination list taken from the table above, is enough.
+
+Fix B is per-binary and per-switch; Fix A covers every binary at once.
+
 ## References
 
-No external sources; everything came from the local repo, the local Ghidra installs and the notes linked above.
+- [NationalSecurityAgency/ghidra discussion #5945, "Low-level Error: Backward normalization not implemented"](https://github.com/NationalSecurityAgency/ghidra/discussions/5945)
+- [jumptable.cc on master](https://github.com/NationalSecurityAgency/ghidra/blob/master/Ghidra/Features/Decompiler/src/decompile/cpp/jumptable.cc)
+- [JumpTable.java, writeOverride](https://github.com/NationalSecurityAgency/ghidra/blob/master/Ghidra/Framework/SoftwareModeling/src/main/java/ghidra/program/model/pcode/JumpTable.java)
+- [HighFunction.java, override namespace read](https://github.com/NationalSecurityAgency/ghidra/blob/master/Ghidra/Framework/SoftwareModeling/src/main/java/ghidra/program/model/pcode/HighFunction.java)
+
+Everything else came from the local repo, the local Ghidra installs and the notes linked above.
