@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-22 | [opencode-orvix-provider-from-hermes-agent-2026-11-22.md](opencode-orvix-provider-from-hermes-agent-2026-11-22.md) | how-to |
 | 2026-11-20 | [fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md](fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md) | investigation |
 | 2026-11-20 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | investigation |
 | 2026-11-20 | [vesktop-update-fedora-rpm-2026-11-20.md](vesktop-update-fedora-rpm-2026-11-20.md) | how-to |
@@ -165,6 +166,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [opencode-orvix-provider-from-hermes-agent-2026-11-22.md](opencode-orvix-provider-from-hermes-agent-2026-11-22.md) | opencode, hermes, orvix, provider, model, api-key, fedora, home, nixos | 2026-11-22 |
 | [vesktop-update-fedora-rpm-2026-11-20.md](vesktop-update-fedora-rpm-2026-11-20.md) | vesktop, discord, fedora, rpm, update-alternatives, electron, vencord | 2026-11-20 |
 | [diskos-flash-build-7-2026-11-19.md](diskos-flash-build-7-2026-11-19.md) | diskos, flash, mask-rom, installer, build-7, mq_ui, snowsky-disc, fat, unmount, verification | 2026-11-19 |
 | [diskos-fork-build-7-release-2026-11-19.md](diskos-fork-build-7-release-2026-11-19.md) | diskos, release, github, fork, tag, mq_ui, cross-build, podman, snowsky-disc, stable | 2026-11-19 |
