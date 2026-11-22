@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-22 | [diskos-firmware-re-status-2026-11-22.md](diskos-firmware-re-status-2026-11-22.md) | investigation |
 | 2026-11-22 | [opencode-orvix-provider-from-hermes-agent-2026-11-22.md](opencode-orvix-provider-from-hermes-agent-2026-11-22.md) | how-to |
 | 2026-11-20 | [fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md](fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md) | investigation |
 | 2026-11-20 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | investigation |
@@ -316,6 +317,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [diskos-firmware-re-status-2026-11-22.md](diskos-firmware-re-status-2026-11-22.md) | diskos, snowsky-disc, fiio, ghidra, reverse-engineering, firmware-decompiled, mips, fp64, rea, toolchain-loss | current: RE output intact and pushed (411 ELFs inventoried, 27 decompiled, 34,960 userland + 734 kernel functions, single commit f7a9137 in sync with origin); the `/var/tmp` toolchain is stripped (no analyzeHeadless, no MIPS languages, no fp64 variant, scripts and vmlinux gone); rebuild path and surviving inputs recorded | 2026-11-22 |
 | [fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md](fedora43-btrfs-disk-usage-audit-steam-flatpak-orphan-2026-11-20.md) | disk, btrfs, fedora43, compression, zstd, du, steam, flatpak, uv-cache, podman | current: 282 G of 475 G used at start (60%), 260 G after (56%); `du` reports apparent size, so real cost was 2x lower on game data and 6.4x lower on the uv cache; deleted a 32 G orphaned `~/.var/app/com.valvesoftware.Steam` tree (no flatpak app since May 2026, no saves, backed up to `~/archive`) for 15.0 GiB, and ran `uv cache clean` on 46.5 GiB for 7.3 GiB, 22.3 GiB total from 79 G apparent; `compsize` unusable here (`SEARCH_V2: Operation not permitted`) | 2026-11-20 |
 | [diskos-usb-audio-reverse-engineering-mq-player.md](diskos-usb-audio-reverse-engineering-mq-player.md) | fiio, snowsky-disc, diskos, usb-audio, otg, reverse-engineering, ghidra, rea, mips | current: USB Audio fixed (switch-then-wait), verified 24/96 to Chu2; build 7 with the JA11 re-checked 2026-11-20, 44.1 and 96 kHz follow the file with no resampling; rea refuses NaN2008 MIPS | 2026-11-20 |
 | [redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md](redmi-note-12-pro-hyperos-duplicate-storage-folders-2026-11-19.md) | android, hyperos, xiaomi, redmi-note-12-pro, ruby, adb, fuse, sdcard, duplicate-folders, storage, readdir | current: 7 of 42 root entries are returned twice by readdir through FUSE (same inode, no data duplicated); symlink theory and `ls -lid` / `find -type l` tests refuted; `pm clear` on the APEX MediaProvider is a no-op (same playlist `_id`, duplicates unchanged); a cold boot does not clear it either; deleted second space ruled out (only user 0, no 999 mount, f2fs is casefold); a real rebuild needs root | 2026-11-19 |
