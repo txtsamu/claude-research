@@ -2,7 +2,7 @@
 type: investigation
 tags: [rea, rea-agents, ghidra, mips, fp64, nan2008, node, diskos, snowsky-disc, reverse-engineering, firmware-decompiled]
 created: 2026-11-17
-last_verified: 2026-11-17
+last_verified: 2026-11-22
 status: current
 ---
 
@@ -88,13 +88,18 @@ Everything heavier needs a caller-supplied tool REA will not install:
 
 ## What would actually add coverage
 
-Not REA. The decompiled repo's own numbers point at the real gaps: 27 of 411 ELFs decompiled, 734 of 53,223 kernel symbols, recovery OS v18 never processed, bootloader absent from the OTA zip, 3 `wl` failures that only a different decompiler could reach.
+Not REA. The decompiled repo's own numbers point at the real gaps: 27 of 411 ELFs decompiled, 734 of 53,223 kernel symbols, recovery OS v18 never processed, bootloader absent from the OTA zip.
+
+## Update 2026-11-22
+
+The 3 `wl` failures are fixed and no longer need a different decompiler. The cause was `JumpBasic2::findUnnormalized` throwing `Backward normalization not implemented` on a guarded switch, and the fix is a two-line fallback in `jumptable.cc` plus a decompiler rebuild. The lane also moved off `/var/tmp` onto `~/tools/ghidra_12.1.4_PUBLIC`, so the fp64 language is no longer only in a tmp copy. Full detail in [[diskos-firmware-re-status-2026-11-22]].
+
+REA's own position is unchanged: it still refuses `EF_MIPS_NAN2008` and CPR1 64, and it pins `MIPS:LE:32:default` when it does run, which is the worse language for this target.
 
 ## Not verified
 
 - Whether upstream REA would admit FP64 MIPS with a verification flag; no such knob exists in 6.9.0.
 - Whether forging the ABI record into the recordless lane is worth it. Predicted to be worse, not tested.
-- The rizin path for the 3 `wl` failures, since rizin and rz-ghidra are not installed.
 - `rea setup` client registrations were not run; only the analysis provider was configured, by environment variable.
 
 ## References
