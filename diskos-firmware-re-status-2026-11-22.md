@@ -146,6 +146,28 @@ cp ghidra_opt ../../../../os/linux_x86_64/decompile
 
 Fix B is per-binary and per-switch; Fix A covers every binary at once.
 
+### Fix A applied, 2026-11-22
+
+Installed in `~/tools/ghidra_12.1.4_PUBLIC`:
+
+1. `GHIDRA_INSTALL_DIR` in `~/.bashrc:76` repointed from the stripped `/var/tmp` copy to `~/tools/ghidra_12.1.4_PUBLIC`.
+2. `jumptable.cc` patched as above; original kept as `jumptable.cc.orig`, original binary as `os/linux_x86_64/decompile.orig`.
+3. `make -j$(nproc) ghidra_opt` (0 errors), `ghidra_opt` copied over `os/linux_x86_64/decompile`. The string "Backward normalization" is gone from the new binary.
+4. fp64 language restored: `mips32le_fp64.slaspec` (stock `mips32le.slaspec` with `FREGSIZE "8"`), compiled with `support/sleigh`, `mips32le_fp64.cspec` copied from `mips32_fp64.cspec`, and the `MIPS:LE:32:fp64` block re-added to `mips.ldefs`.
+
+Result on `wl` (`0x4f81b0`, `0x4fa368`, `0x533db0`), same project settings, before and after:
+
+```
+original binary:  3 x completed=false, "Low-level Error: Backward normalization not implemented"
+patched binary:   3 x completed=true, switch recovered with case labels
+```
+
+The output carries two warnings, `Sanity check requires truncation of jumptable` and `Could not find normalized switch variable to match jumptable` (jumptable.cc:2772), and the switch expression stays a raw byte index rather than a folded one. That is the expected degradation.
+
+No x86 regression: 20 of 20 functions decompiled from `/usr/bin/ls` with the patched binary.
+
+The three functions are now in the repo (`part003_004d1b38.c`, `part004_00522800.c`), `failed.txt` and the counts say 0 failures, and the patch itself is committed as `patches/jumptable-backward-normalization-fallback.patch` (commit `76f354c`).
+
 ## References
 
 - [NationalSecurityAgency/ghidra discussion #5945, "Low-level Error: Backward normalization not implemented"](https://github.com/NationalSecurityAgency/ghidra/discussions/5945)
