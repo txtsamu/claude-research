@@ -110,6 +110,25 @@ Then install, stop the old instance, and relaunch as in steps 4 and 5 above. Con
 python3 -c "import sqlite3;c=sqlite3.connect('file:/home/moo/.local/share/app.oxigram.desktop/oxigram.db?mode=ro',uri=True);print(c.execute('select count(*) from messages').fetchone()[0])"
 ```
 
+## Merging the branch back (2026-11-23, later still)
+
+`forum-topics` was merged to `main` and the side branches deleted. Two things came out of it.
+
+`forum-topics` fast-forwarded onto `main` cleanly (10 commits, `main` had nothing extra). Merging `english-ui` after that conflicted in 25 files, because it predates the i18n layer: it hardcodes English and drops `tr!`, while `main` now treats English as the msgid source and translates through `ru`/`uk` `.po` catalogs. Resolving in favour of `main` was right for all of it, since `main` also already carried the refactored `viewer_box` decode that `viewer-file-fixes` and `english-ui` were reaching for.
+
+Two genuine gaps the merge did close, both Russian leftovers that `english-ui` had already fixed:
+
+- `native/src/layout_shot.rs` sample data (the screenshot fixture) was Russian.
+- `native/src/video/windows.rs` Media Foundation errors were raw Russian strings. These were converted to `tr!` rather than left hardcoded, so they stay translatable:
+
+```rust
+1 => tr!("Playback aborted"),
+```
+
+`viewer-file-fixes` needed no merge: `main` already had its content plus the `image/jpg` alternative. Confirmed with `git cherry` (`-`) and by grepping the resulting `media.rs` and `chats.rs`.
+
+Delete order matters: check `git merge-base --is-ancestor origin/<branch> origin/main` first, and for anything not an ancestor run `git cherry origin/main origin/<branch>` to prove the patches are already there.
+
 ## Gotchas
 
 - **`build.sh` in the old hermes workspace is nix-specific and cwd-sensitive.** It does `cd "$1"` where `$1` is the invoking `$PWD`, so it must be run from the repo root, not from the workspace directory. Running it from the workspace gives `error: could not find Cargo.toml`. On fedora you do not need it at all, plain `cargo build` is enough.
