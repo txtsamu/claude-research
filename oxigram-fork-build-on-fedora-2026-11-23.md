@@ -82,6 +82,34 @@ cmp oxigram-native ~/.local/bin/oxigram-native
 
 Both passed: `oxigram-native: OK`, and the downloaded file was byte-identical to the installed one.
 
+## Rebuilding after a new push (2026-11-23, later)
+
+Same recipe, plus two things worth keeping.
+
+**Back up the profile before touching anything.** The account data lives in `~/.local/share/app.oxigram.desktop` (`oxigram.db`, WAL, shm) and `~/.config/app.oxigram.desktop` (`config.json` holds the session). Copy both while the app still runs, then prove the copy opens:
+
+```
+B=~/oxigram-backup-$(date +%H%M%S); mkdir -p $B
+cp -a ~/.local/share/app.oxigram.desktop/. $B/
+cp -a ~/.config/app.oxigram.desktop/. $B/
+python3 -c "import sqlite3;c=sqlite3.connect('$B/oxigram.db');print(c.execute('pragma integrity_check').fetchone()[0]);print(c.execute('select count(*) from messages').fetchone()[0])"
+```
+
+`sqlite3` is not installed on this box, the `python3` module is the way to check. Copying db+wal+shm together is recoverable; the WAL replays on open.
+
+**A pushed branch may not compile.** Commit `4be7a23` ("Read a group's bot commands from its full profile") landed with two errors in `core/src/chats.rs`:
+
+- `E0433 cannot find type ChatFull` — the match used bare `ChatFull::` with no import. Fixed with `use grammers_client::tl::enums::ChatFull;` (same pattern as the local `use` in `actions.rs`).
+- `E0004 non-exhaustive patterns: CommunityFull not covered` — `ChatFull` has three variants and `CommunityFull` has no `bot_info` field, so it yields no bots: `ChatFull::CommunityFull(_) => Vec::new(),`.
+
+Both fixes were local and uncommitted, so the installed binary was HEAD plus those two lines. Push them or the branch stays broken for the next build.
+
+Then install, stop the old instance, and relaunch as in steps 4 and 5 above. Confirm the message count survives with the read-only query:
+
+```
+python3 -c "import sqlite3;c=sqlite3.connect('file:/home/moo/.local/share/app.oxigram.desktop/oxigram.db?mode=ro',uri=True);print(c.execute('select count(*) from messages').fetchone()[0])"
+```
+
 ## Gotchas
 
 - **`build.sh` in the old hermes workspace is nix-specific and cwd-sensitive.** It does `cd "$1"` where `$1` is the invoking `$PWD`, so it must be run from the repo root, not from the workspace directory. Running it from the workspace gives `error: could not find Cargo.toml`. On fedora you do not need it at all, plain `cargo build` is enough.
