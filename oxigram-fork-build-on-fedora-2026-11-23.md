@@ -91,7 +91,7 @@ Both passed: `oxigram-native: OK`, and the downloaded file was byte-identical to
 - **`pkill -f "target/release/oxigram-native"` kills your own ssh session**, because the remote command string contains that text. `pkill -x oxigram-native` is safer.
 - **Draft releases have no public download URL.** `releases/download/<tag>/<file>` returns 404 while the release is a draft; use the asset API with `Accept: application/octet-stream` and a token to verify.
 - **The tag is annotated.** `refs/tags/v0.3.3-forum.1` resolves to tag object `7e1d1628`, which dereferences to commit `c596cc0`. Do not read the tag object sha as a commit.
-- The release is still a **draft** and must be published before the public URL and checksum instructions work for anyone else.
+- The release was a **draft** when this work started. Drafts have no public download URL, so it was published and the stray `untagged-…` tag GitHub created for the draft was deleted. Public asset URL and checksum now resolve.
 
 ## Not verified
 
