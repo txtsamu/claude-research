@@ -131,6 +131,8 @@ Delete order matters: check `git merge-base --is-ancestor origin/<branch> origin
 
 ## Gotchas
 
+- **A new push may land on a side branch, not `main`.** After `forum-topics` was deleted and merged, the next push recreated it, so `git log HEAD..origin/main` came back empty and looked like "no new code". Always `git fetch --prune` and read `git branch -r` plus `git log --oneline origin/main..origin/<branch>`, not just `main`.
+
 - **`build.sh` in the old hermes workspace is nix-specific and cwd-sensitive.** It does `cd "$1"` where `$1` is the invoking `$PWD`, so it must be run from the repo root, not from the workspace directory. Running it from the workspace gives `error: could not find Cargo.toml`. On fedora you do not need it at all, plain `cargo build` is enough.
 - **`build.sh` is not executable** (`-rw-r--r--`), so `nohup ./build.sh` fails with `Permission denied`. Use `bash ./build.sh`.
 - **A bare ssh shell has no display.** The binary panics with `Could not initialize backend ... EventLoop can't be recreated` / `No backends configured`. Pass the session's `DISPLAY`, `WAYLAND_DISPLAY` and `XDG_RUNTIME_DIR` (read them from `systemctl --user show-environment`), or launch from the desktop.
