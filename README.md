@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-23 | [oxigram-fork-build-on-fedora-2026-11-23.md](oxigram-fork-build-on-fedora-2026-11-23.md) | how-to |
 | 2026-11-22 | [comfyui-removal-2026-11-22.md](comfyui-removal-2026-11-22.md) | how-to |
 | 2026-11-22 | [diskos-firmware-re-status-2026-11-22.md](diskos-firmware-re-status-2026-11-22.md) | investigation |
 | 2026-11-22 | [opencode-orvix-provider-from-hermes-agent-2026-11-22.md](opencode-orvix-provider-from-hermes-agent-2026-11-22.md) | how-to |
