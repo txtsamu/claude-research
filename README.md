@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-26 | [ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26.md](ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26.md) | how-to |
 | 2026-11-23 | [oxigram-fork-build-on-fedora-2026-11-23.md](oxigram-fork-build-on-fedora-2026-11-23.md) | how-to |
 | 2026-11-22 | [comfyui-removal-2026-11-22.md](comfyui-removal-2026-11-22.md) | how-to |
 | 2026-11-22 | [diskos-firmware-re-status-2026-11-22.md](diskos-firmware-re-status-2026-11-22.md) | investigation |
@@ -169,6 +170,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26.md](ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26.md) | kt02h20, ktmicro, fiio-ja11, jcally-jm12, moondrop, usb-dac, firmware, ktflash, rust, fedora | 2026-11-26 |
 | [opencode-orvix-provider-from-hermes-agent-2026-11-22.md](opencode-orvix-provider-from-hermes-agent-2026-11-22.md) | opencode, hermes, orvix, provider, model, api-key, fedora, home, nixos | 2026-11-22 |
 | [vesktop-update-fedora-rpm-2026-11-20.md](vesktop-update-fedora-rpm-2026-11-20.md) | vesktop, discord, fedora, rpm, update-alternatives, electron, vencord | 2026-11-20 |
 | [diskos-flash-build-7-2026-11-19.md](diskos-flash-build-7-2026-11-19.md) | diskos, flash, mask-rom, installer, build-7, mq_ui, snowsky-disc, fat, unmount, verification | 2026-11-19 |
