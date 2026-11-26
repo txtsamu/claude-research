@@ -3,7 +3,7 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 (514/514 branch targets aligned); Ghidra decompiles NDS32 to nothing, assembly-only
+status: current   # ISA = Andes NDS32 (514/514 branch targets aligned, no decompiler); link+clock measured clean; stock EQ flattening applied and verified persistent after a device reset (0x4B writes are RAM-only, 0x02 band writes + save persist)
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
@@ -247,15 +247,67 @@ General web search was unusable in this session (DuckDuckGo served bot-check pag
 
 **Nobody has disassembled the firmware.** Every project stops at the HID register layer or the bootloader protocol. There is no ISA document, no disassembler, no Ghidra module, and no leaked SDK. KTMicro's own site lists the KT02H20 with a one-paragraph feature blurb and no datasheet or toolchain download.
 
-## 6. What to test next, cheapest first
+## 6. What was done on the dongle, and what the measurements say
 
-The static evidence does not support "firmware bug". It supports "this is a JM12 cross-flashed with JA11 firmware, running the chip defaults, possibly with a hot analog gain and an unknown DAC filter". Ordered by cost:
+### The host and the link are cleared
 
-1. **Get out of UAC 1.0.** Unplug, replug without touching the button, confirm `lsusb` shows `2972:0102` and `/proc/asound/card*/stream0` shows high speed and 384 kHz. If the sound is identical in both modes, the mode is irrelevant (it should be).
-2. **Kill the DSP variables.** Set the DAC EQ off (`0x24` bit0 = 0) or write the flat script, and write DAC filter `1` (FAST-LL) via `0x02`/cmd `0x11`. A hiss/harshness that disappears with FAST-LL points at `NON-OS`.
-3. **Lower the analog gain.** Write `0x3B = 9` (−6 dB) and compare. If hiss drops and peaks stop breaking up, it was gain staging on sensitive IEMs, not a firmware fault.
-4. **Change one piece of hardware at a time.** Different IEM/cable, and wiggle the plug while playing. Crackle plus hiss that follows the dongle everywhere and survives steps 1–3 is the amplifier/jack or the board calibration, and no amount of disassembly will fix it.
-5. **Only then** consider the cross-flash. There is no software read-back, so the original JM12 image is gone; the only clean revert is a stock `jcally_jm12_v1.3.bin` from JCALLY's own store FAQ, which would also change the USB identity and tuning.
+```bash
+$ /usr/bin/time -f "wall=%e" aplay -D plughw:JA11 t30.wav     # 30.000 s of 48k/24 audio
+wall=30.02
+$ cat /proc/asound/card3/pcm0p/sub0/status
+state: RUNNING
+delay       : 18912
+avail       : 5760
+```
+
+`delay` stayed inside 18,864–18,912 frames for the whole file, 44.1/48/96 kHz all played with wall times 15.01–15.04 s for 15.000 s of audio, and the same file under 12 busy CPU loops produced no `underrun!!!`. Through PipeWire the node ran `QUANT 2048 / 48000 Hz / W/Q 0.00 / ERR 0`. The link, the async feedback endpoint and host scheduling are healthy, so crackle is not a URB or scheduling problem on this host.
+
+### Persistence: the `0x4B` channel is RAM-only, the `0x02` channel is what saves
+
+Two saves were made and the difference matters:
+
+1. Wrote `0x24 = 4` plus flat bands over the `0x4B` register channel, then sent FiiO `SAVE_FLASH` (`0x19`, payload `03`). The dongle re-enumerated (device 44 → 45) and came back with the **factory curve** (`0x24 = 5`, 141 Hz −2.4 dB …). Register-channel writes are not what the save captures.
+2. Wrote the flat curve through the FiiO band command (`0x15`, 8-byte payload `idx, gain_be16, freq_be16, q_be16, type`), then `APPLY` (`0x18`) and `SAVE_FLASH` (`0x19`). It re-enumerated again (45 → 46) and came back **flat**:
+
+```
+0x24 = 0x00000005
+0x26 = 0x03e80000  1000 Hz   0.0 dB       0x27 = 0x000002c6  Q 0.710
+0x28 = 0x07d00000  2000 Hz   0.0 dB       0x29 = 0x000002c6  Q 0.710
+0x2a = 0x13880000  5000 Hz   0.0 dB       0x2b = 0x000002c6  Q 0.710
+0x2c = 0x1f400000  8000 Hz   0.0 dB       0x2d = 0x000002c6  Q 0.710
+0x2e = 0x27100000 10000 Hz   0.0 dB       0x2f = 0x000002c6  Q 0.710
+```
+
+Three consequences:
+
+- The saved PEQ state lives in a **flash sector outside the 67,312-byte firmware image**. The image contains no copy of the curve, and the 10-byte write scripts at `0xc804`/`0xf5e9` are flat/preset data that nothing references. The bootloader's `ERASE` wipes that sector, which is why a reflash returns the chip defaults.
+- `SAVE_FLASH` **resets the device**, so a save doubles as the cleanest persistence test.
+- Q is scaled per channel: the FiiO band command takes `Q × 100` (`71` = 0.710) while the register map stores `Q × 1000` (`710` = 0.710). Mixing them yields a Q of 7.1.
+
+### Why flat is the right baseline
+
+The stock curve boosts 447 Hz by +2.1 dB and cuts 141 Hz by 2.4 dB with the preamp at 0.0 dB (`0x17 → 00 00`, verified). Tracks mastered near 0 dBFS clip at 447 Hz, and the low-mid forwardness is easy to hear as "off" next to a flat source. Flat bands with 0 dB preamp are unity, so there is nothing left to clip.
+
+Previous state is at `/tmp/opencode/ja11_dsp_before.json`; the revert is the same write with 141 Hz −2.4, 447 Hz +2.1, 2098 Hz −1.1, 4693 Hz −1.4, 8464 Hz −1.6 dB and Q 56/72/77/198/300 (`Q × 100`).
+
+### The `PerfCfg` block is not calibration
+
+At `0x10d8` it is eight zero bytes, then two LE32 values: **ADC PGA index 4 (+20 dB)** and **DAC PGA index 13 (0.0 dB)**, then the FIIO / JadeAudio JA11 / serial strings. V2.1 → V2.2 changed only byte `0x10e8` (`03` → `04`), the "optimised microphone input gain" entry in the changelog. So the image carries no per-board analog calibration at all, only those two gains, and they match what the chip reports.
+
+## 7. What is still unexplained
+
+- **Hiss.** With EQ flat and preamp at 0 dB, the only gain left is the factory DAC PGA at 0 dB plus the amp. The JA11 is rated 1.7 µV output noise; a cross-flashed board can be worse. Lowering it persistently is not possible from the host: `0x3B` writes over `0x4B` are RAM-only, and the only durable path would be patching `0x10ec` and reflashing, which also wipes the saved EQ sector.
+- **Crackle/pops.** Clean for 30 s, clean under load, clean through PipeWire, stable clock. What remains is the 3.5 mm contact, the cable, or the amp's Class-G/DC-DC behaviour on this board.
+- **Distortion on loud parts.** Reduced by the flat curve, but 30 mW into a low-impedance load is a hardware ceiling.
+
+The remaining tests need ears and hands: a different IEM and cable, wiggling the plug, and a pause with the source silent to hear whether hiss survives with no signal. If it does, it is the board, not the firmware.
+
+## 8. Rejected fixes
+
+- **Blind-writing the undocumented `0x12` register** (reads back `0x01`, plausibly a USB mode flag) to leave UAC 1.0. A wrong value could change the USB personality with no HID channel left to undo it, and the mode has no bearing on hiss or crackle.
+- **Patching `0x10ec` (DAC PGA index) and reflashing** for a speculative 6 dB noise improvement. The reflash erases the saved EQ sector, and the gain change is unproven without ears.
+- **Writing the amp mode** (`0x1D`). Write-only, undocumented values, and a wrong Class-G setting is a plausible way to make things worse.
+- **`uhubctl` power cycle.** Installed (2.6.0) but the root hub reports no compatible port power switching, so the dongle cannot be VBUS-cycled to re-latch the UAC mode.
 
 ## Gotchas
 
@@ -267,11 +319,12 @@ The static evidence does not support "firmware bug". It supports "this is a JM12
 
 ## What was not verified
 
-- Which DAC filter is active. Not readable on this firmware.
-- Whether UAC 1.0 mode is entered by holding the button at plug-in. The mode change is documented by timestamp only.
-- Whether the "weird sound" is the DAC/amp, the jack, the IEM, or the cross-flash calibration. No loopback recorder was available; the tests in section 6 were not run.
-- The ISA turned out to be NDS32, but nothing beyond disassembly: no decompiler output, no function boundaries from auto-analysis (330 created by seeding branch targets), and 43 KB of the 55 KB code window is not reached from the entry point.
-- How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reachable code, so the selection path is unproven.
+- Which DAC filter is active. Not readable on this firmware; `0x11` was written with value 1 (FAST-LL) and may or may not have persisted through the save.
+- Whether UAC 1.0 mode can be left without the physical button. A host-driven `authorized` 0/1 toggle did not re-enumerate the device, `uhubctl` reports no port power switching, and the `0x12` register was judged too risky.
+- Whether the flat curve sounds better. No loopback recorder was available, so every audible claim is derived from register state and link measurements, not a captured waveform.
+- The ISA is confirmed as NDS32, but only as disassembly: no decompiler output, no auto-detected function boundaries (330 created by seeding branch targets), and 43 KB of the 55 KB code window is not reached from the entry point.
+- How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reachable code.
+- Whether the analog noise floor changes with the DAC PGA. That needs a measurement rig, not a register read.
 
 ## References
 
