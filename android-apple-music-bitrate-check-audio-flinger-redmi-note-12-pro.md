@@ -103,10 +103,44 @@ Also ruled out: `dumpsys media.codec` on this build prints `Can't find service: 
 |---|---|---|
 | Apple's stream / app decode | 192 kHz (44.1 kHz on the other track) | yes, native rate |
 | App's `AudioTrack` | 192000 Hz, float, stereo | yes |
-| AudioFlinger mixer thread | 48000 Hz | resampled |
+| AudioFlinger mixer thread (3.5 mm) | 48000 Hz | resampled |
 | 3.5 mm DAC | 48 kHz, 32-bit | not the source rate |
+| AudioFlinger mixer thread (JA11 USB) | 96000 Hz | resampled |
+| JA11 DAC | 96 kHz, 32-bit | the HAL ceiling, not the source rate |
 
-So "is it playing the correct bitrate" splits in two: the app is delivering the right stream at the right rate; the phone then throws it away with a 4:1 resample to 48 kHz. Hearing 192 kHz on this hardware needs a USB DAC, and even then true bit-perfect needs the vendor audio HAL to expose `AUDIO_OUTPUT_FLAG_BIT_PERFECT`, which stock MIUI did not do on the sibling Redmi 10 test (see [[android-apple-music-usb-dac-bit-perfect-redmi-10-selene]]). A USB headset was in use earlier in the same day's log (`AUDIO_DEVICE_OUT_USB_HEADSET`), so that test is one cable away.
+So "is it playing the correct bitrate" splits in two: the app is delivering the right stream at the right rate; the phone then resamples it, 4:1 on the jack and 2:1 over USB. The JA11 does not buy native 192 kHz on this phone, because Android caps the dongle at 96 kHz; and true bit-perfect would need `AUDIO_OUTPUT_FLAG_BIT_PERFECT`, which stock MIUI did not expose on the sibling Redmi 10 test either (see [[android-apple-music-usb-dac-bit-perfect-redmi-10-selene]]).
+
+## With a USB DAC attached (FiiO JadeAudio JA11, same session)
+
+Plugging the dongle in changes the ceiling, not the behaviour. The app keeps requesting the source rate; Android now opens a 96 kHz output thread for the USB device instead of the 48 kHz jack thread.
+
+```
+Output thread ..., name AudioOut_1A5, tid 6098, type 0 (MIXER):
+  Sample rate: 96000 Hz
+  HAL frame count: 4096
+  HAL format: 0x3 (AUDIO_FORMAT_PCM_32_BIT)
+  HAL buffer size: 32768 bytes
+  Output devices: 0x4000000 (AUDIO_DEVICE_OUT_USB_HEADSET)
+  Timestamp stats: ... localSR(95999.8, ...)
+  2 Tracks of which 1 are active
+           2289    yes  31742   10081    2343 A  0x000 00000005 00000003 192000 ... false  381.52
+```
+
+- Same 24/192 track, same app: `AudioTrack` **192000 Hz** -> mixer thread **96000 Hz** -> DAC. The resample is now 2:1 instead of the jack's 4:1.
+- `localSR(95999.8)` in the timestamp stats is the HAL clock measured at ~96 kHz, so the 96 kHz is real and steady, not just a declared rate.
+- `BitPerfect` is still `false`, and there is no bit-perfect port anywhere in the policy: the USB routes are `Mix; Sink: "USB Headset Out"` fed by `primary output`, `deep_buffer`, `fast`, `hifi_playback` (a MIUI mix port with `AUDIO_OUTPUT_FLAG_NONE`), so it is a normal mixer, not a direct path.
+
+Why 96 kHz and not 192: the phone's USB audio HAL advertises this dongle with a hard ceiling of **44100, 48000, 88200, 96000** in `dumpsys media.audio_policy`, even though the JA11 is sold as 384 kHz/32-bit. `dumpsys usb` identifies it as `FIIO / JadeAudio JA11`, port `USB Headset Out`, `card=1;device=0`.
+
+Rate fidelity spot-checks while switching tracks with the DAC attached (all `Client 31742`):
+
+| Track | AudioTrack rate | Format | Note |
+|---|---|---|---|
+| Dua Lipa, "Break My Heart" | 48000 | PCM float | a genuine 48 k master, the app did not force 48 k |
+| SHE IS SUMMER, "CALL ME IN YOUR SUMMER" | 44100 | **PCM 16-bit** | 16-bit content, 44.1 k passed through untouched |
+| Surfaces, "Where the Light Is" | 192000 | PCM float | hi-res, capped to 96 k by the USB HAL |
+
+So the app is rate-faithful on both outputs; the loss happens in the phone's HAL.
 
 ## Gotchas
 
