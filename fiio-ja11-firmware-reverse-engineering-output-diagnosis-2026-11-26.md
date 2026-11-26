@@ -3,7 +3,7 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 (independently confirmed); UAC2 restored via cmd 0x20; PerfCfg patched ADC 0x04->0x00 and DAC 0x0d->0x05, flashed and verified (0x3A=0, 0x3B=5, mic -91.7 dBFS); cmd 0x12=0 gives a playback-only descriptor set (capture gone, iSerial 0); V2.1 compared, no playback regression; amp 0x1D write-only, 0x16 read-only
+status: current   # ISA = Andes NDS32 (independently confirmed); UAC2 restored via cmd 0x20 and persists across a real replug; PerfCfg patched ADC 0x04->0x00 and DAC 0x0d->0x05, flashed and verified (0x3A=0, 0x3B=5, mic -91.7 dBFS); cmd 0x12=0 gives a playback-only descriptor set; V2.1 compared, no playback regression; amp 0x1D write-only, 0x16 read-only
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
@@ -310,7 +310,7 @@ Bus 001 Device 050: ID 2972:0102 FiiO Electronics Technology JadeAudio JA11
 # cmd 0x20 reads back 1
 ```
 
-It survived a port reset in that state (device 050 still `2972:0102` at high speed), and 384 kHz playback works again. The same document also explains the other readable registers seen earlier: `0x02` = device volume (`60`), `0x09` = stream-rate label (`2` = 48k), `0x0b` = firmware 2.20, `0x12` = headset mic detection (`1`), `0x16` = active EQ program where `0..4` are Vocal/Classic/Bass/User 1/Off. The device reports `0x16 = 3`, i.e. **User 1**, which is the flat curve saved earlier.
+It survived a port reset in that state (device 050 still `2972:0102` at high speed), 384 kHz playback works again, and a later physical unplug/replug proved it is stored rather than runtime: device 061 came back as `2972:0102` at high speed with both patched PerfCfg gains intact. The same document also explains the other readable registers seen earlier: `0x02` = device volume (`60`), `0x09` = stream-rate label (`2` = 48k), `0x0b` = firmware 2.20, `0x12` = headset mic detection (`1`), `0x16` = active EQ program where `0..4` are Vocal/Classic/Bass/User 1/Off. The device reports `0x16 = 3`, i.e. **User 1**, which is the flat curve saved earlier.
 
 ### The analog gains are not in the firmware
 
@@ -571,8 +571,7 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 - Which DAC filter is active. Not readable on this firmware; `0x11` was written with value 1 (FAST-LL) and may or may not have persisted through the save.
 - Whether writing `0x1D` actually changed the amp class. The command is write-only and a 256-register A/B shows zero differences, so the effect is unobservable from the host.
 - What sets UAC 1.0 mode in the first place. The `0x20` command explains how to change it, not why it was `0` at 11:55 while `0102` was in use at 06:45. It may have been written by an app or the button gesture.
-- Whether the UAC 2.0 setting survives a full unplug. It survived a `USBDEVFS_RESET` and the immediate re-enumeration the command triggers, but this root hub has no port power switching, so a true VBUS cycle could not be tested.
-- Whether the −6 dB DAC PGA actually reduces perceived hiss. At equal loudness it should be roughly neutral, since raising the digital volume cancels the analog cut; only a listening test settles it.
+- Whether the −12 dB DAC PGA actually reduces perceived hiss. At equal loudness it should be roughly neutral, since raising the digital volume cancels the analog cut; only a listening test settles it.
 - THD+N and noise floor of the analog output. Both capture routes are physically closed: the ALC897 line-in has no cable (50 Hz hum only, −8.3 dBFS) and the JA11 capture shows no loopback (−76.1 dBFS while a 997 Hz tone plays).
 - The ISA is confirmed as NDS32, but only as disassembly: no decompiler output. Coverage is now 25,770 of 55,024 bytes (8,324 instructions) after seeding the 148 pointer targets; roughly 29 KB remains data or code reached by computed dispatch.
 - How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reached code.
@@ -594,6 +593,8 @@ preamp       0.00 dB
 DRC          off      gate EN=0, limiter EN=0
 amp mode     Class AB (0x1d = 1, write-only, no register trace)
 playback     44.1/48/96/192/384 kHz clean, no underruns
+persistence  verified across a real unplug/replug: device 061 came back 2972:0102
+             high speed with 0x3a=0, 0x3b=5 and the flat EQ intact
 ```
 
 Revert paths: reflash the official `JadeAudio JA11_V2.2.bin` to restore DAC PGA 0 dB and the image's own flat EQ; `aa 0a 00 00 1d 01 00 00 ee` restores Class H; `aa 0a 00 00 20 01 00 00 ee` restores UAC 1.0.
