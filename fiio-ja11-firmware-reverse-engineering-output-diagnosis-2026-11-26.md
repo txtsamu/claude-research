@@ -439,6 +439,15 @@ t44  wall=15.03   t48  wall=15.02   t96  wall=15.01      (15.000 s of audio)
 pw-top  QUANT 2048 / 48000 Hz / W/Q 0.00 / ERR 0
 ```
 
+With UAC 2.0 restored the full rate ladder works as well:
+
+```
+h192000  wall=10.03      (10.000 s)
+h384000  wall=10.02
+h384_30  wall=30.03      (30.000 s at 384 kHz, no underruns)
+cmd 0x09 while playing 384k -> 8   (rate label: 8 = 384k)
+```
+
 **Honest limit of this change.** Lowering the analog PGA by 6 dB does not by itself lower the noise floor at a fixed listening level: it attenuates signal and DAC noise together, and the amp noise after the PGA is unchanged. If the user raises the digital volume by 6 dB to compensate, the signal and DAC noise come back up and the amp noise stays, so the result at equal SPL is neutral. What it does give is 6 dB more digital range before the analog stage, a 6 dB lower maximum output, and a lower absolute noise floor when listening quietly. Whether that is an improvement is an ears question, not a register question.
 
 Revert: `ktflash` the original `JadeAudio JA11_V2.2.bin` back (sha256 `65fea499…4103de`), then re-apply the flat curve if wanted.
