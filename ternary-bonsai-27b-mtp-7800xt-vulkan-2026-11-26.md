@@ -68,7 +68,7 @@ Everything used here lives in `~/models/ternary-bonsai-27b/`:
 
 | Script | What it does |
 |---|---|
-| `run-server.sh` | launches llama-server with the env-var knobs above |
+| `run-server.sh` | launches llama-server with the env-var knobs above, alias `ternary-bonsai-2.5-27b` |
 | `bench2.py [port]` | 3-prompt averaged generation bench, prints tok/s and draft acceptance |
 | `bench.py [port]` | single-prompt bench plus a 2.4k-token prompt-processing test |
 | `ctx_test.py [port] [chars] [depth]` | plants a fact at a given depth in a long prompt and checks recall |
@@ -344,6 +344,45 @@ Type 42 is the ternary `Q2_0` packing. vLLM cannot even parse the header, so thi
 Two further blockers would appear even if the type were supported: the plugin has no MTP/speculative path, and the same model in a supported format is bf16 (~54 GB) or a 4-bit derivative (~16 GB) that leaves no room for KV cache on a 16 GB card.
 
 Verdict: vLLM is the wrong engine for this checkpoint. It is not the wrong engine for the GPU.
+
+## Wiring it into OpenCode
+
+llama-server exposes an OpenAI-compatible API, so it plugs in as a custom provider. The server needed an `-a` alias first, because without one the model ID is the full GGUF path and that becomes the name every client displays.
+
+`run-server.sh` now passes `-a ternary-bonsai-2.5-27b`, which surfaces as `data[].id` in `/v1/models`.
+
+`~/.config/opencode/opencode.json`, inside the existing `providers` object:
+
+```jsonc
+"local": {
+  "name": "Local llama.cpp",
+  "package": "@opencode/ai/providers/openai-compatible",
+  "settings": {
+    "baseURL": "http://127.0.0.1:8090/v1",
+    "apiKey": "local"
+  },
+  "models": {
+    "ternary-bonsai-2.5-27b": {
+      "name": "Ternary Bonsai 2.5 27B (local)",
+      "limit": { "context": 102400, "output": 8192 },
+      "capabilities": { "tools": true }
+    }
+  }
+}
+```
+
+`apiKey` is a dummy literal: llama-server does not authenticate, but the OpenAI-compatible runtime expects a credential to exist. `limit.context` must match whatever `CTX` the server was started with, otherwise OpenCode will happily send a prompt the server truncates.
+
+Tool calling works, and it was verified twice: once directly against the API (a `read_file` request returned `finish_reason: tool_calls` with `{"path":"/etc/hostname"}`), and once through OpenCode itself, where the agent called `Read` on a file and answered with its contents.
+
+```bash
+opencode models | grep local          # local/ternary-bonsai-2.5-27b
+opencode run -m local/ternary-bonsai-2.5-27b "hello"
+```
+
+In the TUI, `/models` lists it as **Ternary Bonsai 2.5 27B (local)**. Switching the default is a `model` change in `opencode.json`; this doc leaves the existing default alone.
+
+Caveat worth stating: as a coding agent this model is usable but slow, and 27B at 2-bit is not a substitute for the cloud model on anything involving long tool chains. It handled a single-file read and answer cleanly.
 
 ## What this does not cover
 
