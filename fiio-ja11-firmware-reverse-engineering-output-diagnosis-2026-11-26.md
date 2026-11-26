@@ -3,7 +3,7 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 at base 0x80000 (25.8/55 KB, no decompiler); UAC1/UAC2 is FiiO cmd 0x20, switched to UAC2 (0102 high speed, 384k verified); patched PerfCfg DAC PGA 0x0d->0x09 flashed and verified (0x3B=9); EQ program 3 = User 1 flat; analog THD+N still unmeasurable
+status: current   # ISA = Andes NDS32 (independent kt0231h confirmation); UAC2 restored via cmd 0x20; PerfCfg DAC PGA 0x0d->0x09 flashed (0x3B=9); image EQ tables at 0x106a/0x109a are flat; amp mode 0x1D is write-only with zero register effect
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
@@ -154,7 +154,18 @@ Preset 4 is a loudness curve with +6 dB in the bass and +5.4 dB at 15.6 kHz and 
 
 ### Correction to an earlier note
 
-[[ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26]] says a reflash resets the DAC bands to "the image's factory curve (141 Hz −2.4 dB, 447 Hz +2.1 dB, …)". That curve is **not in the image**. Searching the whole 67,312 bytes for those frequencies and gains as LE16/BE16/LE32/BE32/float32 (and for the five-value cluster within 400 bytes) finds nothing. The curve is the chip/DSP default that reappears whenever the DSP resets; the image carries the *flat* script instead. The observation in that note is right, the attribution was wrong.
+[[ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26]] says a reflash resets the DAC bands to "the image's factory curve (141 Hz −2.4 dB, 447 Hz +2.1 dB, …)". That curve is **not in the image**. Searching the whole 67,312 bytes for those frequencies and gains as LE16/BE16/LE32/BE32/float32 (and for the five-value cluster within 400 bytes) finds nothing. What the image *does* contain, at `0x106a` (DAC) and `0x109a` (ADC), is a five-entry table of 8-byte records in the layout `[freq u16][Q×1000 u16][gain×10 s16][type u16]`, and it is **flat**:
+
+```
+0x106a: e8 03 c3 02 00 00 00 00   1000 Hz  Q 0.707  0.0 dB  type 0
+0x1072: d0 07 c3 02 00 00 00 00   2000 Hz  Q 0.707  0.0 dB  type 0
+0x107a: 88 13 c3 02 00 00 00 00   5000 Hz  Q 0.707  0.0 dB  type 0
+0x1082: 40 1f c3 02 00 00 00 00   8000 Hz  Q 0.707  0.0 dB  type 0
+0x108a: 10 27 c3 02 00 00 00 00  10000 Hz  Q 0.707  0.0 dB  type 0
+0x109a: (same five entries again, ADC bank)
+```
+
+So the image's own default is flat, matching the flat write script at `0xc804`, and the dark 141/447 curve comes from elsewhere (chip ROM or the saved config sector). The observation in that note is right, the attribution was wrong.
 
 ## 4. rea, Ghidra, and the ISA
 
@@ -232,6 +243,8 @@ Disassembly coverage from the entry point is 4,075 instructions / 11,798 bytes o
 Ghidra 12.1.4 decompiles NDS32 to an **empty string**: `decompileCompleted() == true`, `getErrorMessage() == ""`, and `getDecompiledFunction().getC()` is blank, both for the auto-detected 16-byte body and for a forced body spanning the whole function. The `nds32.cspec` has a stack pointer, `a0..a5` arguments and a default prototype, so the spec is not obviously at fault. Treat this as assembly-only work for now.
 
 Practical consequence: you can read the code, follow the register-command dispatch, and find the DSP write scripts, but you will not get C out of Ghidra for this image.
+
+An independent project reaches the same conclusion. `eyad-elghareeb/kt0231h/ARCHITECTURE.md` identifies the KT02H20 core as an **Andes AndeStar v3 (NDS32) 32/16-bit mixed-length RISC**, reporting about 94% coverage and 95 clean decompiles, and names the Andes intrinsics it finds (`setgie`, `dsb`). That matches the `mtsr`/`mfsr` and `dsb` sequences in this image. They use the little-endian variant; here both `NDS32:BE:32:default` and `NDS32:LE:32:default` produced identical output, so the file's byte order is ambiguous under Ghidra's two NDS32 definitions but the instruction set is not in doubt.
 
 ### Code base 0x80000 and the pointer tables
 
@@ -452,6 +465,19 @@ cmd 0x09 while playing 384k -> 8   (rate label: 8 = 384k)
 
 Revert: `ktflash` the original `JadeAudio JA11_V2.2.bin` back (sha256 `65fea499…4103de`), then re-apply the flat curve if wanted.
 
+### Amp mode (command `0x1D`) is write-only and invisible to the register map
+
+`Audiocular-Aura` (the source Ircama's header cites for `CMD_AMP_MODE 29`) implements it as `setDacWorkMode(device, isClassAB)`: `0 = Class H`, `1 = Class AB`. On this firmware it is write-only and leaves no trace in the DSP map:
+
+```
+read 0x1d before write: (none)
+write 0x1d = 1 (Class AB): accepted, no reply, no re-enumeration
+read 0x1d after write:  (none)
+0x3a = 0x04   0x3b = 0x09   0x24 = 0x05        (unchanged)
+```
+
+A full 256-register A/B settles it: write `1` → dump, write `0` → dump, write `1` → dump gives **0 differing registers** in both directions. The amp mode is applied straight to the analog block, so there is no readback path and no way to prove the change from the host. Playback after the exercise is unchanged (384 kHz 10.02 s, 48 kHz 15.03 s, device 050 still high speed). It is left at Class AB (the more linear mode); switch back with `aa 0a 00 00 1d 01 00 00 ee`.
+
 ## 7. What is still unexplained
 
 ### Both objective measurement routes are physically blocked
@@ -489,6 +515,7 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 ## What was not verified
 
 - Which DAC filter is active. Not readable on this firmware; `0x11` was written with value 1 (FAST-LL) and may or may not have persisted through the save.
+- Whether writing `0x1D` actually changed the amp class. The command is write-only and a 256-register A/B shows zero differences, so the effect is unobservable from the host.
 - What sets UAC 1.0 mode in the first place. The `0x20` command explains how to change it, not why it was `0` at 11:55 while `0102` was in use at 06:45. It may have been written by an app or the button gesture.
 - Whether the UAC 2.0 setting survives a full unplug. It survived a `USBDEVFS_RESET` and the immediate re-enumeration the command triggers, but this root hub has no port power switching, so a true VBUS cycle could not be tested.
 - Whether the −6 dB DAC PGA actually reduces perceived hiss. At equal loudness it should be roughly neutral, since raising the digital volume cancels the analog cut; only a listening test settles it.
@@ -505,6 +532,9 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 - Ghidra 12.1.4 in-tree `NDS32` processor (`Ghidra/Processors/NDS32`, `NDS32:BE:32:default`) — the language that decoded the image
 - [`Ircama/ja11-config`](https://github.com/Ircama/ja11-config) — HID packet formats and filter table
 - [`Cyfine/ja11-web-control`](https://github.com/Cyfine/ja11-web-control) — `PROTOCOL.md` command table from the FiiO Control APK: `0x20` UAC mode, `0x16` EQ program, `0x12` headset detection, `0x02` device volume, `0x09` rate label
+- [`adithyasource/fiiocontrol-oss`](https://github.com/adithyasource/fiiocontrol-oss) — `src/libs/devices/fiioJa11.js`, the JA11 packet builder (bands, master gain, save)
+- [`mandy321/Audiocular-Aura`](https://github.com/mandy321/Audiocular-Aura) — `src/dsp.ts` amp mode (`0x1D`: 0 = Class H, 1 = Class AB) and the register UI it drives
+- [`eyad-elghareeb/kt0231h`](https://github.com/eyad-elghareeb/kt0231h) — `ARCHITECTURE.md` (independent NDS32 identification), `PROTOCOL.md` (image layout, EQ entry format)
 - [`gxcreator/ktmicro-tools`](https://github.com/gxcreator/ktmicro-tools) — `KT_USB_PROTOCOL.md` register map
 - [`ParkWardRR/…-toolkit`](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit) — `docs/COMPATIBILITY.md`, `docs/REVERT.md` (cross-flash risk, stock image sourcing)
 - [`dragonzords/KT02H20-FLASHER-RE`](https://github.com/dragonzords/KT02H20-FLASHER-RE)
