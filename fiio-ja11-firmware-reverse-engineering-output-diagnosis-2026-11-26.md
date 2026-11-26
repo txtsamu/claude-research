@@ -478,6 +478,10 @@ read 0x1d after write:  (none)
 
 A full 256-register A/B settles it: write `1` → dump, write `0` → dump, write `1` → dump gives **0 differing registers** in both directions. The amp mode is applied straight to the analog block, so there is no readback path and no way to prove the change from the host. Playback after the exercise is unchanged (384 kHz 10.02 s, 48 kHz 15.03 s, device 050 still high speed). It is left at Class AB (the more linear mode); switch back with `aa 0a 00 00 1d 01 00 00 ee`.
 
+### `0x16` (EQ program) is read-only here
+
+The APK-derived table lists `0x16` as the active EQ program (`0..4`), but on this firmware it only reports: after the reflash it read `1`, and writes of `4`, `0`, `2` and `1` all left it at `1`. The DSP applies the band registers (`0x26..0x2f`), which are flat, so the audible result is flat regardless of the label. Not worth chasing further.
+
 ## 7. What is still unexplained
 
 ### Both objective measurement routes are physically blocked
@@ -523,6 +527,25 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 - The ISA is confirmed as NDS32, but only as disassembly: no decompiler output. Coverage is now 25,770 of 55,024 bytes (8,324 instructions) after seeding the 148 pointer targets; roughly 29 KB remains data or code reached by computed dispatch.
 - How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reached code.
 - Whether the analog noise floor changes with the DAC PGA. That needs a measurement rig, not a register read.
+
+## 9. Final device state
+
+```
+lsusb        2972:0102  high speed (480 Mbps), bcdADC 2.00, firmware 2.20
+stream0      S16/S24_3LE, 44100..384000, 125 us microframes, ASYNC + sync EP
+cmd 0x20     1        UAC 2.0
+cmd 0x16     1        EQ program label (read-only on this firmware)
+0x3a         4        ADC PGA +20 dB
+0x3b         9        DAC PGA -6 dB   (patched PerfCfg, 0x10ec 0x0d -> 0x09)
+0x24         5        DAC EQ enabled
+0x26..0x2f   flat     1000/2000/5000/8000/10000 Hz, 0.0 dB, Q 0.710
+preamp       0.00 dB
+DRC          off      gate EN=0, limiter EN=0
+amp mode     Class AB (0x1d = 1, write-only, no register trace)
+playback     44.1/48/96/192/384 kHz clean, no underruns
+```
+
+Revert paths: reflash the official `JadeAudio JA11_V2.2.bin` to restore DAC PGA 0 dB and the image's own flat EQ; `aa 0a 00 00 1d 01 00 00 ee` restores Class H; `aa 0a 00 00 20 01 00 00 ee` restores UAC 1.0.
 
 ## References
 
