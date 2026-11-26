@@ -3,14 +3,14 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 at flash base 0x80000 (pointer-table seeding reaches 25.8/55 KB, no decompiler); UAC1/UAC2 personality selector found at 0x6758/0x6790; analog gains come from boot-ROM PerfCfg, not firmware; flat EQ saved and verified across 4 resets; analog measurement blocked (no loopback cable)
+status: current   # ISA = Andes NDS32 at flash base 0x80000 (25.8/55 KB reached, no decompiler); UAC1/UAC2 selector at 0x6758/0x6790; patched PerfCfg DAC PGA 0x0d->0x09 flashed and verified on device (0x3B=9, playback clean at 44.1/48/96); flat EQ persisted through the reflash; analog THD+N still unmeasurable (no loopback)
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
 
 Request: "help me reverse engineer that firmware i think there is bug since the output of the sounds is weird" and then "try reverse engineer with morluto/rea and ghidra". Symptom reported when asked directly: **crackle/pops/dropouts, hiss/noise floor, and distorted/harsh peaks, on every host** (this PC, phone, Snowsky Disc).
 
-Outcome in one line: the core is **Andes NDS32**, not any of the usual suspects, and once that was found the code disassembles cleanly (branch targets 514/514 on instruction boundaries, hardware init visible through `mtsr`/`mfsr`). The Ghidra decompiler still returns nothing for NDS32, so it is assembly-only. The dongle's DSP state and USB mode were captured live, and the image's register-write script tables and built-in EQ presets were decoded.
+Outcome in one line: the core is **Andes NDS32** at flash base `0x80000`, and once that was found the code disassembles cleanly (branch targets 514/514 on instruction boundaries, hardware init visible through `mtsr`/`mfsr`). Ghidra's NDS32 decompiler returns nothing, so it is assembly-only. The USB personality selector, both descriptor sets, and the `PerfCfg` analog-gain path were located; the stock EQ was flattened and saved, and the image was patched and reflashed to move the DAC analog PGA from 0 dB to −6 dB, verified on the device.
 
 ## Time estimate
 
@@ -393,6 +393,51 @@ One oddity worth knowing: writing bands over `0x02` without saving can leave `0x
 
 At `0x10d8` it is eight zero bytes, then two LE32 values: **ADC PGA index 4 (+20 dB)** and **DAC PGA index 13 (0.0 dB)**, then the FIIO / JadeAudio JA11 / serial strings. V2.1 → V2.2 changed only byte `0x10e8` (`03` → `04`), the "optimised microphone input gain" entry in the changelog. So the image carries no per-board analog calibration at all, only those two gains, and they match what the chip reports.
 
+### Flashing the patched PerfCfg (DAC PGA −6 dB)
+
+Since no firmware code references `PerfCfg`, the only durable way to change the analog gain is to patch the image header and reflash. Done, and verified end to end:
+
+```bash
+cp JadeAudio_JA11_V2.2.bin /tmp/opencode/ja11_pga9.bin
+# 0x10ec: 0x0d -> 0x09
+sha256  f4aada7a2384390c1f8e2cc2aa666545398da2dbbb96fdf1cdd9997dbaaae7a6
+ktflash image /tmp/opencode/ja11_pga9.bin
+#   magic KT_Helios_v1b / chip KT02H20B / declared 67312 (0x106F0) — same findings as the original
+```
+
+The header has no checksum: `0x48` is the ENTY payload size and reads `0x0001d188` in **all five** official versions (V1.7, V1.9, V2.0, V2.1, V2.2), so a one-byte change cannot invalidate a hash. The Rust flasher refuses to *unlock* `2972:0101` (its normal-mode list only has `0102`), so the unlock was sent directly:
+
+```bash
+# hidraw write: 54 31 32 33 34 35 36 37 38 00 00   -> 8888:cdc0, /dev/ttyACM0
+ktflash flash-cdc --image /tmp/opencode/ja11_pga9.bin --execute --yes
+#  KTM ok, CHP -> KT02H20B, ERASE ok, all 67 packets [78 a5], STP ok, RESET ok
+#  [reprobe] no recognised device — only because the tool does not know 0101
+```
+
+It came back as `2972:0101` (device 049), and the decisive read:
+
+```
+0x3a ADC PGA index  = 0x00000004     (unchanged, 20 dB)
+0x3b DAC PGA index  = 0x00000009     (-6 dB, was 0x0d = 0 dB)
+0x65 ADC digital    = 0x00000100
+0x66 DAC digital    = 0x00000200
+0x24 DAC EQ en      = 0x00000005
+DAC bands           = 1000/2000/5000/8000/10000 Hz, 0.0 dB, Q 0.710
+```
+
+So the boot ROM does parse `PerfCfg` and the patched value took effect. The flat EQ also survived the erase+reflash, which means it is re-applied from the image's own flat script at `0xc804` or restored from a config sector the erase does not cover. Either way it comes up flat without a save.
+
+Playback after the flash is clean at every rate, twice, and through PipeWire:
+
+```
+t44  wall=15.03   t48  wall=15.02   t96  wall=15.01      (15.000 s of audio)
+pw-top  QUANT 2048 / 48000 Hz / W/Q 0.00 / ERR 0
+```
+
+**Honest limit of this change.** Lowering the analog PGA by 6 dB does not by itself lower the noise floor at a fixed listening level: it attenuates signal and DAC noise together, and the amp noise after the PGA is unchanged. If the user raises the digital volume by 6 dB to compensate, the signal and DAC noise come back up and the amp noise stays, so the result at equal SPL is neutral. What it does give is 6 dB more digital range before the analog stage, a 6 dB lower maximum output, and a lower absolute noise floor when listening quietly. Whether that is an improvement is an ears question, not a register question.
+
+Revert: `ktflash` the original `JadeAudio JA11_V2.2.bin` back (sha256 `65fea499…4103de`), then re-apply the flat curve if wanted.
+
 ## 7. What is still unexplained
 
 ### Both objective measurement routes are physically blocked
@@ -431,8 +476,8 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 
 - Which DAC filter is active. Not readable on this firmware; `0x11` was written with value 1 (FAST-LL) and may or may not have persisted through the save.
 - What sets the UAC 1.0 latch. It survives a port reset, no per-port power switching exists on this root hub, and the boot-ROM/GPIO path that reads the button is not in the firmware image. Writing the undocumented `0x12` register (`reads back 0x01`) was judged too risky.
+- Whether the −6 dB DAC PGA actually reduces perceived hiss. At equal loudness it should be roughly neutral, since raising the digital volume cancels the analog cut; only a listening test settles it.
 - THD+N and noise floor of the analog output. Both capture routes are physically closed: the ALC897 line-in has no cable (50 Hz hum only, −8.3 dBFS) and the JA11 capture shows no loopback (−76.1 dBFS while a 997 Hz tone plays).
-- Whether the flat curve sounds better. Every audible claim here is derived from register state and link measurements, not from a captured waveform.
 - The ISA is confirmed as NDS32, but only as disassembly: no decompiler output. Coverage is now 25,770 of 55,024 bytes (8,324 instructions) after seeding the 148 pointer targets; roughly 29 KB remains data or code reached by computed dispatch.
 - How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reached code.
 - Whether the analog noise floor changes with the DAC PGA. That needs a measurement rig, not a register read.
