@@ -3,7 +3,7 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 at flash base 0x80000 (25.8/55 KB reached, no decompiler); UAC1/UAC2 selector at 0x6758/0x6790; patched PerfCfg DAC PGA 0x0d->0x09 flashed and verified on device (0x3B=9, playback clean at 44.1/48/96); flat EQ persisted through the reflash; analog THD+N still unmeasurable (no loopback)
+status: current   # ISA = Andes NDS32 at base 0x80000 (25.8/55 KB, no decompiler); UAC1/UAC2 is FiiO cmd 0x20, switched to UAC2 (0102 high speed, 384k verified); patched PerfCfg DAC PGA 0x0d->0x09 flashed and verified (0x3B=9); EQ program 3 = User 1 flat; analog THD+N still unmeasurable
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
@@ -284,15 +284,20 @@ So the personality follows the negotiated `bcdUSB`: `0x0201` selects the UAC 2.0
 
 No stored descriptor carries PID `0x0101`; the byte pair `72 29 01 01` appears nowhere in the image. The `0x0101` the host sees is patched in at runtime by the UAC 1.0 path, which is why a hex search for it in the file finds nothing.
 
-A port reset does not change it. `USBDEVFS_RESET` (`ioctl 0x5514`) on `/dev/bus/usb/001/046` produced a clean re-enumeration that stayed full speed:
+A port reset alone did not change it: `USBDEVFS_RESET` (`ioctl 0x5514`) on `/dev/bus/usb/001/046` re-enumerated straight back to full speed. The mode is not a hardware latch, though. It is a **config register written by FiiO command `0x20`**, documented by `Cyfine/ja11-web-control/PROTOCOL.md` from the FiiO Control APK: `0 = UAC 1.0`, `1 = UAC 2.0`. The device reported `0x20 = 0` while it was in UAC 1.0.
 
-```
-usb 1-1: USB disconnect, device number 46
-usb 1-1: new full-speed USB device number 47 using xhci_hcd
-usb 1-1: New USB device found, idVendor=2972, idProduct=0101, bcdDevice= 2.20
+Writing `0x20 = 1` (`aa 0a 00 00 20 01 01 00 ee`) flipped it instantly:
+
+```bash
+$ lsusb -d 2972:
+Bus 001 Device 050: ID 2972:0102 FiiO Electronics Technology JadeAudio JA11
+# usb 1-1: new high-speed USB device number 50 using xhci_hcd
+# bcdUSB 2.01 / bcdADC 2.00 / Negotiated speed: High Speed (480Mbps)
+# stream0: 125 us packet interval, rates 44100..384000
+# cmd 0x20 reads back 1
 ```
 
-So the UAC 1.0 latch is inside the dongle and survives USB resets. It needs a VBUS power cycle, which this root hub cannot do (`uhubctl` reports no port power switching), or the button gesture at plug-in.
+It survived a port reset in that state (device 050 still `2972:0102` at high speed), and 384 kHz playback works again. The same document also explains the other readable registers seen earlier: `0x02` = device volume (`60`), `0x09` = stream-rate label (`2` = 48k), `0x0b` = firmware 2.20, `0x12` = headset mic detection (`1`), `0x16` = active EQ program where `0..4` are Vocal/Classic/Bass/User 1/Off. The device reports `0x16 = 3`, i.e. **User 1**, which is the flat curve saved earlier.
 
 ### The analog gains are not in the firmware
 
@@ -459,7 +464,7 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 
 ## 8. Rejected fixes
 
-- **Blind-writing the undocumented `0x12` register** (reads back `0x01`, plausibly a USB mode flag) to leave UAC 1.0. A wrong value could change the USB personality with no HID channel left to undo it, and the mode has no bearing on hiss or crackle.
+- **Blind-writing `0x12` as a guessed UAC flag.** It is actually headset-mic detection, so writing it would have changed the wrong thing. The real mode command is `0x20`, and it was only written after the community protocol doc identified it as `0 = UAC 1.0, 1 = UAC 2.0`.
 - **Patching `0x10ec` (DAC PGA index) and reflashing** for a speculative 6 dB noise improvement. The reflash erases the saved EQ sector, and the gain change is unproven without ears.
 - **Writing the amp mode** (`0x1D`). Write-only, undocumented values, and a wrong Class-G setting is a plausible way to make things worse.
 - **`uhubctl` power cycle.** Installed (2.6.0) but the root hub reports no compatible port power switching, so the dongle cannot be VBUS-cycled to re-latch the UAC mode.
@@ -475,7 +480,8 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 ## What was not verified
 
 - Which DAC filter is active. Not readable on this firmware; `0x11` was written with value 1 (FAST-LL) and may or may not have persisted through the save.
-- What sets the UAC 1.0 latch. It survives a port reset, no per-port power switching exists on this root hub, and the boot-ROM/GPIO path that reads the button is not in the firmware image. Writing the undocumented `0x12` register (`reads back 0x01`) was judged too risky.
+- What sets UAC 1.0 mode in the first place. The `0x20` command explains how to change it, not why it was `0` at 11:55 while `0102` was in use at 06:45. It may have been written by an app or the button gesture.
+- Whether the UAC 2.0 setting survives a full unplug. It survived a `USBDEVFS_RESET` and the immediate re-enumeration the command triggers, but this root hub has no port power switching, so a true VBUS cycle could not be tested.
 - Whether the −6 dB DAC PGA actually reduces perceived hiss. At equal loudness it should be roughly neutral, since raising the digital volume cancels the analog cut; only a listening test settles it.
 - THD+N and noise floor of the analog output. Both capture routes are physically closed: the ALC897 line-in has no cable (50 Hz hum only, −8.3 dBFS) and the JA11 capture shows no loopback (−76.1 dBFS while a 997 Hz tone plays).
 - The ISA is confirmed as NDS32, but only as disassembly: no decompiler output. Coverage is now 25,770 of 55,024 bytes (8,324 instructions) after seeding the 148 pointer targets; roughly 29 KB remains data or code reached by computed dispatch.
@@ -489,6 +495,7 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 - [KTMicro KT02H20 product page](https://www.ktmicro.com/?usb_104/394.html) — feature list, UAC1.0/2.0, "FLASH 允许客户二次开发程序", no CPU documentation
 - Ghidra 12.1.4 in-tree `NDS32` processor (`Ghidra/Processors/NDS32`, `NDS32:BE:32:default`) — the language that decoded the image
 - [`Ircama/ja11-config`](https://github.com/Ircama/ja11-config) — HID packet formats and filter table
+- [`Cyfine/ja11-web-control`](https://github.com/Cyfine/ja11-web-control) — `PROTOCOL.md` command table from the FiiO Control APK: `0x20` UAC mode, `0x16` EQ program, `0x12` headset detection, `0x02` device volume, `0x09` rate label
 - [`gxcreator/ktmicro-tools`](https://github.com/gxcreator/ktmicro-tools) — `KT_USB_PROTOCOL.md` register map
 - [`ParkWardRR/…-toolkit`](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit) — `docs/COMPATIBILITY.md`, `docs/REVERT.md` (cross-flash risk, stock image sourcing)
 - [`dragonzords/KT02H20-FLASHER-RE`](https://github.com/dragonzords/KT02H20-FLASHER-RE)
