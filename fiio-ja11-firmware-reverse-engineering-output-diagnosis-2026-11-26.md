@@ -3,14 +3,14 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # no ISA identified; firmware cannot be disassembled with stock Ghidra; DSP state healthy
+status: current   # ISA = Andes NDS32 (514/514 branch targets aligned); Ghidra decompiles NDS32 to nothing, assembly-only
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
 
 Request: "help me reverse engineer that firmware i think there is bug since the output of the sounds is weird" and then "try reverse engineer with morluto/rea and ghidra". Symptom reported when asked directly: **crackle/pops/dropouts, hiss/noise floor, and distorted/harsh peaks, on every host** (this PC, phone, Snowsky Disc).
 
-Outcome in one line: the image is for an **undocumented KTMicro core** that Ghidra cannot decode, no public project has ever disassembled it, and the dongle's DSP state and mode were captured live. Part of the firmware *structure* was mapped anyway (register-write script tables, per-version diff map, built-in EQ presets).
+Outcome in one line: the core is **Andes NDS32**, not any of the usual suspects, and once that was found the code disassembles cleanly (branch targets 514/514 on instruction boundaries, hardware init visible through `mtsr`/`mfsr`). The Ghidra decompiler still returns nothing for NDS32, so it is assembly-only. The dongle's DSP state and USB mode were captured live, and the image's register-write script tables and built-in EQ presets were decoded.
 
 ## Time estimate
 
@@ -20,8 +20,8 @@ Outcome in one line: the image is for an **undocumented KTMicro core** that Ghid
 | live device capture (lsusb, descriptors, registers, HID reads) | ~10 min |
 | download 5 official firmware versions from FiiO + extract | ~2 min (download measured) |
 | image anatomy + version diffs + script-table discovery | ~20 min |
-| Ghidra imports and disassembly attempts (4 processors) | ~15 min, mostly JVM startup |
-| **Total** | **about 1 hour** |
+| Ghidra imports and disassembly attempts (11 processors, then NDS32 analysis) | ~25 min, mostly JVM startup |
+| **Total** | **about 1 hour 20 min** |
 
 ## 1. What is plugged in: the dongle changed USB mode
 
@@ -156,27 +156,82 @@ Preset 4 is a loudness curve with +6 dB in the bass and +5.4 dB at 15.6 kHz and 
 
 [[ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26]] says a reflash resets the DAC bands to "the image's factory curve (141 Hz −2.4 dB, 447 Hz +2.1 dB, …)". That curve is **not in the image**. Searching the whole 67,312 bytes for those frequencies and gains as LE16/BE16/LE32/BE32/float32 (and for the five-value cluster within 400 bytes) finds nothing. The curve is the chip/DSP default that reappears whenever the DSP resets; the image carries the *flat* script instead. The observation in that note is right, the attribution was wrong.
 
-## 4. Ghidra / rea: tried, and why it fails
+## 4. rea, Ghidra, and the ISA
 
-Environment: `rea` 6.9.0 at `~/.local/bin/rea`, Ghidra 12.1.4 at `~/tools/ghidra_12.1.4_PUBLIC`, JDK 21 at `~/tools/jdk-21.0.12.1+1`.
+### rea: it runs, but it cannot see this core
 
-Method: import as raw binary (address == file offset, which is true here because the flash tool writes the image at base 0 and the 16-byte header is written last), forced disassembly of `0x3000..0x3100` with a small GhidraScript, one language per project.
+`rea` 6.9.0 is installed at `~/.local/bin/rea` and it works. It just has no lane for this target:
 
-| Language tried | Result |
+```bash
+$ rea analyze JadeAudio\ JA11_V2.2.bin --target-format raw-binary \
+      --architecture arm --entry-point 0x3000 --provider ghidra --format json
+# normalized_result: procedure_count 1, string_count 41, segments [ram 0x3000..0x136f0]
+$ rea analyze ... --architecture m68k ...   # procedure_count 1, string_count 41
+$ rea analyze ... --architecture 6502 ...
+# Cannot open artifact: raw-binary mapping from 0x0 must fit in the 6502 address width.
+$ rea instructions ... --architecture arm 0xf7b0
+# No procedure exists at the requested address: 0xf7b0
+```
+
+`rea analyze --target-format raw-binary` accepts only `6502 | x86 | x86_64 | arm | arm64 | m68k`. There is no NDS32 value, and rea is a wrapper around providers, so it cannot invent one. Its architecture-independent commands still work (`inspect-byte-entropy` returned fine; `inspect-firmware-regions` wants `REA_BINWALK_COMMAND`), but for this image rea is the wrong tool.
+
+### Ghidra headless with the right language: NDS32
+
+The earlier sweep tried 8051-family, MCS96, Xtensa, ARM, MIPS, RISC-V, V850, HCS08, Loongarch and 68000, all garbage or zero. Adding **`NDS32:BE:32:default`** (Andes; in-tree Ghidra processor at `Ghidra/Processors/NDS32`) changes everything:
+
+```
+ram:00003000  movi gp,0x42000
+ram:00003004  movi sp,0x4fe00
+ram:00003008  jal 0x00009d98
+ram:0000300c  jal 0x00009dac
+ram:00003010  smw.adm s0,[sp],s2,0x2      <- push
+ram:00003014  addi10.sp -0x10
+...
+ram:00003024  beqc s0,0x57,0x00003048     <- 'W' write
+ram:00003028  bnec s0,0x52,0x00003030     <- 'R' read
+ram:0000302c  j 0x00003178
+ram:00003030  bnec s0,0x53,0x00003038     <- 'S'
+ram:00003034  j 0x0000312c
+ram:00003038  beqc s0,0x43,0x000030a4     <- 'C' handshake
+ram:0000303c  beqc s0,0x9,0x00003120
+ram:00003040  addi10.sp 0x10
+ram:00003042  lmw.bim s0,[sp],s2,0x2      <- pop
+ram:00003046  ret5 lp
+```
+
+That is the register-command dispatcher, and the immediates are the same ASCII command bytes the host protocol uses (`0x52` read, `0x57` write, `0x43` handshake). The prologue/epilogue pair matches (`smw.adm`/`lmw.bim` with `addi10.sp`), and further in the same function there is `movi a1,0xbb80` (48000) next to `slli333 a0,a0,0x2`.
+
+The boot-time call targets are hardware init:
+
+```
+ram:00009d98  movi a0,0x40000
+ram:00009d9c  ori a0,a0,0x1
+ram:00009da0  mtsr a0,0x0138        <- write peripheral/CSR
+ram:00009da4  dsb
+ram:00009da8  ret5 lp
+ram:00009dac  smw.adm s0,[sp],s0,0x2
+ram:00009db0  movi55 a0,0x0
+ram:00009db2  mtsr a0,0x0179
+ram:00009db6  mtsr a0,0x00c0
+```
+
+`mtsr`/`mfsr` are the NDS32 special-register instructions; the sequence programs clock/power CSRs. That is not something an accidental decode produces.
+
+Three independent checks, all passing:
+
+| Check | Result |
 |---|---|
-| `80251:BE:24:default` | continuous decode, all nonsense (`ORL A,R1`, `JBC 0x003a,0x0030b3`, `CJNE R4,#0x5a`) |
-| `8051:BE:16:default` | continuous decode, all nonsense (`ORL A,0xd4`, `JB 0x00`) |
-| `MCS96:LE:16:default` | **zero** instructions decoded in 256 bytes; the opcode map rejects the stream |
-| `Xtensa:LE:32:default` | 3 instructions then stop, including `call0 0x00023d48` (outside the image) |
+| Branch/call targets landing on an instruction boundary | **514 / 514** in range |
+| Prologue/epilogue pairing | `smw.adm` + `addi10.sp` up front, `addi10.sp` + `lmw.bim` + `ret5 lp` at exit |
+| Immediates matching the known protocol | `0x57`, `0x52`, `0x53`, `0x43`, `0xbb80` |
 
-Independent evidence against the usual cores, from the bytes themselves: no ARM/Thumb, MIPS, RISC-V, x86, 6502 or Z80 fit either (capstone sweep produced 0 instructions for MIPS and RISC-V at four offsets, and garbage for the rest). The image also contains **no absolute pointers** to its own strings (no LE32/BE32 hit for `0xc7b0`, `0xc9cc`, `0xd98c`, `0xd594`), so even a data-xref-only mapping in Ghidra has nothing to hook onto.
+Disassembly coverage from the entry point is 4,075 instructions / 11,798 bytes of the 55,024 between `0x3000` and `0x106ef`; the rest is data (strings, coefficient tables) and code not reachable from `0x3000` by static flow. Iterative seeding of every discovered jump target adds nothing, so there is no hidden code reachable that way.
 
-Two other things that rule out the easy explanations:
+### The decompiler is still a dead end
 
-- Not compressed or encrypted: plaintext strings (`eq_task`, `usb_task`, `adc_task`, `dac_task`, `api timer`, `bll_auusb`, `D user next ilde addr %d`, `TX-384Khz Hifi Type-C Audio`) sit inline, and there are 504 four-byte zero runs in the code region.
-- Not a standard compiler prologue pattern that would identify the toolchain: `49 fc` occurs 731 times, `3a 6f` 305 times, `dd 9e` 234 times, all at even offsets (mostly 4-byte aligned). That looks like a 16-bit, variable-length, 2-byte-aligned ISA with 16-bit immediate forms, but nothing in Ghidra matches it.
+Ghidra 12.1.4 decompiles NDS32 to an **empty string**: `decompileCompleted() == true`, `getErrorMessage() == ""`, and `getDecompiledFunction().getC()` is blank, both for the auto-detected 16-byte body and for a forced body spanning the whole function. The `nds32.cspec` has a stack pointer, `a0..a5` arguments and a default prototype, so the spec is not obviously at fault. Treat this as assembly-only work for now.
 
-Conclusion: the image targets a **KTMicro-proprietary core** (the image magic literally names it `KT_Helios_v1b`). Undocumented ISA, no SLEIGH spec, no decompiler. Ghidra can still be used as a container for the data structures once someone writes a decoder, but the decompiler is off the table. That is the honest wall.
+Practical consequence: you can read the code, follow the register-command dispatch, and find the DSP write scripts, but you will not get C out of Ghidra for this image.
 
 ## 5. What GitHub already has (and what nobody has)
 
@@ -215,14 +270,15 @@ The static evidence does not support "firmware bug". It supports "this is a JM12
 - Which DAC filter is active. Not readable on this firmware.
 - Whether UAC 1.0 mode is entered by holding the button at plug-in. The mode change is documented by timestamp only.
 - Whether the "weird sound" is the DAC/amp, the jack, the IEM, or the cross-flash calibration. No loopback recorder was available; the tests in section 6 were not run.
-- The ISA. Four Ghidra processors and a capstone sweep all failed; no vendor documentation exists in the open.
-- Any effect of the four built-in EQ presets, which are not reachable from the FiiO app UI as far as this session could tell.
+- The ISA turned out to be NDS32, but nothing beyond disassembly: no decompiler output, no function boundaries from auto-analysis (330 created by seeding branch targets), and 43 KB of the 55 KB code window is not reached from the entry point.
+- How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reachable code, so the selection path is unproven.
 
 ## References
 
 - [FiiO forum: JA11 firmware download and changelog](https://forum.fiio.com/note/showNoteContent.do?id=202406211150090736905) — official V2.2/V2.1/V2.0/V1.9/V1.7 ZIP links used above
 - [FiiO: JA11 V2.2 announcement](https://www.fiio.com/newsinfo/1065234.html)
 - [KTMicro KT02H20 product page](https://www.ktmicro.com/?usb_104/394.html) — feature list, UAC1.0/2.0, "FLASH 允许客户二次开发程序", no CPU documentation
+- Ghidra 12.1.4 in-tree `NDS32` processor (`Ghidra/Processors/NDS32`, `NDS32:BE:32:default`) — the language that decoded the image
 - [`Ircama/ja11-config`](https://github.com/Ircama/ja11-config) — HID packet formats and filter table
 - [`gxcreator/ktmicro-tools`](https://github.com/gxcreator/ktmicro-tools) — `KT_USB_PROTOCOL.md` register map
 - [`ParkWardRR/…-toolkit`](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit) — `docs/COMPATIBILITY.md`, `docs/REVERT.md` (cross-flash risk, stock image sourcing)
