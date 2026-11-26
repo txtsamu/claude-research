@@ -3,7 +3,7 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 (independently confirmed); UAC2 restored via cmd 0x20; PerfCfg patched ADC 0x04->0x00 and DAC 0x0d->0x09, flashed and verified (0x3A=0, 0x3B=9, mic path -75.1 -> -91.4 dBFS); V2.1 compared, no playback regression; image EQ tables at 0x106a/0x109a are flat; amp mode 0x1D and 0x16 are write-only/read-only
+status: current   # ISA = Andes NDS32 (independently confirmed); UAC2 restored via cmd 0x20; PerfCfg patched ADC 0x04->0x00 and DAC 0x0d->0x05, flashed and verified (0x3A=0, 0x3B=5, mic -91.7 dBFS); cmd 0x12=0 gives a playback-only descriptor set (capture gone, iSerial 0); V2.1 compared, no playback regression; amp 0x1D write-only, 0x16 read-only
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
@@ -496,6 +496,25 @@ cmd 0x09 while playing 384k -> 8   (rate label: 8 = 384k)
 
 Revert: `ktflash` the original `JadeAudio JA11_V2.2.bin` back (sha256 `65fea499…4103de`), then re-apply the flat curve if wanted.
 
+### Stage 4: DAC PGA to −12 dB, and the headset-detection toggle
+
+Patched `0x10ec` from `0x09` to `0x05` on the ADC-zero base → `/tmp/opencode/ja11_pga5_adc0.bin` (sha256 `563908fa…0468f`), flashed the same way. Verified:
+
+```
+0x3a = 0x00000000   0x3b = 0x00000005   0x24 = 0x00000005
+44.1/48/96/384 kHz: 15.04 / 15.03 / 15.02 / 10.03 s
+mic capture: -91.7 dBFS   (unchanged, as expected: the DAC PGA is not in the ADC path)
+```
+
+Headset detection (`0x12`) turned out to be a real structural toggle, not just a flag:
+
+- `0x12 = 0` re-enumerates the dongle as a **playback-only device**: 3 interfaces, no Capture section in `stream0`, `arecord -l` shows no JA11 capture, and the device descriptor switches to the `0xf7c0` variant with `iSerial = 0`.
+- `0x12 = 1` re-enumerates back with the capture interface present.
+
+Both directions were observed on the bus (`lsusb`, `stream0`, `arecord -l`). It is left at `1` so the mic still works; `0` is the option if the mic path is ever suspected of coupling noise.
+
+Trade-off of this stage: the DAC analog gain is now 12 dB below stock, which costs 12 dB of maximum output. At equal loudness the digital volume compensates and the noise behaviour should be roughly neutral, so this is a headroom and low-level-noise change, not a proven hiss fix.
+
 ### Amp mode (command `0x1D`) is write-only and invisible to the register map
 
 `Audiocular-Aura` (the source Ircama's header cites for `CMD_AMP_MODE 29`) implements it as `setDacWorkMode(device, isClassAB)`: `0 = Class H`, `1 = Class AB`. On this firmware it is write-only and leaves no trace in the DSP map:
@@ -567,7 +586,8 @@ stream0      S16/S24_3LE, 44100..384000, 125 us microframes, ASYNC + sync EP
 cmd 0x20     1        UAC 2.0
 cmd 0x16     1        EQ program label (read-only on this firmware)
 0x3a         0        ADC PGA  0 dB   (patched PerfCfg, 0x10e8 0x04 -> 0x00)
-0x3b         9        DAC PGA -6 dB   (patched PerfCfg, 0x10ec 0x0d -> 0x09)
+0x3b         5        DAC PGA -12 dB  (patched PerfCfg, 0x10ec 0x0d -> 0x05)
+0x12         1        headset/mic on (0 = playback-only descriptor set)
 0x24         5        DAC EQ enabled
 0x26..0x2f   flat     1000/2000/5000/8000/10000 Hz, 0.0 dB, Q 0.710
 preamp       0.00 dB
