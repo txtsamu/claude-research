@@ -288,7 +288,39 @@ Three consequences:
 
 The stock curve boosts 447 Hz by +2.1 dB and cuts 141 Hz by 2.4 dB with the preamp at 0.0 dB (`0x17 → 00 00`, verified). Tracks mastered near 0 dBFS clip at 447 Hz, and the low-mid forwardness is easy to hear as "off" next to a flat source. Flat bands with 0 dB preamp are unity, so there is nothing left to clip.
 
+The DRC paths were checked too, since a misconfigured limiter or gate would match the symptoms exactly. Both are off:
+
+```
+0x71 = 0x3ce2dad3   byte3 0x3c: gate EN = 0   (THhigh -38 dB, THlow -45 dB, GateVol -30 dB, but disabled)
+0x78 = 0x000000fd   byte3 0x00: limiter EN = 0, soft knee = 0   (threshold -3 dB, disabled)
+0x79 = 0x012c000a   release 300 ms, attack 10 ms
+```
+
 Previous state is at `/tmp/opencode/ja11_dsp_before.json`; the revert is the same write with 141 Hz −2.4, 447 Hz +2.1, 2098 Hz −1.1, 4693 Hz −1.4, 8464 Hz −1.6 dB and Q 56/72/77/198/300 (`Q × 100`).
+
+Both directions are now scripted, so the last variable can be A/B'd in seconds:
+
+```bash
+cd ~/sessions/2026-11-26-ja11-sound
+sudo setfacl -m u:$USER:rw /dev/hidraw6
+./ja11_eq.py show            # current preamp + five bands (read over 0x4B)
+./ja11_eq.py stock --save    # restore FiiO's curve (dongle resets)
+./ja11_eq.py flat  --save    # go back to flat
+```
+
+Verified final state after the last save and reset (device 46 → 47):
+
+```
+preamp: +0.00 dB
+DAC EQ enable 0x24: 0x5
+band0:  1000 Hz  +0.0 dB Q 0.710
+band1:  2000 Hz  +0.0 dB Q 0.710
+band2:  5000 Hz  +0.0 dB Q 0.710
+band3:  8000 Hz  +0.0 dB Q 0.710
+band4: 10000 Hz  +0.0 dB Q 0.710
+```
+
+One oddity worth knowing: writing bands over `0x02` without saving can leave `0x24` reading `0x03` instead of `0x05` (bit 2 clears). The applied+`SAVE_FLASH` state reads `0x05`. Both have the EQ enabled (bit 0), so the curve applies either way.
 
 ### The `PerfCfg` block is not calibration
 
