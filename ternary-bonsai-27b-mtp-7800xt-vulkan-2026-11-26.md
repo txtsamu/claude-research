@@ -1,6 +1,6 @@
 ---
 type: how-to
-tags: [llama.cpp, llama-server, vulkan, rocm, gfx1101, rx-7800-xt, gguf, ternary, quantization, mtp, speculative-decoding, bonsai, qwen]
+tags: [llama.cpp, llama-server, vulkan, rocm, vllm, gfx1101, rx-7800-xt, gguf, ternary, quantization, mtp, speculative-decoding, bonsai, qwen]
 created: 2026-11-26
 last_verified: 2026-11-26
 status: current
@@ -31,6 +31,50 @@ Related: [[bonsai-27b-prismml-ternary-gguf-deploy]] covers the earlier PrismML-f
 | **Total** | **~65 min** |
 
 Download figures are measurements from this session (`stat`/timestamps); the benchmark block is measured, the rest is estimate.
+
+## Recommended config for this card
+
+Currently running on this host on port 8090:
+
+```bash
+PORT=8090 CTX=102400 KV=q4_0 ./run-server.sh
+```
+
+That is the long-document profile: 100k context, q4_0 KV, 13.47 GiB VRAM in use, ~2.4 GiB free, 63-82 tok/s generation, ~237 tok/s prompt at ~96k tokens.
+
+For everyday chatting, drop back to the default profile (32k, q8_0, ~81 tok/s, 3 GiB free):
+
+```bash
+pkill -x llama-server
+cd ~/models/ternary-bonsai-27b && PORT=8090 ./run-server.sh
+```
+
+Knobs are all env vars, no editing needed:
+
+| Var | Default | Use |
+|---|---|---|
+| `PORT` | 8080 (taken on this host) | 8090 |
+| `CTX` | 32768 | 102400 for long documents |
+| `KV` | q8_0 | q4_0 at 100k, f16 never |
+| `NMAX` | 3 | 3 or 4, swept |
+| `UBATCH` | 1024 | 512 if VRAM is tight |
+| `SPEC` | draft-mtp | `none` to A/B the speedup |
+
+Latency reality check at this context: a 90k-token document takes 6-7 minutes before the first output token. Prefix caching is on by default in the server (`cache_prompt`), so follow-up questions over the same document reuse the computed KV and skip that cost. The bench scripts pass `cache_prompt: false` deliberately, which is why their timings look like worst case.
+
+## Scripts on the box
+
+Everything used here lives in `~/models/ternary-bonsai-27b/`:
+
+| Script | What it does |
+|---|---|
+| `run-server.sh` | launches llama-server with the env-var knobs above |
+| `bench2.py [port]` | 3-prompt averaged generation bench, prints tok/s and draft acceptance |
+| `bench.py [port]` | single-prompt bench plus a 2.4k-token prompt-processing test |
+| `ctx_test.py [port] [chars] [depth]` | plants a fact at a given depth in a long prompt and checks recall |
+| `vllm-test.sh`, `vllm-test2.sh` | the vLLM proof and the GGUF failure capture |
+
+`ctx_test.py 8090 500000 0.85` is the one that matters for long context: 500k characters lands at ~96k tokens with the planted sentence at 85% depth.
 
 ## Why this packing
 
@@ -162,7 +206,7 @@ Speculative decoding is worth **1.57x to 1.8x** on decode here and costs ~5% of 
 |---|---|---|---|
 | Vulkan, stock b12774 | 557 tok/s | 45.5 tok/s | off |
 | Vulkan, stock b12774 | 529 tok/s | 71.5 tok/s | on |
-| HIP, PrismML fork `1a07bfa` | 268 tok/s | 43.1 tok/s | not possible (see below) |
+| HIP, PrismML fork `1a07bfa` | 268 tok/s | 43.1 tok/s | not possible (see Gotchas) |
 
 Vulkan is roughly **2x faster on prompt processing** and marginally faster on decode than the ROCm path on this card. The caveat is real: the fork checkout is from September and the stock build is from today, so part of that gap is engine age, not backend quality. Still, there is no reason to fight the HIP toolchain on Fedora for this model when a prebuilt Vulkan binary already beats it.
 
@@ -197,27 +241,11 @@ Sanity checks that the model actually works, beyond token counts:
   E common_speculative_init_result: failed to create MTP context
   ```
 
-  The ternary `qwen35` format gained a Hadamard-rotated latent path that the fork predates. Drop `--spec-type draft-mtp` on the fork and it runs (that is how the HIP numbers below were taken), but then you give up the whole reason to pick this file.
+  The ternary `qwen35` format gained a Hadamard-rotated latent path that the fork predates. Drop `--spec-type draft-mtp` on the fork and it runs (that is how the HIP numbers in Results were taken), but then you give up the whole reason to pick this file.
 - **Port 8080 is taken on this host** (a rootless container via pasta). Use 8090.
 - **Extra CLI flags appended after `run-server.sh` do not override the script's own flags** reliably. Drive variants through the env vars (`SPEC=none`, `CTX=65536`, `KV=f16`) instead of appending `--flags`.
 - **Download is 7.9 GB.** 245 GB free here, no concern, but the first attempt died at 1.8 GB when the parent shell was interrupted; `setsid` plus `-C -` fixed it.
 - The blog-style "runs on stock llama.cpp b11556+" claim was true: build 12774 loads the `qwen35` architecture and the MTP head without complaint.
-
-## What this does not cover
-
-- Quality regression from the abliteration. The card claims +3.1% perplexity and 0/12 refusals; that was not re-measured here, only functional output was checked.
-- Long-run stability past a few thousand tokens of generation.
-- Why the Hadamard-latent MTP path fails on the old fork in more depth; only the error was captured.
-- Perplexity or refusal claims. The card's numbers were not reproduced, only functional output and speed.
-- vLLM throughput for a 27B model on this card. The GGUF cannot load, and no supported-quant checkpoint of this model exists, so there is nothing to measure. A smaller model at 4-bit would fit and could be benchmarked separately if that comparison is ever wanted.
-
-## Recommended config for this card
-
-```bash
-CTX=32768 KV=q8_0 NMAX=3 UBATCH=1024 ./run-server.sh
-```
-
-For long-document work, `CTX=102400 KV=q4_0` is the safe 100k setting; use `KV=q8_0` at that context only when nothing else is on the GPU.
 
 ## Tuning the MTP head
 
@@ -316,6 +344,14 @@ Type 42 is the ternary `Q2_0` packing. vLLM cannot even parse the header, so thi
 Two further blockers would appear even if the type were supported: the plugin has no MTP/speculative path, and the same model in a supported format is bf16 (~54 GB) or a 4-bit derivative (~16 GB) that leaves no room for KV cache on a 16 GB card.
 
 Verdict: vLLM is the wrong engine for this checkpoint. It is not the wrong engine for the GPU.
+
+## What this does not cover
+
+- Quality regression from the abliteration. The card claims +3.1% perplexity and 0/12 refusals; that was not re-measured here, only functional output was checked.
+- Long-run stability past a few thousand tokens of generation.
+- Why the Hadamard-latent MTP path fails on the old fork in more depth; only the error was captured.
+- Perplexity or refusal claims. The card's numbers were not reproduced, only functional output and speed.
+- vLLM throughput for a 27B model on this card. The GGUF cannot load, and no supported-quant checkpoint of this model exists, so there is nothing to measure. A smaller model at 4-bit would fit and could be benchmarked separately if that comparison is ever wanted.
 
 ## References
 
