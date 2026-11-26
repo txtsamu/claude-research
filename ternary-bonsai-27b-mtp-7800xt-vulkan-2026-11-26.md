@@ -23,7 +23,12 @@ Related: [[bonsai-27b-prismml-ternary-gguf-deploy]] covers the earlier PrismML-f
 | First load + smoke test | ~1 min |
 | Full benchmark set (MTP on, MTP off, KV sweep) | ~10 min |
 | HIP comparison for the same file (~2 min of it is model load) | ~3 min |
-| **Total** | **~18 min** |
+| MTP n-max sweep, 6 restarts | ~6 min |
+| 100k context, two KV types, one 96k-token prompt each | ~15 min |
+| Batch/ubatch sweep, 5 restarts | ~4 min |
+| vLLM install (ROCm 10.0 wheels) | ~8 min |
+| vLLM small-model proof + GGUF attempts | ~10 min |
+| **Total** | **~65 min** |
 
 Download figures are measurements from this session (`stat`/timestamps); the benchmark block is measured, the rest is estimate.
 
@@ -106,12 +111,15 @@ PORT="${PORT:-8080}"
 SPEC="${SPEC:-draft-mtp}"
 KV="${KV:-q8_0}"
 NMAX="${NMAX:-3}"
+BATCH="${BATCH:-2048}"
+UBATCH="${UBATCH:-1024}"
 
 exec "$BIN/llama-server" \
   -m "$MODEL" \
   --host 127.0.0.1 --port "$PORT" \
   -ngl 99 \
   -c "$CTX" \
+  -b "$BATCH" -ub "$UBATCH" \
   -fa on \
   -ctk "$KV" -ctv "$KV" \
   --jinja \
@@ -144,7 +152,9 @@ RX 7800 XT, driver RADV, build b12774, 32k context, q8_0 KV, greedy decoding, 32
 | MTP off (`--spec-type none`) | 557 tok/s | 45.5 tok/s | n/a |
 | MTP on, 64k ctx, q8_0 KV | 531 tok/s | 70.8 tok/s | 54% |
 
-Speculative decoding is worth **1.57x** on decode here and costs ~5% of prompt throughput. The model card claims ~1.65x on a 4090 with 66% acceptance; the speedup tracks acceptance, so a lower-capability machine sees a slightly smaller win. Assorted one-shot chats landed between 61 and 88 tok/s depending on how predictable the answer was (the 75% acceptance on a two-word arithmetic answer pushed it to 88 tok/s).
+That table is one prompt at a time. The 3-prompt averaged bench used for the tuning sweeps below gives **81.5 tok/s** mean at n-max 3, because a single prompt either matches the model's drafting rhythm or does not. Treat ~80 tok/s as the realistic chat figure and 71.5 as a pessimistic single-sample one.
+
+Speculative decoding is worth **1.57x to 1.8x** on decode here and costs ~5% of prompt throughput. The model card claims ~1.65x on a 4090 with 66% acceptance; the speedup tracks acceptance, so a lower-capability machine sees a slightly smaller win.
 
 ### Vulkan (stock b12774) vs HIP (old PrismML fork), same file
 
@@ -198,6 +208,114 @@ Sanity checks that the model actually works, beyond token counts:
 - Quality regression from the abliteration. The card claims +3.1% perplexity and 0/12 refusals; that was not re-measured here, only functional output was checked.
 - Long-run stability past a few thousand tokens of generation.
 - Why the Hadamard-latent MTP path fails on the old fork in more depth; only the error was captured.
+- Perplexity or refusal claims. The card's numbers were not reproduced, only functional output and speed.
+- vLLM throughput for a 27B model on this card. The GGUF cannot load, and no supported-quant checkpoint of this model exists, so there is nothing to measure. A smaller model at 4-bit would fit and could be benchmarked separately if that comparison is ever wanted.
+
+## Recommended config for this card
+
+```bash
+CTX=32768 KV=q8_0 NMAX=3 UBATCH=1024 ./run-server.sh
+```
+
+For long-document work, `CTX=102400 KV=q4_0` is the safe 100k setting; use `KV=q8_0` at that context only when nothing else is on the GPU.
+
+## Tuning the MTP head
+
+Unsloth's MTP guide says to start at `--spec-draft-n-max 2` but to sweep 1-6, because the best value is hardware dependent. Sweeping it here (3-prompt average, 300 tokens each, greedy, 32k ctx, q8_0 KV):
+
+| `--spec-draft-n-max` | tg mean | Draft acceptance |
+|---|---|---|
+| 1 | 67.1 tok/s | 79% |
+| 2 | 76.6 tok/s | 67% |
+| 3 | **81.5 tok/s** | 60% |
+| 4 | **81.6 tok/s** | 50% |
+| 5 | 78.7 tok/s | 43% |
+| 6 | 75.0 tok/s | 38% |
+
+3 and 4 are tied; acceptance falls steadily while per-token verifier work rises, and past 4 the loss wins. The recommended default of 2 costs about 6% here. Keep 3.
+
+The first attempt at this sweep looked like it did nothing (identical draft counts for every value) because extra flags appended after `run-server.sh` did not override the script's own `--spec-draft-n-max`. Driving it through an env var fixed it. Worth remembering before trusting any A/B of llama-server flags.
+
+Sampling follows the same guide's Qwen-family presets: temp 1.0 / top_p 0.95 / top_k 20 / min_p 0 for thinking mode, and `chat_template_kwargs {"enable_thinking": false}` for a direct answer.
+
+## 100k context
+
+The model is a hybrid: 16 of the 64 layers are full attention (`full_attention_interval: 4`), the rest are linear-attention/SSM with constant state. So KV grows at 4 KB/token at f16, 2 KB/token at q8_0, 1 KB/token at q4_0, and only for those 16 layers.
+
+`CTX=102400` loads fine with either quantized KV type. Load, then a 95,921-token prompt with a planted fact at ~85% depth:
+
+| KV type | VRAM after load | VRAM peak | Prompt throughput | Recall |
+|---|---|---|---|---|
+| q8_0 | 15.52 GiB | 15.52 GiB | 300.7 tok/s | correct |
+| q4_0 | 13.11 GiB | 13.59 GiB | 236.7 tok/s | correct |
+
+Both answered the planted question (`73-19-04`, echoed as `731904` when asked for digits only), so quantized KV does not break deep recall at this depth. q4_0 buys 1.5 GiB of headroom but costs 21% of prompt throughput at full depth.
+
+q8_0 at 100k leaves **0.46 GiB free** on a 16 GiB card with the desktop using 4 GiB. It works, and it worked twice, but one video decode in another window could send it over. Use q4_0 for a 100k default, q8_0 only when nothing else touches the GPU.
+
+Shorter prompts are much faster: 73,361 tokens ran at 364.7 tok/s versus 300.7 at 95,921, so throughput decays with depth as expected.
+
+## Batch tuning
+
+`-ub` / `-b` sweep on a 11,901-token prompt:
+
+| Batch / ubatch | Prompt throughput |
+|---|---|
+| 1024 / 256 | 511.4 tok/s |
+| 2048 / 512 (default) | 523.3 tok/s |
+| 2048 / 1024 | 533.0 tok/s |
+| 2048 / 2048 | 537.4 tok/s |
+| 4096 / 2048 | 537.5 tok/s |
+
+About 5% from bottom to top, and the larger ubatch costs compute-buffer VRAM, which is exactly what is scarce at 100k context. `-ub 1024` is the sane middle; leave `-b` at 2048.
+
+## vLLM: works on this card, cannot load this file
+
+Tested properly rather than assumed. vLLM 0.34.0 does install and run on gfx1101 here, including prebuilt ROCm 10.0 wheels that bundle the GPU kernels for this architecture. No `HSA_OVERRIDE_GFX_VERSION` needed.
+
+```bash
+uv venv --python 3.12 --seed --managed-python ~/venvs/vllm312
+source ~/venvs/vllm312/bin/activate
+uv pip install vllm --extra-index-url https://wheels.vllm.ai/rocm/ \
+    --index-strategy unsafe-best-match --upgrade
+```
+
+Two gotchas in that command. Python 3.14 is advertised but the ROCm wheel index only carries `cp312` ABI wheels, so 3.12 it is. And the rocm index needs `--index-strategy unsafe-best-match`, otherwise resolution refuses to look across indexes.
+
+Verification that the stack is real on this GPU:
+
+```
+vllm 0.34.0
+torch 2.13.0+rocm10.0.0
+devices 2  AMD Radeon RX 7800 XT
+```
+
+...and a chat completion from `Qwen/Qwen3-0.6B` returning a sane sentence ("A tensor is a mathematical object that generalizes the concept of a vector and a matrix..."). Note `llm.chat()` takes `chat_template_kwargs` as its own argument, not inside `SamplingParams`, which raises `TypeError: Unexpected keyword argument` if you try the obvious thing.
+
+Then the actual model:
+
+```bash
+uv pip install vllm-gguf-plugin
+vllm serve ./Ternary-Bonsai-2.5-27B-Uncensored-Q2_0-mtp.gguf \
+  --quantization gguf --max-model-len 4096 \
+  --gpu-memory-utilization 0.90 --tokenizer Qwen/Qwen3.5-27B
+```
+
+Fails during engine init, before any weight transfer:
+
+```
+File ".../vllm_gguf_plugin/gguf_utils.py", line 290, in extract_vocab_size_from_gguf
+    reader = gguf.GGUFReader(str(model_path))
+File ".../gguf/gguf_reader.py", line 328, in _build_tensors
+    raise ve_exc
+ValueError: np.uint32(42) is not a valid GGMLQuantizationType
+```
+
+Type 42 is the ternary `Q2_0` packing. vLLM cannot even parse the header, so this is not a fixable flag or a kernel-coverage question. Confirming from the source, the plugin's supported types are `Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, Q8_1, Q2_K, Q3_K, Q4_K, Q5_K, Q6_K, Q1_M, Q1_S, Q2_XXS, Q2_XS, Q2_S, Q3_XXS, Q3_S, Q4_XS, Q4_NL`; no ternary type of any spelling appears, and its custom kernels are CUDA sources (`csrc/gguf/*.cuh`) with no HIP build.
+
+Two further blockers would appear even if the type were supported: the plugin has no MTP/speculative path, and the same model in a supported format is bf16 (~54 GB) or a 4-bit derivative (~16 GB) that leaves no room for KV cache on a 16 GB card.
+
+Verdict: vLLM is the wrong engine for this checkpoint. It is not the wrong engine for the GPU.
 
 ## References
 
@@ -205,3 +323,8 @@ Sanity checks that the model actually works, beyond token counts:
 - [AtomicChat/Ternary-Bonsai-2.5-27B-Uncensored-GGUF](https://huggingface.co/AtomicChat/Ternary-Bonsai-2.5-27B-Uncensored-GGUF) — source of the abliteration
 - [prism-ml/Ternary-Bonsai-2.5-27B-GGUF](https://huggingface.co/prism-ml/Ternary-Bonsai-2.5-27B-GGUF) — stock packings the repack was built from
 - [llama.cpp release b12774](https://github.com/ggml-org/llama.cpp/releases/tag/b12774) — prebuilt Vulkan binaries
+- [Unsloth: How to Run MTP Models](https://unsloth.ai/docs/models/mtp) — `--spec-draft-n-max` tuning range, sampling presets for Qwen3.x
+- [vLLM GPU installation](https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html) — ROCm wheel index and gfx1101 support
+- [vLLM quantized KV cache](https://docs.vllm.ai/en/latest/features/quantization/quantized_kvcache/) and [GGUF support](https://docs.vllm.ai/en/latest/features/quantization/gguf/) — out-of-tree plugin
+- [vllm-project/vllm-gguf-plugin](https://github.com/vllm-project/vllm-gguf-plugin) — supported tensor types, CUDA-only kernels
+- [vLLM supported models](https://docs.vllm.ai/en/latest/models/supported_models.html) — `Qwen3_5ForConditionalGeneration` is supported, which is why the architecture was not the blocker
