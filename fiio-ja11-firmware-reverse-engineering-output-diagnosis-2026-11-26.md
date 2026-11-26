@@ -3,7 +3,7 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 (independent kt0231h confirmation); UAC2 restored via cmd 0x20; PerfCfg DAC PGA 0x0d->0x09 flashed (0x3B=9); image EQ tables at 0x106a/0x109a are flat; amp mode 0x1D is write-only with zero register effect
+status: current   # ISA = Andes NDS32 (independently confirmed); UAC2 restored via cmd 0x20; PerfCfg patched ADC 0x04->0x00 and DAC 0x0d->0x09, flashed and verified (0x3A=0, 0x3B=9, mic path -75.1 -> -91.4 dBFS); V2.1 compared, no playback regression; image EQ tables at 0x106a/0x109a are flat; amp mode 0x1D and 0x16 are write-only/read-only
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
@@ -432,18 +432,49 @@ ktflash flash-cdc --image /tmp/opencode/ja11_pga9.bin --execute --yes
 #  [reprobe] no recognised device — only because the tool does not know 0101
 ```
 
-It came back as `2972:0101` (device 049), and the decisive read:
+It came back as `2972:0101` (device 049), and the decisive read showed the patched DAC gain applied:
 
 ```
-0x3a ADC PGA index  = 0x00000004     (unchanged, 20 dB)
 0x3b DAC PGA index  = 0x00000009     (-6 dB, was 0x0d = 0 dB)
+0x3a ADC PGA index  = 0x00000004     (still 20 dB at that stage)
 0x65 ADC digital    = 0x00000100
 0x66 DAC digital    = 0x00000200
 0x24 DAC EQ en      = 0x00000005
 DAC bands           = 1000/2000/5000/8000/10000 Hz, 0.0 dB, Q 0.710
 ```
 
-So the boot ROM does parse `PerfCfg` and the patched value took effect. The flat EQ also survived the erase+reflash, which means it is re-applied from the image's own flat script at `0xc804` or restored from a config sector the erase does not cover. Either way it comes up flat without a save.
+So the boot ROM does parse `PerfCfg` and the patched value took effect. The flat EQ also survived the erase+reflash, which is consistent with the image's own flat table at `0x106a` being what the firmware loads.
+
+### Stage 2: ADC PGA 0x10e8 0x04 → 0x00, with a measured effect
+
+The same `PerfCfg` block holds the mic preamp at `0x10e8` (index 4 = +20 dB). Patched that to `0` (0 dB) on top of the DAC patch, in `/tmp/opencode/ja11_pga9_adc0.bin` (sha256 `31ff1ed2…db6b`), flashed the same way. The device is V2.2 with both patches and reads:
+
+```
+0x3a ADC PGA index  = 0x00000000     (0 dB, was 0x04 = +20 dB)
+0x3b DAC PGA index  = 0x00000009     (-6 dB)
+0x24 DAC EQ en      = 0x00000005     flat bands
+cmd 0x20            = 1              (UAC 2.0)
+```
+
+This one has an **objective measurement**, because the ADC is the one analog path the host can capture. Recording 5 s from `hw:3,0` with the same source and gain settings:
+
+| Build | ADC PGA | mic peak | mic RMS |
+|---|---|---|---|
+| V2.2 stock | +20 dB | 29 | 5.75 (−75.1 dBFS) |
+| V2.2 official V2.1 | +14 dB | 13 | 2.74 (−81.5 dBFS) |
+| V2.2 patched | 0 dB | 3 | 0.88 (−91.4 dBFS) |
+
+A 16.3 dB drop for a 20 dB gain change, monotonic with the V2.1 middle value. The patched `PerfCfg` is therefore provably applied to the analog front end, not just to the header.
+
+Playback with both patches is clean at every rate (44.1/48/96/384: 15.04/15.03/15.02/10.02 s) and through PipeWire.
+
+### Stage 3: V2.1 comparison, to rule out a V2.2-specific regression
+
+The official V2.1 image (`sha256 470ba6c0…0adfff`, build `b84a747 2024-10-10`) was flashed and measured the same way. Its `PerfCfg` is `0x10e8 = 03`, `0x10ec = 0d`, which the device confirmed (`0x3A = 3`, `0x3B = 13`), and the mic path landed between the two V2.2 values (−81.5 dBFS), so V2.1 really was running. Playback was identical and clean at all four rates.
+
+One caveat: `cmd 0x0b` still reported `02 02` on V2.1. The version strings live at `0x1010` (`2.1.0` vs `2.2.0`), so that command is evidently not reading the image version, and the PerfCfg difference is the reliable proof of which image is running.
+
+Conclusion: no V2.2-specific playback regression is detectable. The only V2.1→V2.2 difference on the audio path is the mic gain (14 → 20 dB) plus the inline-control code, neither of which changes the DAC path. V2.2 with both patches was restored afterwards and re-verified.
 
 Playback after the flash is clean at every rate, twice, and through PipeWire:
 
@@ -535,7 +566,7 @@ lsusb        2972:0102  high speed (480 Mbps), bcdADC 2.00, firmware 2.20
 stream0      S16/S24_3LE, 44100..384000, 125 us microframes, ASYNC + sync EP
 cmd 0x20     1        UAC 2.0
 cmd 0x16     1        EQ program label (read-only on this firmware)
-0x3a         4        ADC PGA +20 dB
+0x3a         0        ADC PGA  0 dB   (patched PerfCfg, 0x10e8 0x04 -> 0x00)
 0x3b         9        DAC PGA -6 dB   (patched PerfCfg, 0x10ec 0x0d -> 0x09)
 0x24         5        DAC EQ enabled
 0x26..0x2f   flat     1000/2000/5000/8000/10000 Hz, 0.0 dB, Q 0.710
