@@ -3,7 +3,7 @@ type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
 last_verified: 2026-11-26
-status: current   # ISA = Andes NDS32 (514/514 branch targets aligned, no decompiler); link+clock measured clean; stock EQ flattening applied and verified persistent after a device reset (0x4B writes are RAM-only, 0x02 band writes + save persist)
+status: current   # ISA = Andes NDS32 at flash base 0x80000 (pointer-table seeding reaches 25.8/55 KB, no decompiler); UAC1/UAC2 personality selector found at 0x6758/0x6790; analog gains come from boot-ROM PerfCfg, not firmware; flat EQ saved and verified across 4 resets; analog measurement blocked (no loopback cable)
 ---
 
 # FiiO JA11 firmware: attempting a disassembly, and what the dongle is really doing
@@ -233,6 +233,73 @@ Ghidra 12.1.4 decompiles NDS32 to an **empty string**: `decompileCompleted() == 
 
 Practical consequence: you can read the code, follow the register-command dispatch, and find the DSP write scripts, but you will not get C out of Ghidra for this image.
 
+### Code base 0x80000 and the pointer tables
+
+The code does not run at address 0. Every pointer in the image is `0x80000 + file offset`, for example the table entry at `0xf878` is `e8 68 08 00` = `0x000868e8`, which is file offset `0x68e8`. Confirming this unlocked the parts that flow-following from `0x3000` never reached: scanning for every LE32 value in `0x80000..0x906ef` yields **148 unique code targets**, and seeding disassembly at those targets grows coverage from 4,075 instructions / 11,798 bytes to **8,324 instructions / 25,770 bytes**. The target list is `/tmp/opencode/targets.txt`, and the seed-and-scan script is `NdsPeriph.java` in the Ghidra script directory.
+
+### The UAC1/UAC2 personality selector
+
+Two functions in the previously unreachable block decide the USB personality:
+
+```
+ram:00006758  lwi.gp a2,[+ -0xd04]
+ram:0000675c  lwi.gp a3,[+ -0xd1c]
+ram:00006760  cmovz a3,a2,a0
+ram:00006766  lbi333 a3,[a3 + 0x3]
+ram:00006768  lbi333 a2,[a0 + 0x2]
+ram:0000676a  slli a0,a3,0x8
+ram:0000676e  or33 a0,a2
+ram:00006770  beqc a0,0x201,0x00006782     <- bcdUSB == 0x0201 ?
+ram:00006774  movi55 a0,0x0
+ram:00006778  sethi a0,0x8d
+ram:0000677c  ori a0,a0,0x5f8               <- 0x8d5f8 / file 0xd5f8
+ram:00006782  movi55 a0,0xc
+ram:00006786  sethi a0,0x8d
+ram:0000678a  ori a0,a0,0x5f8
+```
+
+and the descriptor selection right after it:
+
+```
+ram:000067a2  movi a0,0x417f0
+ram:000067ac  sethi a1,0x8d
+ram:000067b0  ori a1,a1,0x844               <- 0x8d844 / file 0xd844
+ram:000067b4  movi55 a0,0x2
+ram:000067b6  swi.gp a1,[+ -0x17fc]
+...
+ram:000067e0  sethi a1,0x8d
+ram:000067e4  ori a1,a1,0x72c               <- 0x8d72c / file 0xd72c
+...
+ram:00006808  movi a0,0x41758
+```
+
+So the personality follows the negotiated `bcdUSB`: `0x0201` selects the UAC 2.0 set, anything else selects a UAC 1.0 set, and three descriptor pointer blocks exist at file offsets `0xd844`, `0xd72c`, `0xd758`. The stored descriptor sets are:
+
+| Location | What it is |
+|---|---|
+| `0xca04` | UAC 1.0 config: `0xcb` bytes, 3 interfaces, AC header `09 24 01 00 01` (bcdADC 1.00) |
+| `0xd338` | UAC 2.0 device descriptor: bcdUSB 2.01, class `0xEF` (IAD), PID 0x0102 |
+| `0xd34c` | UAC 2.0 config: `0x1e8` bytes, 4 interfaces, bcdADC 2.00 |
+| `0xf7c0`, `0xf7d4` | UAC 1.0 device descriptors: bcdUSB 2.00, class 0, PID 0x0102, differing only in `iSerialNumber` |
+
+No stored descriptor carries PID `0x0101`; the byte pair `72 29 01 01` appears nowhere in the image. The `0x0101` the host sees is patched in at runtime by the UAC 1.0 path, which is why a hex search for it in the file finds nothing.
+
+A port reset does not change it. `USBDEVFS_RESET` (`ioctl 0x5514`) on `/dev/bus/usb/001/046` produced a clean re-enumeration that stayed full speed:
+
+```
+usb 1-1: USB disconnect, device number 46
+usb 1-1: new full-speed USB device number 47 using xhci_hcd
+usb 1-1: New USB device found, idVendor=2972, idProduct=0101, bcdDevice= 2.20
+```
+
+So the UAC 1.0 latch is inside the dongle and survives USB resets. It needs a VBUS power cycle, which this root hub cannot do (`uhubctl` reports no port power switching), or the button gesture at plug-in.
+
+### The analog gains are not in the firmware
+
+The `PerfCfg` block at file `0x10d8` holds the only per-board analog values (ADC PGA index 4, DAC PGA index 13). Scanning all 8,324 decoded instructions for `0x810d8` or `0x10d8` returns **zero hits**, and no instruction references the block either directly or through the pointer tables. The conclusion is that the **boot ROM** parses the image header and applies those gains before jumping to `0x3000`; the application firmware never touches them. That is why a host-side write to `0x3B` cannot persist: the value is re-applied from flash by code we cannot see or patch from the application side.
+
+The peripheral window is USB-dominated: the decodes reference `0x443a0`, `0x4439c`, `0x44520`, `0x446a8`, `0x446c4`, `0x446d4`, `0x446e8`, `0x44700`, `0x44704`, `0x44730`, and the endpoint/DMA block at `0x44780`/`0x44810` (`0x9d14` writes a 0x18-byte descriptor per endpoint: `0x80`, `0x85`, `0x04`, `0x84`, `0x83`, `0x03`, with packet sizes `0x40`, `0x10`, `0x400`, `0x200`, `0x40`, `0x40`). No codec or DC-DC register block appears in the reached code.
+
 ## 5. What GitHub already has (and what nobody has)
 
 General web search was unusable in this session (DuckDuckGo served bot-check pages, Bing returned unrelated localised results), so this list is GitHub-only, gathered via the GitHub search API.
@@ -328,8 +395,19 @@ At `0x10d8` it is eight zero bytes, then two LE32 values: **ADC PGA index 4 (+20
 
 ## 7. What is still unexplained
 
-- **Hiss.** With EQ flat and preamp at 0 dB, the only gain left is the factory DAC PGA at 0 dB plus the amp. The JA11 is rated 1.7 µV output noise; a cross-flashed board can be worse. Lowering it persistently is not possible from the host: `0x3B` writes over `0x4B` are RAM-only, and the only durable path would be patching `0x10ec` and reflashing, which also wipes the saved EQ sector.
-- **Crackle/pops.** Clean for 30 s, clean under load, clean through PipeWire, stable clock. What remains is the 3.5 mm contact, the cable, or the amp's Class-G/DC-DC behaviour on this board.
+### Both objective measurement routes are physically blocked
+
+The analog output cannot be captured on this machine as configured:
+
+- **ALC897 line-in.** `Line Jack` reads `off`, so no cable is in the jack. A 5 s capture at 48 kHz came back at −8.3 dBFS RMS, which looks like signal until you look at the spectrum: a Goertzel sweep gives magnitude **123.9 at 50 Hz** against **under 15** at 60/100/120/440/997/1000/3000/10000 Hz. It is mains hum on an open input at `Capture Volume 63/63` and `Front Mic Boost 30 dB`.
+- **The JA11's own capture endpoint.** Playing the 997 Hz tone to the dongle while recording 5 s from `hw:3,0` gives `peak=30`, `rms=5.2` (**−76.1 dBFS**). There is no internal DAC-to-ADC loopback, and no acoustic pickup. The mic path is quiet, which also clears it as a hiss source.
+
+So THD+N and noise-floor numbers for the DAC/amp cannot be produced without a 3.5 mm to 3.5 mm cable between the dongle and the line-in, or a measurement rig.
+
+### What remains
+
+- **Hiss.** With EQ flat and preamp at 0 dB, the only gain left is the factory DAC PGA at 0 dB plus the amp. The value comes from the boot ROM via `PerfCfg`, so changing it durably requires patching `0x10ec` and reflashing, which erases the saved EQ sector and is unproven without ears.
+- **Crackle/pops.** Link, clock, host and DRC are all measured clean. What remains is the 3.5 mm contact, the cable, or the amp's Class-G/DC-DC behaviour on this board.
 - **Distortion on loud parts.** Reduced by the flat curve, but 30 mW into a low-impedance load is a hardware ceiling.
 
 The remaining tests need ears and hands: a different IEM and cable, wiggling the plug, and a pause with the source silent to hear whether hiss survives with no signal. If it does, it is the board, not the firmware.
@@ -352,10 +430,11 @@ The remaining tests need ears and hands: a different IEM and cable, wiggling the
 ## What was not verified
 
 - Which DAC filter is active. Not readable on this firmware; `0x11` was written with value 1 (FAST-LL) and may or may not have persisted through the save.
-- Whether UAC 1.0 mode can be left without the physical button. A host-driven `authorized` 0/1 toggle did not re-enumerate the device, `uhubctl` reports no port power switching, and the `0x12` register was judged too risky.
-- Whether the flat curve sounds better. No loopback recorder was available, so every audible claim is derived from register state and link measurements, not a captured waveform.
-- The ISA is confirmed as NDS32, but only as disassembly: no decompiler output, no auto-detected function boundaries (330 created by seeding branch targets), and 43 KB of the 55 KB code window is not reached from the entry point.
-- How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reachable code.
+- What sets the UAC 1.0 latch. It survives a port reset, no per-port power switching exists on this root hub, and the boot-ROM/GPIO path that reads the button is not in the firmware image. Writing the undocumented `0x12` register (`reads back 0x01`) was judged too risky.
+- THD+N and noise floor of the analog output. Both capture routes are physically closed: the ALC897 line-in has no cable (50 Hz hum only, −8.3 dBFS) and the JA11 capture shows no loopback (−76.1 dBFS while a 997 Hz tone plays).
+- Whether the flat curve sounds better. Every audible claim here is derived from register state and link measurements, not from a captured waveform.
+- The ISA is confirmed as NDS32, but only as disassembly: no decompiler output. Coverage is now 25,770 of 55,024 bytes (8,324 instructions) after seeding the 148 pointer targets; roughly 29 KB remains data or code reached by computed dispatch.
+- How the four built-in EQ presets are selected. No reference to the `0xf5e9` script table appears as an immediate in the reached code.
 - Whether the analog noise floor changes with the DAC PGA. That needs a measurement rig, not a register read.
 
 ## References
