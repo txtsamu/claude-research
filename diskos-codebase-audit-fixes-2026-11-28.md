@@ -162,6 +162,46 @@ UITESTS_EXIT=0
 
 About 4 minutes measured (05:27 to 05:30 WIB).
 
+## Follow-up 2 (same day, commit `fc88105`)
+
+- **11.3 scanner prefix scan.** The scanner opens its own SQLite connection, so it now sets
+  `PRAGMA case_sensitive_like=ON` there and rewrites every `/mnt/mmc/%` predicate as
+  `PATH >= '/mnt/mmc/' AND PATH < '/mnt/mmc0'`. `EXPLAIN QUERY PLAN` on the pruning statement shows
+  `SEARCH SONG USING COVERING INDEX diskos_song_path (PATH>? AND PATH<?)`. The suffix predicates keep
+  `lower(PATH)` so `.M4B`/`.WAV` still match under the now case-sensitive `LIKE`.
+- **New `scanner_test` host test.** It seeds a stock-shaped DB with an absent uppercase row and an
+  outside-root row, scans lowercase and uppercase WAV/M4B files, then checks that the uppercase file
+  and absent uppercase row are pruned, the M4B moved to `BOOKS`, and the outside-root row survives.
+  A `SCANNER_TEST_ROOT` compile flag skips only the mountpoint check; the directory checks still run.
+- **13.3 SD mount lock.** Added `SD_MOUNTING`. `sd_coldplug_begin()` sets the phase under
+  `g_sd_mode_mu` and releases the mutex; `sd_coldplug_end()` reacquires it and returns the phase to
+  `SD_LOCAL`. `sd_export_begin()` checks the phase after the timedlock and refuses with the existing
+  "SD card is busy - try again" toast instead of waiting for the mount to finish.
+  `sd_switch_pending()` and the refusal string include the new phase, and `card.c` is unchanged.
+
+Verification:
+
+```
+$ make -C ui -j4
+artifact: mq_ui
+md5: 147c31f9c78e245e8538ba4d7e3f4f7a
+size: 4366728
+BUILD_EXIT=0
+
+$ make -C ui/tests -j4 check
+UITESTS_EXIT=0
+```
+
+`scanner_test` alone:
+
+```
+scanner: merged 3 songs, skipped 0 unreadable file(s), scan_err=0
+scanner: merged 2 songs, skipped 0 unreadable file(s), scan_err=0
+scanner mixed-case paths: ok
+```
+
+`sdio_test` alone ends with `sdio_test: ok`, including the new `mounting_reports_switch_pending`.
+
 ## Gotchas
 
 - **`make check-theme` is stricter than it looks.** It flagged the new MD5 IV assignments
@@ -186,10 +226,9 @@ About 4 minutes measured (05:27 to 05:30 WIB).
   compatibility check.
 - HTTP connection reuse: each request still spawns `wget`; an in-process HTTP/TLS client is a
   separate project. Timeouts now bound the worst case.
-- `mount()`/`umount()` under `g_sd_mode_mu`: narrowing it safely needs an explicit MOUNTING phase
-  in the SD state machine, otherwise an export can race a local mount.
-- Suffix `LIKE '%/x'` and `lower(PATH) LIKE '%.ext'` full scans: need a stored basename/suffix column,
-  which changes the shared table layout.
+- M3U `LIKE '%/<suffix>'` (`11.1`): a leading wildcard cannot use the `PATH` index. A fix needs a
+  stored basename/suffix column or a mirror table, which either changes the shared table layout or
+  drifts when the stock player writes `SONG` directly.
 
 ## Not verified
 
