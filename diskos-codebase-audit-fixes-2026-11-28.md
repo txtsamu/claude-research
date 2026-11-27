@@ -126,9 +126,12 @@ rows after prune=303
 all scanner checks ok
 ```
 
-## Follow-up (same day, commit `9c3b8a5`)
+## Follow-up (same day, commit `e17627c`)
 
 The reviewer of the first pass asked for the remaining non-hardware items. Seven files changed:
+
+- **9.2 N+1 finish:** the two `CREATE TABLE IF NOT EXISTS` statements in `diskos_next_export_uid()`
+  now run once per process instead of once per playlist inside the registry sync loop.
 
 - **15.4 write errors:** `mdb_record_play()` and `mdb_set_song_accent()` now return `int`; the cover
   accent callback in `coverart.h` matches, and both callers log a failed write to `stderr` instead
@@ -144,7 +147,7 @@ Verification after the follow-up:
 ```
 $ make -C ui -j4
 artifact: mq_ui
-md5: 7e92d9e06129dde045f3b6433d7c9b95
+md5: 465c183714883c0cfbbc6a4347a6183b
 size: 4366520
 BUILD_EXIT=0
 
