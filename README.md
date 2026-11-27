@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-27 | [android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md](android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md) | troubleshooting |
 | 2026-11-27 | [kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md](kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md) | how-to |
 | 2026-11-27 | [fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md](fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md) | troubleshooting |
 | 2026-11-27 | [opencode-hermes-default-model-opencode-go-2026-11-27.md](opencode-hermes-default-model-opencode-go-2026-11-27.md) | how-to |
@@ -279,6 +280,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md](android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md) | android, vpnservice, vpn, jsch, ssh, direct-tcpip, ipv6, leak, foreground-service, kotlin, gradle, ndk, cloudflared, multi-profile | 2026-11-27 |
 | [fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md](fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md) | fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, brick, bootloader, ktflash, fiio-control, android, otg, fedora, linux, alsa, pipewire | 2026-11-27 |
 | [openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md](openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md) | openrgb, systemd, xdg-autostart, fedora, autostart, rgb, login, systemd-xdg-autostart-generator | 2026-11-27 |
 | [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | snowsky-disc, fiio, usb-audio, pipewire, wireplumber, fedora, alsa, dac | 2026-11-18 |
