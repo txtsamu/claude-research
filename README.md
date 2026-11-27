@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-27 | [openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md](openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md) | troubleshooting |
 | 2026-11-26 | [ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md](ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md) | how-to |
 | 2026-11-26 | [fiio-ja11-firmware-reverse-engineering-output-diagnosis-2026-11-26.md](fiio-ja11-firmware-reverse-engineering-output-diagnosis-2026-11-26.md) | investigation |
 | 2026-11-26 | [android-apple-music-bitrate-check-audio-flinger-redmi-note-12-pro.md](android-apple-music-bitrate-check-audio-flinger-redmi-note-12-pro.md) | investigation |
@@ -273,6 +274,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md](openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md) | openrgb, systemd, xdg-autostart, fedora, autostart, rgb, login, systemd-xdg-autostart-generator | 2026-11-27 |
 | [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | snowsky-disc, fiio, usb-audio, pipewire, wireplumber, fedora, alsa, dac | 2026-11-18 |
 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | hermes, hermes-gateway, telegram, systemd, home, runtime-draining, restart, cron | 2026-11-11 |
 | [immich-medium-tests-leak-exiftool-and-postgres.md](immich-medium-tests-leak-exiftool-and-postgres.md) | immich, vitest, exiftool, testcontainers, ryuk, podman, memory, orphan-processes | 2026-11-05 |
