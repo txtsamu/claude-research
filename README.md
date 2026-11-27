@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-27 | [replace-text-in-scanned-pdf-font-match-2026-11-27.md](replace-text-in-scanned-pdf-font-match-2026-11-27.md) | how-to |
 | 2026-11-27 | [android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md](android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md) | troubleshooting |
 | 2026-11-27 | [kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md](kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md) | how-to |
 | 2026-11-27 | [fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md](fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md) | troubleshooting |
