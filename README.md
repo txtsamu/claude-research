@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-27 | [fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md](fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md) | troubleshooting |
 | 2026-11-27 | [opencode-hermes-default-model-opencode-go-2026-11-27.md](opencode-hermes-default-model-opencode-go-2026-11-27.md) | how-to |
 | 2026-11-27 | [openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md](openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md) | troubleshooting |
 | 2026-11-26 | [ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md](ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md) | how-to |
@@ -276,6 +277,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md](fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md) | fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, brick, bootloader, ktflash, fedora, linux, alsa, pipewire | 2026-11-27 |
 | [openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md](openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md) | openrgb, systemd, xdg-autostart, fedora, autostart, rgb, login, systemd-xdg-autostart-generator | 2026-11-27 |
 | [fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md](fedora-pipewire-snowsky-disc-missing-falls-back-analog-2026-11-18.md) | snowsky-disc, fiio, usb-audio, pipewire, wireplumber, fedora, alsa, dac | 2026-11-18 |
 | [hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md](hermes-gateway-restart-deferred-runtime-draining-2026-11-11.md) | hermes, hermes-gateway, telegram, systemd, home, runtime-draining, restart, cron | 2026-11-11 |
