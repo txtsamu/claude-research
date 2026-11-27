@@ -6,11 +6,11 @@ last_verified: 2026-11-28
 status: current
 ---
 
-# hermes-gateway after the 2026-11-28 reboot: gowa race, 13 MCP child pairs, and sudo for systemctl
+# hermes-gateway after the 2026-11-28 reboot: gowa race, 13 MCP child pairs, sudo for systemctl, and a broken hermes-mcp daemon
 
 ## Time estimate
 
-About 20 minutes of wall-clock session time, from the post-reboot SSH check at 02:56 WIB to the `hermes-mcp` root-cause diagnosis just after 03:10 WIB (measured from command timestamps). The gateway restart took roughly 50 seconds: `systemctl restart` returned at 03:00:28, the gateway was `active (running)` immediately, and Telegram reported `Connected (polling mode)` at 03:01:18, then again on the profile adapter at 03:01:36. The `hermes-mcp` restart took seconds, but proving that its child dies takes about 30 seconds per attempt, and the live-socket probe waits 6 to 8 seconds.
+About 35 minutes of wall-clock session time, from the post-reboot SSH check at 02:56 WIB to the final verified fix at roughly 03:15 WIB (measured from command timestamps). The gateway restart took roughly 50 seconds: `systemctl restart` returned at 03:00:28, the gateway was `active (running)` immediately, and Telegram reported `Connected (polling mode)` at 03:01:18, then again on the profile adapter at 03:01:36. The `mcp-serve` plugin install took about 15 seconds including dependency resolution. Each `hermes-mcp` restart plus its 10-second pre-warm takes about 20 seconds, and proving a child stays alive needs another 25-second wait after the handshake.
 
 ## Question
 
@@ -113,7 +113,7 @@ ssh home 'ps -eo pid,ppid,stat,cmd | awk "\$3 ~ /Z/"'
 
 PID 1101 is `hermes-mcp.service`, so restarting the gateway does not reap it. A zombie holds no memory, only a process-table slot.
 
-### 8b. Restarting hermes-mcp: the zombie comes straight back
+### 8. Restarting hermes-mcp: the zombie comes straight back
 
 ```bash
 ssh home 'sudo systemctl restart hermes-mcp'
@@ -138,9 +138,56 @@ So `hermes-mcp.service` is legacy and broken: `/root/.hermes/mcp-daemon.py` stil
 
 Nothing currently uses it: `hermes-mcp.sock` and `mcp-client.py` are referenced only by the daemon, the client script, and old `state.db` history. There is no `mcp-client.py` entry in `/root/.hermes/config.yaml`, `/root/.claude.json`, the laptop's `~/.claude.json`, or `~/.mcp.json`.
 
-The likely fix, if the capability is wanted, is two changes: `hermes plugins install mcp-serve`, then change `HERMES_ARGS` in `/root/.hermes/mcp-daemon.py` from `["mcp", "serve", "--accept-hooks"]` to `["mcp-serve", "--accept-hooks"]` and restart. The alternative is `sudo systemctl disable --now hermes-mcp` since it serves nothing.
+### 9. Fix applied
 
-### 8. Settled reading
+```bash
+ssh home 'sudo /usr/local/bin/hermes plugins install mcp-serve --yes-deps --enable'
+# Installed https://github.com/NousResearch/hermes-official-plugins#mcp-serve
+# Location: /root/.hermes/plugins/mcp-serve
+# dependencies: mcp>=2.0,<3
+# Plugin mcp-serve enabled.
+
+ssh home 'sudo cp /root/.hermes/mcp-daemon.py /root/.hermes/mcp-daemon.py.bak-2026-11-28'
+ssh home 'sudo sed -i "s|HERMES_ARGS = \[\"mcp\", \"serve\", \"--accept-hooks\"\]|HERMES_ARGS = [\"mcp-serve\", \"--accept-hooks\"]|" /root/.hermes/mcp-daemon.py'
+```
+
+That fixed the dead child, but the daemon still leaked one zombie per client because the loop calls `active.terminate()` and never waits. Patched `/root/.hermes/mcp-daemon.py` in the bridge loop:
+
+```python
+        bridge(conn, active)
+        active.terminate()
+        try:
+            active.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            active.kill()
+            active.wait()
+```
+
+### 10. Verification after the fix
+
+```bash
+ssh home 'sudo systemctl restart hermes-mcp; sleep 20; systemctl is-active hermes-mcp'
+# active
+
+# real MCP handshake over /run/hermes-mcp.sock
+ssh home 'sudo /opt/hermes-venv/bin/python - <<"PY"
+import socket, json
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.settimeout(20)
+s.connect("/run/hermes-mcp.sock")
+msg = {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}
+s.sendall((json.dumps(msg)+"\n").encode())
+d = json.loads(s.recv(65536).split(b"\n")[0])
+print(d["result"]["serverInfo"]["name"], d["result"]["protocolVersion"])
+PY'
+# hermes 2024-11-05
+
+ssh home 'sleep 25; ps -eo pid,ppid,stat,cmd | awk "\$3 ~ /Z/"; ps -eo pid,ppid,stat,cmd | grep mcp-serve | grep -v grep'
+# no zombies; one live standby child under the daemon
+```
+
+A live standby is now present, the handshake returns `serverInfo: hermes`, and no zombie remains 25 seconds after a client disconnects. Backups left in place: `/root/.hermes/mcp-daemon.py.bak-2026-11-28`.
+
+### 11. Settled reading
 
 ```bash
 ssh home 'uptime; systemctl show hermes-gateway -p MemoryCurrent -p NRestarts; pgrep -fc truenas-ws/server.py'
@@ -160,7 +207,7 @@ Load had peaked at 15.95 right after the restart, then fell to 6.09. `vmstat` sh
 - **Use `sudo systemctl restart`.** `moo` gets `Access denied` from polkit on a plain restart even though `sudo -n true` succeeds.
 - **gowa is a boot-order dependency.** The gateway starts before the k3s LoadBalancer pod behind `192.168.50.240:3000` is ready, retries three times per server, logs `connecting → parked`, then recovers on its own once the pod answers. Do not read the retry burst as a failure.
 - **13 MCP child pairs are baseline.** They are per-Hermes-home children (main plus 11 profiles), about 1.9 GB RSS. Restarting does not reduce them, and killing individual children only breaks their MCP client until it respawns.
-- **The `[hermes] <defunct>` zombie belongs to `hermes-mcp.service`, not the gateway.** It survives a gateway restart, and a `hermes-mcp` restart recreates it within seconds; the daemon's `hermes mcp serve` child exits because that subcommand moved to the uninstalled `mcp-serve` plugin. The fix is a plugin install plus a one-line `HERMES_ARGS` change, not a restart.
+- **The `[hermes] <defunct>` zombie belonged to `hermes-mcp.service`, not the gateway.** A gateway restart could not touch it, and a `hermes-mcp` restart recreated it within seconds because the daemon's `hermes mcp serve` child exited (that subcommand moved to the uninstalled `mcp-serve` plugin). Fixed on 2026-11-28 by installing the plugin, changing `HERMES_ARGS` to `["mcp-serve", "--accept-hooks"]`, and adding `active.wait()` after `active.terminate()`.
 - **Load average is misleading here.** An 8-core box at load 16 with CPU 80% idle just means uninterruptible I/O from other services, not a runaway gateway.
 
 ## What was not verified
@@ -168,7 +215,7 @@ Load had peaked at 15.95 right after the restart, then fell to 6.09. `vmstat` sh
 - The exact mapping of 13 child pairs to 12 homes. The arithmetic suggests 12 homes plus one helper, but nothing on-box printed a per-child profile name, so this is inference from the spawn ledger and the earlier audit, not a direct read.
 - Whether the MCP memory footprint can be reduced by making servers lazy instead of pre-warmed. No config key for pre-warming was found in `/root/.hermes/config.yaml`.
 - Thermals. `sensors` returned nothing, so the box may not have `lm_sensors` configured.
-- Whether `hermes plugins install mcp-serve` works offline and what it pulls; it was not attempted.
+- Whether an update to the `mcp-serve` plugin or a Hermes reinstall keeps `/root/.hermes/mcp-daemon.py` in sync. The `HERMES_ARGS` patch is local and may need re-applying after a Hermes upgrade.
 - Whether the gateway needs the socket at all. Evidence says no, but that is from config and history, not a live connection trace.
 
 ## References
