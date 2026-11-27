@@ -3,10 +3,12 @@ type: how-to
 tags: [opencode, hermes, orvix, provider, model, api-key, config, fedora, home, nixos]
 created: 2026-11-22
 last_verified: 2026-11-22
-status: current
+status: historical
 ---
 
 # Point OpenCode at Orvix using the Hermes agent's provider/model
+
+> **Superseded 2026-11-27:** both OpenCode and Hermes now default to `opencode-go/deepseek-v4.1-flash`. See [opencode-hermes-default-model-opencode-go-2026-11-27.md](opencode-hermes-default-model-opencode-go-2026-11-27.md). The Orvix provider block still exists but is no longer the default; this page remains useful as the recipe for a custom OpenAI-compatible provider with a file-based key.
 
 Goal: read the inference provider that the Hermes agent uses on `home` (192.168.50.200, NixOS), then make the local OpenCode on `fedora` use the same provider (`orvix`) and the same model (`deepseek-v4.1-flash-uncensored`) as its default.
 

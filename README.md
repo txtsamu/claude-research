@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-27 | [opencode-hermes-default-model-opencode-go-2026-11-27.md](opencode-hermes-default-model-opencode-go-2026-11-27.md) | how-to |
 | 2026-11-27 | [openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md](openrgb-two-instances-at-login-systemd-xdg-autostart-2026-11-27.md) | troubleshooting |
 | 2026-11-26 | [ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md](ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md) | how-to |
 | 2026-11-26 | [fiio-ja11-firmware-reverse-engineering-output-diagnosis-2026-11-26.md](fiio-ja11-firmware-reverse-engineering-output-diagnosis-2026-11-26.md) | investigation |
@@ -174,6 +175,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [opencode-hermes-default-model-opencode-go-2026-11-27.md](opencode-hermes-default-model-opencode-go-2026-11-27.md) | opencode, hermes, model, default, opencode-go, deepseek, config, nixos, home, fedora | 2026-11-27 |
 | [ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md](ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md) | llama.cpp, vulkan, rocm, vllm, gfx1101, rx-7800-xt, gguf, ternary, mtp, speculative-decoding, bonsai, qwen | 2026-11-26 |
 | [ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26.md](ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26.md) | kt02h20, ktmicro, fiio-ja11, jcally-jm12, moondrop, usb-dac, firmware, ktflash, rust, fedora | 2026-11-26 |
 | [opencode-orvix-provider-from-hermes-agent-2026-11-22.md](opencode-orvix-provider-from-hermes-agent-2026-11-22.md) | opencode, hermes, orvix, provider, model, api-key, fedora, home, nixos | 2026-11-22 |
