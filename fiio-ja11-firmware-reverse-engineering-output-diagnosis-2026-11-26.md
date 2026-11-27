@@ -2,7 +2,7 @@
 type: investigation
 tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, reverse-engineering, ghidra, rea, uac1, uac2, peq, dsp, hid, fedora]
 created: 2026-11-26
-last_verified: 2026-11-26
+last_verified: 2026-11-27
 status: current   # ISA = Andes NDS32 (independently confirmed); UAC2 restored via cmd 0x20 and persists across a real replug; PerfCfg patched ADC 0x04->0x00 and DAC 0x0d->0x05, flashed and verified (0x3A=0, 0x3B=5, mic -91.7 dBFS); cmd 0x12=0 gives a playback-only descriptor set; V2.1 compared, no playback regression; amp 0x1D write-only, 0x16 read-only
 ---
 
@@ -101,6 +101,12 @@ Two consequences:
 - Analog DAC PGA at 0 dB is the hot end of the range. With sensitive IEMs, that alone raises the noise floor and leaves no headroom for a +2.1 dB EQ band. It is a plausible contributor to "hiss" and "harsh peaks", but it is also the chip default.
 
 Reads that this firmware simply does not implement (no response, several packet shapes tried): DAC filter (`0x11`), amp mode (`0x1D`), gain mode (`0x19`). **The active DAC filter therefore cannot be read back**; only written. If `NON-OS` is selected, HF imaging noise and a harsher top end are expected, and it would follow the dongle across hosts.
+
+### The same register map on a second, stock board
+
+On 2026-11-27 a generic KTMicro dongle was dumped before being cross-flashed: `31b2:1052 "KT02H20 Hifi Audio"`, stock firmware string `1.0.1`. All 256 registers answered, with the same marker `0x3a474552` and the same model flags `0x200`. The PerfCfg defaults were `0x3A = 3` (ADC +14 dB) and `0x3B = 0xd` (DAC 0 dB), which are exactly the values the JA11 V2.1 image carries. The single difference worth recording is `0x24` (DAC EQ enable) at `0x2` rather than the FiiO `0x4`.
+
+So the vendor strings are firmware-specific, but the register map, the EQ band layout and the PerfCfg gain defaults are shared across the firmware family, not invented by FiiO. That is a small but useful confirmation: decoding a non-FiiO KT02H20 board with this register map is sound. See [[kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27]].
 
 ## 3. The firmware image: anatomy and what is actually in it
 

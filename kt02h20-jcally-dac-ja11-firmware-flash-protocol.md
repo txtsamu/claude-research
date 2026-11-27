@@ -2,7 +2,7 @@
 type: investigation
 tags: [kt02h20, ktmicro, jcally, fiio-ja11, usb-dac, firmware, reverse-engineering, hid, cdc-acm, wine, capstone, fedora]
 created: 2026-10-20
-last_verified: 2026-10-25
+last_verified: 2026-11-27
 status: current   # FLASHED 2026-10-20: dongle now enumerates as 2972:0102 "FiiO JadeAudio JA11"; no software backup was possible (stock image not obtained)
 ---
 
@@ -137,6 +137,16 @@ cd ~/kt02h20-flasher && ~/scratch/venv/bin/python ktflash.py flash "JadeAudio JA
 - ALSA: card `JA11`, S16/S24_3LE/S32, 44.1–384 kHz; playback endpoint is now **ASYNC** with a sync feedback EP (was ADAPTIVE); `PCM Playback Volume` range 0..100 / -50..0 dB (was 0..85 / -42.5..0 dB). Not yet verified: actual playback quality/volume, mic, FiiO control-app/PEQ.
 
 To revert: flash a stock Jcally image (e.g. `jcally_jm12_v1.3.bin`) with the same command; unplug/replug first so the bootloader is fresh.
+
+### Cross-flash data point: generic `31b2:1052`, 2026-11-27
+
+Second unit, a generic KTMicro board (`31b2:1052 "KT02H20 Hifi Audio"`, stock firmware string `1.0.1`), flashed to FiiO V2.1 with `ktflash`:
+
+- The enter-bootloader report works on this PID too. `hid_write` of `54 31 32 33 34 35 36 37 38 00` moved it to `8888:cdc0` in about two seconds. So the `0x54` command is not specific to `31b2:0111`; it is part of the shared firmware family.
+- `ktflash unlock` refuses the PID anyway, because its device matcher only accepts `31b2:0111` and `2972:0102`. The report had to be sent by hand. That is a tool allowlist, not a protocol difference.
+- Result: `2972:0102`, `bcdDevice 2.10`, version string `2.1.0`, ADC PGA `0x3A = 3`, DAC PGA `0x3B = 0xd`. ASYNC endpoint plus sync feedback EP, clean tone.
+- The stock board's `0x24` (DAC EQ enable) read `0x2`; JA11 V2.1 reads `0x4`. Everything else in the PerfCfg was already at the JA11 values.
+- No read-back, so stock `1.0.1` is gone. Details: [[kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27]].
 
 ## References
 

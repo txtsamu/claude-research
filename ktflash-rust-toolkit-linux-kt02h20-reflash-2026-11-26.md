@@ -2,7 +2,7 @@
 type: how-to
 tags: [kt02h20, ktmicro, fiio-ja11, jcally-jm12, moondrop, usb-dac, firmware, ktflash, rust, fedora, linux]
 created: 2026-11-26
-last_verified: 2026-11-26
+last_verified: 2026-11-27
 status: current
 ---
 
@@ -66,6 +66,28 @@ ktflash probe
 ```
 
 `probe` only scans and prints; it does **not** send the unlock report. In this run it reported `8888:cdc0` because the dongle had already dropped into the bootloader on its own about six seconds earlier (journal above). If yours answers with `2972:0102` or `31b2:0111`, you are in normal mode and need `ktflash unlock` first.
+
+### If the device answers with some other `31b2:*` PID
+
+`ktflash unlock` only accepts `31b2:0111` and `2972:0102`. The check is in `flasher/src/main.rs`, `open_hid`:
+
+```rust
+let is_normal = (d.vendor_id() == KTMICRO_VID && d.product_id() == NORMAL_PID)  // 31b2:0111
+    || (d.vendor_id() == FIIO_VID && d.product_id() == JA11_PID);              // 2972:0102
+```
+
+Any other KTMicro PID is skipped, and the tool reports that it found no normal-mode dongle. The firmware still speaks the same protocol, so send the unlock report yourself. Verified 2026-11-27 on a generic `31b2:1052 "KT02H20 Hifi Audio"` dongle:
+
+```bash
+cd ~/sessions/2026-10-26-iem-dsp-eq
+sudo ./venv/bin/python -I -c "
+import hid
+d = hid.device(); d.open(0x31b2, 0x1052); d.write(b'T12345678\x00')
+print('sent T12345678 (10B)')
+"
+```
+
+The 10 bytes are report ID `0x54` (which is also ASCII `T`), the string `12345678`, and a NUL terminator. The dongle re-enumerates as `8888:cdc0` in about two seconds, and everything from section 3 onward applies unchanged. `/dev/hidrawN` is `0600 root:root`, so this half needs `sudo` or a fresh `setfacl` ACL. Full run: [[kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27]].
 
 ## 3. Validate the image, then dry-run
 
@@ -134,13 +156,14 @@ ASYNC endpoint plus sync feedback EP is the same post-flash signature recorded o
 - **The bootloader state machine is one-shot per boot.** `KTM` is consumed once. Anything that sends it (`bootdiag --send`, a failed flash) means unplug/replug before trying again.
 - **`probe` is read-only**, so a `8888:cdc0` answer means the device was already in the bootloader, not that probe put it there.
 - **USB ID no longer identifies the model.** `2972:0102` after a flash tells you nothing about whether the hardware is a JM12, a Moondrop or a JA11.
+- **`unlock` is PID-gated.** Only `31b2:0111` and `2972:0102` get the automatic unlock. Other KTMicro PIDs (e.g. `31b2:1052`) need the 10-byte `T12345678` HID write by hand, as shown in section 2.
 - **No backup.** Confirmed again by the tool's own warning; the journal only records the image hash, not the old firmware.
 
 ## What was not verified
 
 - No stock `31B2:0111` Moondrop KT02H20 was attached, so the "flash a stock Moondrop" path was not exercised; the run was a same-image reflash of an already-JA11 unit.
 - Mic, charging behaviour and the FiiO control app / PEQ UI were not tested.
-- The udev-rule + `unlock` path on a stock device was not exercised (device was already in bootloader).
+- The udev-rule + `unlock` path was not exercised in the original run (device was already in bootloader). It was exercised later, on 2026-11-27, but only via the hand-rolled `T12345678` HID write against a `31b2:1052` board, because `ktflash unlock` does not accept that PID. The packaged udev rules themselves remain untested.
 
 ## References
 
@@ -149,4 +172,4 @@ ASYNC endpoint plus sync feedback EP is the same post-flash signature recorded o
 - [`docs/COMPATIBILITY.md`](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit/blob/main/docs/COMPATIBILITY.md) — Moondrop `31B2:0111` marked confirmed
 - [`docs/REVERT.md`](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit/blob/main/docs/REVERT.md) — revert needs a stock image, reset-button bootloader entry
 - [`packaging/99-ktflash.rules`](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit/blob/main/packaging/99-ktflash.rules) — uaccess/plugdev/ModemManager rules
-- Local: [[kt02h20-jcally-dac-ja11-firmware-flash-protocol]], [[fiio-ja11-peq-match-tin-hifi-c7-hidraw]], [[ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg]], [[fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l]]
+- Local: [[kt02h20-jcally-dac-ja11-firmware-flash-protocol]], [[kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27]], [[fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27]], [[fiio-ja11-peq-match-tin-hifi-c7-hidraw]], [[ktmicro-dsp-dongles-fission-ja11-chu2-same-chip-comparison-and-otg]], [[fission-rational-hifi-firmware-upgrade-linux-flasher-ktmicro-kt0211l]]
