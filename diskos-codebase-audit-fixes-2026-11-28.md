@@ -126,7 +126,7 @@ rows after prune=303
 all scanner checks ok
 ```
 
-## Follow-up (same day, commit `bb4bf0b`)
+## Follow-up (same day, commit `a8f96db`)
 
 The reviewer of the first pass asked for the remaining non-hardware items. Seven files changed:
 
@@ -151,7 +151,7 @@ Verification after the follow-up:
 ```
 $ make -C ui -j4
 artifact: mq_ui
-md5: 8bc942f24d0900707097a2b0f6933e87
+md5: d48a201e784ae3433a297dd884baef9f
 size: 4366520
 BUILD_EXIT=0
 
