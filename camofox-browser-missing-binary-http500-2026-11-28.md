@@ -80,7 +80,9 @@ drwxr-xr-x 2 root root 4096 Nov 28 03:24 .
 drwxr-xr-x 6 root root 4096 Nov 28 03:24 ..
 ```
 
-Empty. The server's own source documents this exact failure mode in `isFatalInstallError()` and `camoufoxInstallRemediation()` in `server.js`: if the message matches `/Version information not found/`, retrying is pointless and the operator must run `npx camoufox-js fetch` and restart. The service was behaving as designed; the install step had simply never run on this boot.
+Empty. The server's own source documents this exact failure mode in `isFatalInstallError()` and `camoufoxInstallRemediation()` in `server.js`: if the message matches `/Version information not found/`, retrying is pointless and the operator must run `npx camoufox-js fetch` and restart. The service was behaving as designed; the install was missing.
+
+The "why" was found in a later session: the previous boot had a working bundle, and a Hermes disk cleanup at 02:24 WIB ran `rm -rf` over a cache list that included `/root/.cache/camoufox`. See [camofox-bundle-cache-sweep-durable-install-2026-11-28.md](camofox-bundle-cache-sweep-durable-install-2026-11-28.md) for the journal evidence and the config fix that moves the bundle out of the cache path.
 
 There is also a secondary, harmless warning on every launch:
 
@@ -184,6 +186,7 @@ Final state: unit `enabled` at boot, `active (running)`, cache 2.5 GB at `/root/
 - **Never wrap the fetch in `timeout`, and never pipe it to `tail`/`head`.** The bundle is 1.31 GB plus a 50 MB GeoIP database. A killed download still prints a 100% progress bar and a success line, and the pipeline hides the non-zero exit. Run it in the background, wait for the real exit code, then verify `version.json` exists before restarting anything.
 - **Do not kill a fetch during extraction.** `camoufox-js` deletes the install directory first, so an interrupt leaves the system worse than before: no new install and no old one.
 - A truncated Camoufox zip fails with `ADM-ZIP: Invalid or unsupported zip format. No END header found`. That message is a reliable signal of an interrupted download rather than a corrupt upstream release.
+- **This was a deletion, not a missing install step.** The previous boot had a working bundle; a Hermes `rm -rf` cache sweep at 02:24 WIB included `/root/.cache/camoufox`. Because `provision-src-camofox` only reinstalls when the source checkout is absent, it never repaired the browser. The durable fix is `CAMOUFOX_INSTALL_DIR=/root/camofox-browser/.camoufox` in both the service and the provision `post`; see the companion note.
 - The missing-Xvfb warning is benign here. `steam-run` provides the Firefox runtime libraries; the system stays headless by design.
 - The unit is supervised by systemd with `Restart=on-failure`, so a crash self-heals but a clean `systemctl stop` stays stopped. During this session the unit was stopped manually at 03:23:52 and did not come back until restarted, which is correct semantics and worth remembering before assuming a dead port means a crash loop.
 
