@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-28 | [camofox-browser-missing-binary-http500-2026-11-28.md](camofox-browser-missing-binary-http500-2026-11-28.md) | troubleshooting |
 | 2026-11-28 | [light-agent-ecrrefused-8099-hidraw-ownership-2026-11-28.md](light-agent-ecrrefused-8099-hidraw-ownership-2026-11-28.md) | troubleshooting |
 | 2026-11-28 | [hermes-gateway-post-reboot-mcp-children-2026-11-28.md](hermes-gateway-post-reboot-mcp-children-2026-11-28.md) | troubleshooting |
 | 2026-11-28 | [home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md](home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md) | troubleshooting |
@@ -286,6 +287,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [camofox-browser-missing-binary-http500-2026-11-28.md](camofox-browser-missing-binary-http500-2026-11-28.md) | camofox, camoufox, mcp, headless-browser, browser-automation, home, nixos, systemd, hermes, health-check | 2026-11-28 |
 | [light-agent-ecrrefused-8099-hidraw-ownership-2026-11-28.md](light-agent-ecrrefused-8099-hidraw-ownership-2026-11-28.md) | light-agent, vm-bot, telegram, gbrgb, hidraw, udev, uaccess, fedora, cosmic-greeter, systemd-user, rgb | 2026-11-28 |
 | [hermes-gateway-post-reboot-mcp-children-2026-11-28.md](hermes-gateway-post-reboot-mcp-children-2026-11-28.md) | hermes, hermes-gateway, mcp, telegram, gowa, k3s, home, nixos, systemd, polkit, reboot | 2026-11-28 |
 | [home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md](home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md) | home, proxmox, px1, k3s, systemd, shutdown, reboot, deadlock, nixos, k3s-killall, prestop | 2026-11-28 |
