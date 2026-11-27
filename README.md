@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-28 | [hermes-gateway-post-reboot-mcp-children-2026-11-28.md](hermes-gateway-post-reboot-mcp-children-2026-11-28.md) | troubleshooting |
 | 2026-11-28 | [home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md](home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md) | troubleshooting |
 | 2026-11-27 | [home-directory-reorg-projects-logs-probes-2026-11-27.md](home-directory-reorg-projects-logs-probes-2026-11-27.md) | how-to |
 | 2026-11-27 | [replace-text-in-scanned-pdf-font-match-2026-11-27.md](replace-text-in-scanned-pdf-font-match-2026-11-27.md) | how-to |
@@ -284,6 +285,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [hermes-gateway-post-reboot-mcp-children-2026-11-28.md](hermes-gateway-post-reboot-mcp-children-2026-11-28.md) | hermes, hermes-gateway, mcp, telegram, gowa, k3s, home, nixos, systemd, polkit, reboot | 2026-11-28 |
 | [home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md](home-vm-reboot-hangs-k3s-killall-self-stop-2026-11-28.md) | home, proxmox, px1, k3s, systemd, shutdown, reboot, deadlock, nixos, k3s-killall, prestop | 2026-11-28 |
 | [android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md](android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md) | android, vpnservice, vpn, jsch, ssh, direct-tcpip, ipv6, leak, foreground-service, kotlin, gradle, ndk, cloudflared, multi-profile | 2026-11-27 |
 | [fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md](fiio-ja11-stuck-bootloader-recover-wrong-firmware-2026-11-27.md) | fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, brick, bootloader, ktflash, fiio-control, android, otg, fedora, linux, alsa, pipewire | 2026-11-27 |
