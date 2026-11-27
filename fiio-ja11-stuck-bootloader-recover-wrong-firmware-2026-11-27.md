@@ -1,6 +1,6 @@
 ---
 type: troubleshooting
-tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, brick, bootloader, ktflash, fedora, linux, alsa, pipewire]
+tags: [fiio, jadeaudio, ja11, kt02h20, ktmicro, usb-dac, firmware, brick, bootloader, ktflash, fiio-control, android, otg, fedora, linux, alsa, pipewire]
 created: 2026-11-27
 last_verified: 2026-11-27
 status: current
@@ -15,6 +15,29 @@ status: current
 The dongle stopped appearing as a sound card and showed up as `8888:cdc0` (a CDC serial device) instead of `2972:0102`. That was self-inflicted: the wrong firmware had been flashed onto it earlier. A stock V2.2 reflash through the CDC bootloader fixed it on the first attempt, in four seconds of wire time.
 
 This note is the *recovery* path. The full flashing walkthrough, including how the tool was built, is [[ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26]].
+
+## Recommended order: V2.1 over the bootloader, then upgrade to V2.2 in FiiO Control
+
+**Practice recommended by the user after this repair** (see the provenance note at the end of this section). The idea is to land a known-good official image first and let the vendor's own upgrade path do the last step:
+
+1. **Flash the official V2.1 image through the CDC bootloader** with `ktflash`, exactly as in sections 3 to 5 below.
+2. **Verify V2.1 is really running** before going further: `bcdDevice` must read `2.10`, and the register dump must report version `2.1.0` with ADC PGA `0x3A = 3`.
+3. **Upgrade to V2.2 through the FiiO Control Android app**, not through a second hand-rolled flash: plug the dongle into an Android phone over USB-C OTG and let the app do the upgrade (the app's firmware update flow, same path FiiO documents for V1.9 onward). Desktop alternatives exist if no phone is handy: the local `JadeAudio JA11 Upgrade Tool.exe` from the ZIP, or the WebHID page at <https://fiiocontrol.fiio.com/>.
+4. **Re-verify after the upgrade:** `bcdDevice` back to `2.20`, register version string `2.2.0`, ADC PGA `0x3A = 4`.
+
+Why this order, in practical terms:
+
+- The V2.1 image is a small, well-known, 67,312-byte payload that the bootloader accepts cleanly, so step 1 rules out a corrupt or truncated image.
+- FiiO's own upgrade flow then rewrites the same regions using the vendor's protocol and its own error reporting, which is the closest thing to a "factory" state short of a service centre.
+- If something still fails afterwards, you know the hardware is suspect rather than the image, because two independent write paths both went through.
+
+Be aware of three things before relying on step 3:
+
+- **FiiO Control is an Android app.** The phone route is a USB-C OTG connection with the dongle in normal mode, not in the bootloader.
+- **If the app does not see the dongle, try UAC 1.0.** FiiO's V2.0 changelog names "UAC1.0 mode" as something the app has to recognise, and the mode is switchable from the host with FiiO command `0x20` (`0` = UAC 1.0, `1` = UAC 2.0). In UAC 1.0 the dongle enumerates as `2972:0101` at full speed with `bcdADC 1.00` and caps at 96 kHz. Toggle it back to `1` afterwards.
+- The desktop web page is listed as **Windows and macOS only** (Chrome, Edge or Opera for WebHID), so on Fedora it may not see the device at all. That is another reason to prefer the phone.
+
+Provenance: this ordering is the user's recommendation from this repair. It was **not** exercised in this session, which flashed V2.2 directly through `ktflash` and stopped there, and it is not a hard requirement: the direct V2.2 write also worked. Treat it as the belt-and-braces path, not the only path.
 
 ## Time estimate
 
