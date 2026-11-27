@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-27 | [home-directory-reorg-projects-logs-probes-2026-11-27.md](home-directory-reorg-projects-logs-probes-2026-11-27.md) | how-to |
 | 2026-11-27 | [replace-text-in-scanned-pdf-font-match-2026-11-27.md](replace-text-in-scanned-pdf-font-match-2026-11-27.md) | how-to |
 | 2026-11-27 | [android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md](android-vpn-jsch-stream-order-and-ipv6-leak-2026-11-27.md) | troubleshooting |
 | 2026-11-27 | [kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md](kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md) | how-to |
@@ -179,6 +180,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [home-directory-reorg-projects-logs-probes-2026-11-27.md](home-directory-reorg-projects-logs-probes-2026-11-27.md) | fedora, home, organization, filesystem, mv, projects, systemd, dotfiles, agent-config, diskos, immich, oxigram, ktflash, probes, cleanup | 2026-11-27 |
 | [kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md](kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md) | kt02h20, ktmicro, 31b2-1052, crossflash, ja11, fiio, jadeaudio, ktflash, firmware, usb-dac, hid, fedora, linux, alsa, pipewire | 2026-11-27 |
 | [opencode-hermes-default-model-opencode-go-2026-11-27.md](opencode-hermes-default-model-opencode-go-2026-11-27.md) | opencode, hermes, model, default, opencode-go, deepseek, config, nixos, home, fedora | 2026-11-27 |
 | [ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md](ternary-bonsai-27b-mtp-7800xt-vulkan-2026-11-26.md) | llama.cpp, vulkan, rocm, vllm, gfx1101, rx-7800-xt, gguf, ternary, mtp, speculative-decoding, bonsai, qwen | 2026-11-26 |
