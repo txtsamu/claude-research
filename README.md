@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-28 | [agy-tmux-ssh-file-token-relogin-2026-11-28.md](agy-tmux-ssh-file-token-relogin-2026-11-28.md) | troubleshooting |
 | 2026-11-28 | [fedora43-workstation-debloat-service-and-cache-audit-2026-11-28.md](fedora43-workstation-debloat-service-and-cache-audit-2026-11-28.md) | investigation |
 | 2026-11-28 | [camofox-bundle-cache-sweep-durable-install-2026-11-28.md](camofox-bundle-cache-sweep-durable-install-2026-11-28.md) | troubleshooting |
 | 2026-11-28 | [home-directory-audit-2026-11-28.md](home-directory-audit-2026-11-28.md) | investigation |
@@ -290,6 +291,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [agy-tmux-ssh-file-token-relogin-2026-11-28.md](agy-tmux-ssh-file-token-relogin-2026-11-28.md) | antigravity, agy, tmux, ssh, keyring, oauth, token-storage, fedora, cosmic | 2026-11-28 |
 | [camofox-bundle-cache-sweep-durable-install-2026-11-28.md](camofox-bundle-cache-sweep-durable-install-2026-11-28.md) | camofox, camoufox, home, nixos, systemd, hermes, cache-cleanup, provisioning, opencode, websearch | 2026-11-28 |
 | [camofox-browser-missing-binary-http500-2026-11-28.md](camofox-browser-missing-binary-http500-2026-11-28.md) | camofox, camoufox, mcp, headless-browser, browser-automation, home, nixos, systemd, hermes, health-check | 2026-11-28 |
 | [light-agent-ecrrefused-8099-hidraw-ownership-2026-11-28.md](light-agent-ecrrefused-8099-hidraw-ownership-2026-11-28.md) | light-agent, vm-bot, telegram, gbrgb, hidraw, udev, uaccess, fedora, cosmic-greeter, systemd-user, rgb | 2026-11-28 |
