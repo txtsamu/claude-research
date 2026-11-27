@@ -202,6 +202,50 @@ scanner mixed-case paths: ok
 
 `sdio_test` alone ends with `sdio_test: ok`, including the new `mounting_reports_switch_pending`.
 
+## Follow-up 3 (same day, commit `f162cf5`)
+
+- **11.1 M3U suffix scan.** `import_m3u_file()` now runs one `SELECT PATH FROM SONG` and builds an
+  in-memory suffix index before resolving entries. Every suffix after a `/` is hash-keyed with ASCII
+  folding; the full path shares the same pool, so a match costs one probe and no per-key copy. A
+  suffix seen in more than one row is ambiguous and is skipped, matching the old `LIMIT 2` rule.
+  Budgets are 40,000 rows, 131,072 slots and a 4 MiB path pool; if any budget, allocation or SQL step
+  fails, the index is freed and the old prepared `LIKE` path is used, so behaviour is preserved under
+  memory pressure.
+- **New `m3u_test`.** It builds the index directly and checks mixed-case relative lookup, a relative
+  directory path, duplicate-basename ambiguity and a miss. It then imports an M3U with relative,
+  mixed-case, absolute and ambiguous entries and checks the three expected members and that the
+  ambiguous path was skipped.
+
+```
+--- m3u ---
+  ok: suffix index built
+  ok: mixed case relative lookup
+  ok: relative directory lookup
+  ok: duplicate basename is ambiguous
+  ok: missing suffix is not found
+  ok: three entries imported
+  ok: playlist created
+  ok: three members stored
+  ok: mixed case path stored
+  ok: relative path stored
+  ok: exact path stored
+  ok: ambiguous entry skipped
+m3u_test: ALL PASS
+```
+
+Verification after the change:
+
+```
+$ make -C ui -j4
+artifact: mq_ui
+md5: 832dc185827e0521e1b843543dcf6246
+size: 4368216
+BUILD_EXIT=0
+
+$ make -C ui/tests -j4 check
+UITESTS_EXIT=0
+```
+
 ## Gotchas
 
 - **`make check-theme` is stricter than it looks.** It flagged the new MD5 IV assignments
@@ -226,9 +270,7 @@ scanner mixed-case paths: ok
   compatibility check.
 - HTTP connection reuse: each request still spawns `wget`; an in-process HTTP/TLS client is a
   separate project. Timeouts now bound the worst case.
-- M3U `LIKE '%/<suffix>'` (`11.1`): a leading wildcard cannot use the `PATH` index. A fix needs a
-  stored basename/suffix column or a mirror table, which either changes the shared table layout or
-  drifts when the stock player writes `SONG` directly.
+
 
 ## Not verified
 
