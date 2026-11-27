@@ -10,7 +10,7 @@ status: current
 
 Goal: the local OpenCode on `fedora` and the Hermes agent on `home` (192.168.50.200, NixOS) should both default to the model this session was actually running: `deepseek-v4.1-flash` through the OpenCode Go provider.
 
-Result: OpenCode's `~/.config/opencode/opencode.json` now says `"model": "opencode-go/deepseek-v4.1-flash"`, and Hermes' `/root/.hermes/config.yaml` now uses `provider: opencode-go`, `default: deepseek-v4.1-flash`, `base_url: https://opencode.ai/zen/go/v1`. The gateway was restarted and reports the new model. A raw chat completion with the stored key returned HTTP 200.
+Result: OpenCode's `~/.config/opencode/opencode.json` now says `"model": "opencode-go/deepseek-v4.1-flash"`, and Hermes' `/root/.hermes/config.yaml` uses `provider: opencode-go`, `default: deepseek-v4.1-flash`, `base_url: https://opencode.ai/zen/go/v1`. The same was applied to all 12 Hermes profiles, which each carry their own `config.yaml`; the `orvix` profile was the one still pinned to Orvix. The gateway was restarted and all profiles report the new model. A raw chat completion with the stored key returned HTTP 200.
 
 ## Time estimate
 
@@ -139,7 +139,52 @@ base_url: https://opencode.ai/zen/go/v1
 api_mode: chat_completions
 ```
 
-## 6. Restart the gateway
+## 6. Every profile has its own config
+
+One gateway process serves 12 profiles (`gateway list` shows them all under the same PID), and each profile is a full Hermes home with its own `config.yaml`. Changing only `/root/.hermes/config.yaml` leaves the per-profile defaults untouched. After the root change, 11 profiles already said `opencode-go`, but the profile literally named `orvix` still had:
+
+```yaml
+model:
+  context_length: 450000
+  default: orvix/deepseek-v4.1-flash-uncensored
+  provider: orvix
+  base_url: https://api.orvix.id/v1
+```
+
+Target a profile with `-p` (same as `--profile`):
+
+```sh
+ssh moo@home "sudo -n bash -s" <<'SCRIPT'
+cp /root/.hermes/profiles/orvix/config.yaml /root/.hermes/profiles/orvix/config.yaml.bak-pre-opencode-go-default-$(date +%Y%m%d-%H%M%S)
+for kv in "model.default deepseek-v4.1-flash" "model.provider opencode-go" "model.base_url https://opencode.ai/zen/go/v1" "model.api_mode chat_completions" "model.context_length 1000000"; do
+  set -- $kv
+  /opt/hermes-venv/bin/python /opt/hermes-source/hermes_cli/main.py -p orvix config set "$1" "$2"
+done
+SCRIPT
+```
+
+Check the result per profile rather than trusting the root config:
+
+```sh
+ssh moo@home "sudo -n bash -s" <<'SCRIPT'
+for p in default audio critic dev device diskos finance net ops orvix research uiux; do
+  if [ "$p" = default ]; then P=""; else P="-p $p"; fi
+  out=$(/opt/hermes-venv/bin/python /opt/hermes-source/hermes_cli/main.py $P status 2>/dev/null | grep -E "^  (Model|Provider):" | tr -s ' ' | tr '\n' ' ')
+  echo "$p | $out"
+done
+SCRIPT
+```
+
+```text
+default  |  Model: deepseek-v4.1-flash  Provider: OpenCode Go
+...
+orvix    |  Model: deepseek-v4.1-flash  Provider: OpenCode Go
+uiux     |  Model: deepseek-v4.1-flash  Provider: OpenCode Go
+```
+
+Each profile needs the key in its own `.env` (or an inherited credential). `profiles/orvix/.env` already had `OPENCODE_GO_API_KEY`, so no credential work was needed. Verify before switching: `grep -c '^OPENCODE_GO_API_KEY=' /root/.hermes/profiles/<name>/.env`.
+
+## 7. Restart the gateway
 
 The running gateway process was four days old and held the old model in memory. No active sessions were listed, so a restart was safe:
 
@@ -165,7 +210,7 @@ ssh moo@home 'sudo -n systemctl restart hermes-gateway && echo RESTART_OK; sleep
 
 The journal prints one scary line during the switch, `hermes-gateway.service: Failed with result 'exit-code'`; that belongs to the stop half of the restart. The new process then logs `☤ Hermes Gateway Starting...` and stays `active`. Confirm with a fresh MainPID.
 
-## 7. Verify
+## 8. Verify
 
 Agent-level view:
 
@@ -198,6 +243,8 @@ HTTP 200
 
 - The OpenCode config default and the model a session actually runs are separate. Check the state store before "syncing" anything.
 - Hermes on `home` is not `moo`'s agent. Everything lives under `/root/.hermes`, so every read needs `sudo -n` and a `bash -c` wrapper when globbing (the `moo` shell cannot expand `/root/*` patterns itself).
+- Hermes is multiplexed: 12 profiles, one gateway PID, one `config.yaml` each. Changing the root config does not change them. Inspect `profiles/*/config.yaml`, and target a profile with `hermes -p <name>`. This is what made the first pass look done while the `orvix` profile stayed on Orvix.
+- A profile's `.env` is separate too. A key that exists in `/root/.hermes/.env` is not guaranteed in `profiles/<name>/.env`.
 - `hermes config set model.provider` warns rather than fixes a stale `model.base_url`. Always set base_url in the same batch.
 - `hermes gateway restart --system` cannot rewrite the unit on this host (read-only `/etc/systemd/system`). Use `systemctl restart hermes-gateway`.
 - The OpenCode Go relay requires an `x-opencode-session` header on chat completions. A bare curl gets HTTP 400 `MissingSessionID`.
