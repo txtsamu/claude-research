@@ -126,10 +126,14 @@ rows after prune=303
 all scanner checks ok
 ```
 
-## Follow-up (same day, commit `e17627c`)
+## Follow-up (same day, commit `bb4bf0b`)
 
 The reviewer of the first pass asked for the remaining non-hardware items. Seven files changed:
 
+- **1.3 shared connection:** the background readers named in the audit now use a dedicated
+  `SQLITE_OPEN_READONLY` connection (`db_ro()`): `mdb_subtrack_count`, `mdb_subtrack_present`,
+  `mdb_prewarm_next` and `mdb_song_accent`. The writer handle is main-thread only apart from
+  single-statement reads that stay on `g_db`.
 - **9.2 N+1 finish:** the two `CREATE TABLE IF NOT EXISTS` statements in `diskos_next_export_uid()`
   now run once per process instead of once per playlist inside the registry sync loop.
 
@@ -147,7 +151,7 @@ Verification after the follow-up:
 ```
 $ make -C ui -j4
 artifact: mq_ui
-md5: 465c183714883c0cfbbc6a4347a6183b
+md5: 8bc942f24d0900707097a2b0f6933e87
 size: 4366520
 BUILD_EXIT=0
 
