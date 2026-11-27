@@ -126,6 +126,35 @@ rows after prune=303
 all scanner checks ok
 ```
 
+## Follow-up (same day, commit `9c3b8a5`)
+
+The reviewer of the first pass asked for the remaining non-hardware items. Seven files changed:
+
+- **15.4 write errors:** `mdb_record_play()` and `mdb_set_song_accent()` now return `int`; the cover
+  accent callback in `coverart.h` matches, and both callers log a failed write to `stderr` instead
+  of discarding it. The two cover-art test fakes were updated to the new signature.
+- **14.5 busy wait:** the main-thread `g_db` handle dropped from `sqlite3_busy_timeout(4000)` to
+  `1000`. Scanner writes are now short 128-row batches, so the old 4 s ceiling was unnecessary.
+- **11.2 `lower(PATH)`:** every remaining occurrence in `ui/musicdb.c` was removed (18 sites). This
+  is equivalent because SQLite's default `LIKE` already folds ASCII, which is what `lower()` did.
+  `grep -c 'lower('` is now 0 in that file. The suffix `%` scans remain, as documented.
+
+Verification after the follow-up:
+
+```
+$ make -C ui -j4
+artifact: mq_ui
+md5: 7e92d9e06129dde045f3b6433d7c9b95
+size: 4366520
+BUILD_EXIT=0
+
+$ make -C ui/tests -j4 check
+UITESTS_EXIT=0
+49 PASS lines
+```
+
+About 4 minutes measured (05:27 to 05:30 WIB).
+
 ## Gotchas
 
 - **`make check-theme` is stricter than it looks.** It flagged the new MD5 IV assignments
