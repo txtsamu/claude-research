@@ -312,4 +312,4 @@ DAC bands: 1000/2000/5000/8000/10000 Hz, 0.0 dB, Q 0.707
 - [ParkWardRR toolkit repo](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit) — the flasher used here
 - [`docs/REVERT.md`](https://github.com/ParkWardRR/fiio-ja11-jcally-jm12-moondropkt02-kt02h20-dac-amp-toolkit/blob/main/docs/REVERT.md) — bootloader entry, stock image sourcing, no-backup caveat
 - [FiiO JA11 firmware thread](https://forum.fiio.com/note/showNoteContent.do?id=202406211150090736905) — source of the official V2.2 ZIP
-- Local: [[ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26]], [[kt02h20-jcally-dac-ja11-firmware-flash-protocol]], [[fiio-ja11-firmware-reverse-engineering-output-diagnosis-2026-11-26]], [[fiio-ja11-kt02h20-power-and-volume-ceilings-2026-11-16]]
+- Local: [[ktflash-rust-toolkit-linux-kt02h20-reflash-2026-11-26]], [[kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27]], [[kt02h20-jcally-dac-ja11-firmware-flash-protocol]], [[fiio-ja11-firmware-reverse-engineering-output-diagnosis-2026-11-26]], [[fiio-ja11-kt02h20-power-and-volume-ceilings-2026-11-16]]
