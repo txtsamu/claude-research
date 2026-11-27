@@ -10,7 +10,7 @@ status: current
 
 ## Time estimate
 
-About 10 minutes of wall-clock session time, from the post-reboot SSH check at 02:56 WIB to the settled reading at 03:03:48 WIB (measured from command timestamps). The service restart itself took roughly 50 seconds: `systemctl restart` returned at 03:00:28, the gateway was `active (running)` immediately, and Telegram reported `Connected (polling mode)` at 03:01:18, then again on the profile adapter at 03:01:36. Waiting for the load average to fall from the post-restart spike took another 90 seconds.
+About 20 minutes of wall-clock session time, from the post-reboot SSH check at 02:56 WIB to the `hermes-mcp` root-cause diagnosis just after 03:10 WIB (measured from command timestamps). The gateway restart took roughly 50 seconds: `systemctl restart` returned at 03:00:28, the gateway was `active (running)` immediately, and Telegram reported `Connected (polling mode)` at 03:01:18, then again on the profile adapter at 03:01:36. The `hermes-mcp` restart took seconds, but proving that its child dies takes about 30 seconds per attempt, and the live-socket probe waits 6 to 8 seconds.
 
 ## Question
 
@@ -113,6 +113,33 @@ ssh home 'ps -eo pid,ppid,stat,cmd | awk "\$3 ~ /Z/"'
 
 PID 1101 is `hermes-mcp.service`, so restarting the gateway does not reap it. A zombie holds no memory, only a process-table slot.
 
+### 8b. Restarting hermes-mcp: the zombie comes straight back
+
+```bash
+ssh home 'sudo systemctl restart hermes-mcp'
+ssh home 'ps -eo pid,ppid,stat,cmd | awk "\$3 ~ /Z/"'
+# 32153  32149 Z  [hermes] <defunct>
+```
+
+A new daemon PID at 03:06:05 produced a new zombie within seconds. Probing the Unix socket made a live `hermes mcp serve` child appear, then it died about 30 seconds later and became the next zombie, and the probe got `ConnectionResetError`. Running the command by hand with stderr visible gave the root cause:
+
+```bash
+ssh home 'sudo bash -c "sleep 25 | timeout 20 /usr/local/bin/hermes mcp serve --accept-hooks"'
+# hermes mcp: 'serve' is not a `hermes mcp` command.
+# Hermes as an MCP server moved out of core into the 'mcp-serve' plugin:
+# `hermes mcp serve` is now `hermes mcp-serve`.
+# Install it with: `hermes plugins install mcp-serve`.
+
+ssh home 'sudo /usr/local/bin/hermes plugins list'
+# agentmemory, evomem  -> mcp-serve is NOT installed
+```
+
+So `hermes-mcp.service` is legacy and broken: `/root/.hermes/mcp-daemon.py` still spawns `hermes mcp serve`, the CLI prints the deprecation notice and exits 0, the daemon never calls `wait()`, and the exit becomes a zombie. Its "Hermes ready." line is a lie, because the ready thread just sleeps `WARM_SECS` without checking the child. Any client that connects to `/run/hermes-mcp.sock` gets a connection reset.
+
+Nothing currently uses it: `hermes-mcp.sock` and `mcp-client.py` are referenced only by the daemon, the client script, and old `state.db` history. There is no `mcp-client.py` entry in `/root/.hermes/config.yaml`, `/root/.claude.json`, the laptop's `~/.claude.json`, or `~/.mcp.json`.
+
+The likely fix, if the capability is wanted, is two changes: `hermes plugins install mcp-serve`, then change `HERMES_ARGS` in `/root/.hermes/mcp-daemon.py` from `["mcp", "serve", "--accept-hooks"]` to `["mcp-serve", "--accept-hooks"]` and restart. The alternative is `sudo systemctl disable --now hermes-mcp` since it serves nothing.
+
 ### 8. Settled reading
 
 ```bash
@@ -133,7 +160,7 @@ Load had peaked at 15.95 right after the restart, then fell to 6.09. `vmstat` sh
 - **Use `sudo systemctl restart`.** `moo` gets `Access denied` from polkit on a plain restart even though `sudo -n true` succeeds.
 - **gowa is a boot-order dependency.** The gateway starts before the k3s LoadBalancer pod behind `192.168.50.240:3000` is ready, retries three times per server, logs `connecting → parked`, then recovers on its own once the pod answers. Do not read the retry burst as a failure.
 - **13 MCP child pairs are baseline.** They are per-Hermes-home children (main plus 11 profiles), about 1.9 GB RSS. Restarting does not reduce them, and killing individual children only breaks their MCP client until it respawns.
-- **The `[hermes] <defunct>` zombie belongs to `hermes-mcp.service`, not the gateway.** It survives a gateway restart; only a `hermes-mcp` restart reaps it.
+- **The `[hermes] <defunct>` zombie belongs to `hermes-mcp.service`, not the gateway.** It survives a gateway restart, and a `hermes-mcp` restart recreates it within seconds; the daemon's `hermes mcp serve` child exits because that subcommand moved to the uninstalled `mcp-serve` plugin. The fix is a plugin install plus a one-line `HERMES_ARGS` change, not a restart.
 - **Load average is misleading here.** An 8-core box at load 16 with CPU 80% idle just means uninterruptible I/O from other services, not a runaway gateway.
 
 ## What was not verified
@@ -141,7 +168,8 @@ Load had peaked at 15.95 right after the restart, then fell to 6.09. `vmstat` sh
 - The exact mapping of 13 child pairs to 12 homes. The arithmetic suggests 12 homes plus one helper, but nothing on-box printed a per-child profile name, so this is inference from the spawn ledger and the earlier audit, not a direct read.
 - Whether the MCP memory footprint can be reduced by making servers lazy instead of pre-warmed. No config key for pre-warming was found in `/root/.hermes/config.yaml`.
 - Thermals. `sensors` returned nothing, so the box may not have `lm_sensors` configured.
-- Whether restarting `hermes-mcp` is safe while the gateway is connected. It was left alone.
+- Whether `hermes plugins install mcp-serve` works offline and what it pulls; it was not attempted.
+- Whether the gateway needs the socket at all. Evidence says no, but that is from config and history, not a live connection trace.
 
 ## References
 
