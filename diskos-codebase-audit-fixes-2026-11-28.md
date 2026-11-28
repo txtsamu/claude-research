@@ -302,29 +302,8 @@ UITESTS_EXIT=0
 
 ## Deliberately not fixed
 
-- HTTP connection reuse (`18`): accepted, not fixed. See the decision below.
-
-
-## Decision: HTTP connection reuse accepted (`18`)
-
-Measured on the Disc over SSH on 2026-11-28, with three separate `wget` processes against the iTunes
-search endpoint:
-
-```
-0.72 s   first request (DNS + TCP + TLS)
-0.14 s   second request
-0.18 s   third request
-```
-
-Keep-alive would save under 0.1 s per request after the first. `netart_have()` already checks the
-album key before searching and misses are negatively cached, so the 2-4 calls only happen on a true
-uncached album, not per track. The stock rootfs has libcurl 7.68 plus OpenSSL 1.1.1f, but they are
-dynamic glibc builds and cannot be linked into the static musl `mq_ui`.
-
-Decision: keep one `wget` per request, with the new `-t 1` and wall-clock deadlines. Adding
-libcurl + mbedTLS would grow the static binary by roughly 0.5-1 MB and add CA/TLS maintenance for a
-sub-100 ms saving. If this is revisited, the scope is one `http_get()` helper with a shared
-connection cache and cancellation, ported to `netart`, `lyrics`, `weather`, `ota` and `system`.
+None. All audit findings are implemented. WAL (`14.3`) and the HTTP client (`18`) are on branches and
+still need a flash.
 
 ## WAL enabled (branch `feat-db-wal`, commit `c6713fc`)
 
@@ -365,11 +344,54 @@ UITESTS_EXIT=0
 
 The branch is not merged to `main` and the WAL build is not flashed yet.
 
+## HTTP client on branch `feat-http` (commit `7ee7567`)
+
+The earlier "accept" decision was reversed on request. The stock rootfs libcurl 7.68 and OpenSSL
+1.1.1f are dynamic glibc builds and cannot be linked into the static musl `mq_ui`, so the branch
+builds static musl copies:
+
+- `ui/third_party/build-http.sh` downloads mbedTLS 3.6.2 and curl 8.11.1, checks pinned SHA-256
+  values, and builds static libraries into the ignored `ui/third_party/out/mipsel`. Sources and
+  tarballs are cached under `ui/third_party/out/http-src`; the first build needs network.
+- `ui/http.c` keeps one libcurl easy handle per thread through a `pthread_key` destructor, so the
+  connection and DNS cache survive across calls. It sets the CA bundle, follows up to three
+  redirects, caps the response, and provides `http_download()` with cancel and progress callbacks
+  for OTA.
+- `netart`, `lyrics`, `weather`, `system` and the OTA release fetch and asset download no longer
+  fork `wget`. URL parameters are now percent-encoded where the old `wget` command line relied on
+  shell behavior.
+- `NOTICE.md`, `licenses/curl.txt` and `licenses/Apache-2.0-mbedTLS.txt` cover the new components.
+
+Verification:
+
+```
+device probe, same libcurl + mbedTLS static libs:
+  itunes 200, wttr.in 200, lrclib 200
+  request 1 connect=0.020 total=0.171
+  request 2 connect=0.000 total=0.366
+  request 3 connect=0.000 total=0.421
+
+host build of ui/http.c with system libcurl 8.15:
+  get rc=0 n=46   first=+30°C~Light rain shower~Bekasi, West Java, ID
+  download rc=0 size=63760
+
+make -C ui:
+  md5 d916a10ea3922c7134ef9e04580a1a60 (then 7ef243760823e8983b36ee7014738937 after the WAL split)
+  size 5,376,180
+
+make -C ui/tests check:
+  UITESTS_EXIT=0, 49 PASS lines
+```
+
+The Disc went offline before the exact `mq_ui` probe could run again, so the final on-device test is
+pending a flash. The library-level probe and the host build of the same `http.c` both passed.
+
 ## Not verified
 
 No flash, no mask-ROM run, no on-device check of the DST fix, the SD export ordering or the scanner
-on a real 30k-file card. The cross build and host suites are the only runtime evidence. ThreadSanitizer
-was not available.
+on a real 30k-file card. The WAL and HTTP branches are not flashed; the Disc went offline before the
+final `mq_ui` HTTP probe. The cross build and host suites are the only runtime evidence.
+ThreadSanitizer was not available.
 
 ## References
 
