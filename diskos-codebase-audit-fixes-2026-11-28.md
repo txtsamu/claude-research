@@ -246,6 +246,42 @@ $ make -C ui/tests -j4 check
 UITESTS_EXIT=0
 ```
 
+## Regression fixes (commit `13b551a`)
+
+The user reviewed the follow-ups, found regressions and fixed them. I reviewed each change, added
+the missing lock in `mdb_song_accent_fresh()`, and re-verified.
+
+- **Opus tag-only reads** no longer run `ad_opus_last()` when the caller asked for tags. The
+  fallback stays for duration-only callers (`tags == NULL`), so the scanner's duration path is
+  unchanged.
+- **Cover art** re-checks the cache after taking the foreground decode lane, and prewarm skips a
+  decode when `cache_has()` already has the entry. This closes the duplicate-decode window left by
+  the claim/publish change.
+- **Accent writes** serialize on `g_db_w_mu`; I added the same lock to
+  `mdb_song_accent_fresh()` so its SELECT+UPDATE cannot interleave with a set.
+- **`mdb_song_paths`** clears the output slots before opening the DB, so an open failure still
+  returns empty strings instead of stale pointers.
+- **OTA** reports a wall-clock timeout as failure even if the killed child happened to exit 0.
+- **Power tick** retries the deferred `sync` reap, so a stuck child does not stay a zombie.
+- **Scanner** does not reallocate the row buffer after a full batch flush.
+- **SD phase** is `_Atomic`, and `sd_quiesce_end()` resumes from `SD_MOUNTING` as well as
+  `SD_LOCAL`.
+- **`sysconfig`** passes `-cmd '.timeout 3000'` to the `sqlite3` CLI, closing audit item 15.2.
+
+Verification:
+
+```
+$ make -C ui -j4
+artifact: mq_ui
+md5: bea628e1afce6c414afce5aaa1055981
+size: 4367560
+BUILD_EXIT=0
+
+$ make -C ui/tests -j4 check
+UITESTS_EXIT=0
+49 PASS lines
+```
+
 ## Gotchas
 
 - **`make check-theme` is stricter than it looks.** It flagged the new MD5 IV assignments
