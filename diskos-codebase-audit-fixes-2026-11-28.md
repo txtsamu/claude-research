@@ -342,7 +342,7 @@ UITESTS_EXIT=0
 49 PASS lines (m3u_test: journal mode is WAL)
 ```
 
-The branch is not merged to `main` and the WAL build is not flashed yet.
+The branch was merged to `main` on 2026-11-28; the WAL build is not flashed yet.
 
 ## HTTP client on branch `feat-http` (commit `7ee7567`)
 
@@ -413,8 +413,9 @@ A clean dependency rebuild (`build-http.sh` after deleting `libcurl.a`) produced
 the same `mq_ui` md5. On the device, the dev `ui/http.c` fetched iTunes and lrclib, downloaded
 63,760 bytes, and the DB still reported `wal` with `integrity_check=ok`.
 
-`dev` is 46 commits ahead of `origin/dev`, not pushed, and the dev build is not flashed. Device
-`http_probe` and WAL checks passed; the flashed UI still needs the final on-screen check.
+`dev` was fast-forwarded into `main` and `main` was pushed on 2026-11-28, so `origin/main` is at
+`26dfba4`. The local `dev` still has 46 unpushed commits on top of `origin/dev`. The dev build is not
+flashed. Device `http_probe` and WAL checks passed; the flashed UI still needs the final on-screen check.
 
 ## Not verified
 
