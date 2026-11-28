@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-28 | [diskos-wifisup-extract-2026-11-28.md](diskos-wifisup-extract-2026-11-28.md) | build-log |
 | 2026-11-28 | [diskos-codebase-audit-fixes-2026-11-28.md](diskos-codebase-audit-fixes-2026-11-28.md) | build-log |
 | 2026-11-28 | [agy-tmux-ssh-file-token-relogin-2026-11-28.md](agy-tmux-ssh-file-token-relogin-2026-11-28.md) | troubleshooting |
 | 2026-11-28 | [fedora43-workstation-debloat-service-and-cache-audit-2026-11-28.md](fedora43-workstation-debloat-service-and-cache-audit-2026-11-28.md) | investigation |
