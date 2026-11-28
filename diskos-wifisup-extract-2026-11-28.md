@@ -86,6 +86,11 @@ $ git show --stat --oneline 49373ed
  7 files changed, 1184 insertions(+), 558 deletions(-)
 ```
 
+The branch binary above was built on this branch alone. It was superseded when all seven findings were merged:
+the integration build is 5,528,692 bytes, md5 `0285566576f46c79279c0d029bf51803`. The listener also gained back
+`PR_SET_PDEATHSIG` through `command_spawn_lifetime()` after this note was written. See
+[[diskos-architecture-review-seven-findings-2026-11-28]].
+
 ## Test design notes
 
 `ui/tests/wifisup_test.c` uses a fake clock, a fake environment, a fake `/proc` tree, and a fake rfkill tree. The Makefile points `WIFISUP_PROC_ROOT`, `WIFISUP_RFKILL_ROOT`, and `WIFISUP_TMP_DIR` at `.tmp/wifisup_test`.
