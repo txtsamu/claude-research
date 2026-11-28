@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-28 | [diskos-audit-25-categories-dev-2f705ac-2026-11-28.md](diskos-audit-25-categories-dev-2f705ac-2026-11-28.md) | build-log |
 | 2026-11-28 | [diskos-flash-dev-82ffa18-2026-11-28.md](diskos-flash-dev-82ffa18-2026-11-28.md) | build-log |
 | 2026-11-28 | [diskos-architecture-review-seven-findings-2026-11-28.md](diskos-architecture-review-seven-findings-2026-11-28.md) | build-log |
 | 2026-11-28 | [diskos-wifisup-extract-2026-11-28.md](diskos-wifisup-extract-2026-11-28.md) | build-log |
@@ -357,6 +358,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Status | Last verified |
 |---|---|---|---|
+| [diskos-audit-25-categories-dev-2f705ac-2026-11-28.md](diskos-audit-25-categories-dev-2f705ac-2026-11-28.md) | diskos, snowsky-disc, audit, subagents, worktrees, sqlite, wifi, bluetooth, http, ota, timezone, playlists, installer | current: 25 category audit fixed on 11 file-disjoint branches from `2f705ac`, merged into `dev` at `a3fa383`; 23 commits, 50 files, +1,384/-379; clean mipsel build 5,537,452 bytes md5 `157a0a0e`, 23 warnings, 0 errors; `make -C ui/tests check` exit 0, 55 C groups and 7 Python COMPLETE, 0 FAIL; skipped `mdb_core_close` call, Up Next rewrite, registry `BEGIN IMMEDIATE`, UNIQUE PEQ; not flashed, Disc offline | 2026-11-28 |
 | [diskos-flash-dev-82ffa18-2026-11-28.md](diskos-flash-dev-82ffa18-2026-11-28.md) | diskos, snowsky-disc, flash, mask-rom, installer, dev, mq_ui, command-spawn, boot-splash | current: `dev` `82ffa18` flashed from the local build with `--ui ui/mq_ui --variant public -y`; image md5 `04d80ed4`, baked UI md5 `21c3f99c` matching source, manifest sha256 `84725ec3`, size 5,528,880; 20 m 10 s total, `SUCCESS` at 20:36:55, same bad blocks [128, 522]; post-boot checks pending | 2026-11-28 |
 | [diskos-architecture-review-seven-findings-2026-11-28.md](diskos-architecture-review-seven-findings-2026-11-28.md) | diskos, snowsky-disc, architecture, refactor, subagents, worktrees, command-spawn, wifi, dhcp, playctl, gesture, coverart, sqlite, boot-splash, host-tests | current: all 7 review findings implemented on 7 worktree branches and merged into `dev` at `a87980f`; command_spawn (`dd54748`), wifisup (`49373ed`), playctl (`00d98ca`), mdb_core + playlistdb (`7dae7ac`), coverart seam (`88c79ec`), gesture (`f59c0b6`), splash-first boot (`e865491`); restored `PR_SET_PDEATHSIG` for the `wpa_cli` listener via `command_spawn_lifetime` (`9b8a4c5`); checkpoint `82ffa18` fixed 8 merge regressions; clean mipsel build 5,528,880 bytes md5 `21c3f99c`, 23 warnings, 54 host test groups exit 0; image flashed on V2.57, post-boot checks pending | 2026-11-28 |
 | [diskos-wifisup-extract-2026-11-28.md](diskos-wifisup-extract-2026-11-28.md) | diskos, snowsky-disc, wifi, wifisup, dhcp, wpa-cli, refactor, ports-and-adapters, host-tests | current: Wi-Fi radio policy and 5-phase lease FSM moved out of `wifi.c` (1,232 -> 711 lines) into host-testable `wifisup`; branch md5 `239a3595`, superseded by the integration binary `02855665` | 2026-11-28 |
