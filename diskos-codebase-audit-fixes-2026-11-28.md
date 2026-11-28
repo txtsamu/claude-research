@@ -302,8 +302,6 @@ UITESTS_EXIT=0
 
 ## Deliberately not fixed
 
-- WAL mode: changes the persistent journal mode of the DB the stock player opens; needs an on-device
-  compatibility check.
 - HTTP connection reuse (`18`): accepted, not fixed. See the decision below.
 
 
@@ -327,6 +325,45 @@ Decision: keep one `wget` per request, with the new `-t 1` and wall-clock deadli
 libcurl + mbedTLS would grow the static binary by roughly 0.5-1 MB and add CA/TLS maintenance for a
 sub-100 ms saving. If this is revisited, the scope is one `http_get()` helper with a shared
 connection cache and cancellation, ported to `netart`, `lyrics`, `weather`, `ota` and `system`.
+
+## WAL enabled (branch `feat-db-wal`, commit `c6713fc`)
+
+Device test on the Disc, 2026-11-28, about 15 minutes including one reboot:
+
+- stock player: `libsqlite3.so.0.8.6` = 3.30.1; diskOS: statically linked 3.46.1; both support WAL
+- `/usr/data` is UBIFS (`ubi1_0`, 67.6M, mounted `sync`)
+- backed up `song.db` to `/tmp/sdcard/song.db.pre-wal` (md5 `0f5f5b9b...`, copy verified)
+- `PRAGMA journal_mode=WAL` returned `wal`, `integrity_check` stayed `ok`
+- a held write created `song.db-shm` (32 KB) and `song.db-wal` on UBIFS; both vanished after a clean
+  close, which is normal
+- after a reboot the mode was still `wal`; `mq_ui` and `mq_player` both reopened
+  `song.db-wal`/`song.db-shm` themselves; 815 songs, `integrity_check` `ok`
+- the stock library, stock playback and a diskOS playlist edit all worked
+
+Code on the branch:
+
+- `db()` sets `PRAGMA journal_mode=WAL` on first open; the scanner sets it on its own connection too
+- `mdb_checkpoint()` runs `PRAGMA wal_checkpoint(PASSIVE)` on power-off and UI restart
+- `m3u_test` asserts the test DB reports `wal`
+- `uiread_test` was updated for WAL lock semantics: a held `BEGIN EXCLUSIVE` without a write does not
+  block readers, so the lock test now holds a writer and the fixture creates the playlist registry
+  tables it needs
+
+Verification:
+
+```
+$ make -C ui -j4
+artifact: mq_ui
+md5: c9792b94dccb8f8d72d8ff86f709d551
+size: 4367820
+BUILD_EXIT=0
+
+$ make -C ui/tests -j4 check
+UITESTS_EXIT=0
+49 PASS lines (m3u_test: journal mode is WAL)
+```
+
+The branch is not merged to `main` and the WAL build is not flashed yet.
 
 ## Not verified
 
