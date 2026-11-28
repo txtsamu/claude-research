@@ -386,6 +386,36 @@ make -C ui/tests check:
 The Disc went offline before the exact `mq_ui` probe could run again, so the final on-device test is
 pending a flash. The library-level probe and the host build of the same `http.c` both passed.
 
+## dev integration verification (2026-11-28)
+
+The user merged both branches into `dev` and added two fixes:
+
+- `794d382` checks the HTTP status before accepting a capped response. Verified with a local server:
+  a 200 with a 200 KB body and a 1 KB cap returns `rc=0 over=1`; the same 404 returns `rc=-1 over=1`.
+- `26dfba4` copies the `PRAGMA journal_mode` text before `sqlite3_finalize()` in `m3u_test`, removing
+  a use-after-finalize read.
+
+Verification:
+
+```
+$ make -C ui -j4
+artifact: mq_ui
+md5: fe617bf5b398334e712707e80107004c
+size: 5376184
+BUILD_EXIT=0
+
+$ make -C ui/tests -j4 check
+UITESTS_EXIT=0
+49 PASS lines (journal mode is WAL)
+```
+
+A clean dependency rebuild (`build-http.sh` after deleting `libcurl.a`) produced a valid archive and
+the same `mq_ui` md5. On the device, the dev `ui/http.c` fetched iTunes and lrclib, downloaded
+63,760 bytes, and the DB still reported `wal` with `integrity_check=ok`.
+
+`dev` is 46 commits ahead of `origin/dev`, not pushed, and the dev build is not flashed. Device
+`http_probe` and WAL checks passed; the flashed UI still needs the final on-screen check.
+
 ## Not verified
 
 No flash, no mask-ROM run, no on-device check of the DST fix, the SD export ordering or the scanner
