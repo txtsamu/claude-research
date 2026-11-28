@@ -41,6 +41,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Date | Doc | Type |
 |---|---|---|
+| 2026-11-29 | [opencode-auto-compaction-200k-context-2026-11-29.md](opencode-auto-compaction-200k-context-2026-11-29.md) | how-to |
 | 2026-11-28 | [diskos-audit-25-categories-dev-2f705ac-2026-11-28.md](diskos-audit-25-categories-dev-2f705ac-2026-11-28.md) | build-log |
 | 2026-11-28 | [diskos-flash-dev-82ffa18-2026-11-28.md](diskos-flash-dev-82ffa18-2026-11-28.md) | build-log |
 | 2026-11-28 | [diskos-architecture-review-seven-findings-2026-11-28.md](diskos-architecture-review-seven-findings-2026-11-28.md) | build-log |
@@ -193,6 +194,7 @@ One combined view across all three tables below, so the latest work is visible a
 
 | Doc | Tags | Last verified |
 |---|---|---|
+| [opencode-auto-compaction-200k-context-2026-11-29.md](opencode-auto-compaction-200k-context-2026-11-29.md) | opencode, compaction, config, context-window, deepseek, opencode-go, fedora | 2026-11-29 |
 | [home-directory-reorg-projects-logs-probes-2026-11-27.md](home-directory-reorg-projects-logs-probes-2026-11-27.md) | fedora, home, organization, filesystem, mv, projects, systemd, dotfiles, agent-config, diskos, immich, oxigram, ktflash, probes, cleanup | 2026-11-27 |
 | [kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md](kt02h20-generic-31b2-1052-crossflash-ja11-v21-2026-11-27.md) | kt02h20, ktmicro, 31b2-1052, crossflash, ja11, fiio, jadeaudio, ktflash, firmware, usb-dac, hid, fedora, linux, alsa, pipewire | 2026-11-27 |
 | [opencode-hermes-default-model-opencode-go-2026-11-27.md](opencode-hermes-default-model-opencode-go-2026-11-27.md) | opencode, hermes, model, default, opencode-go, deepseek, config, nixos, home, fedora | 2026-11-27 |
