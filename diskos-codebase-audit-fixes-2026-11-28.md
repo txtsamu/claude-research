@@ -304,9 +304,29 @@ UITESTS_EXIT=0
 
 - WAL mode: changes the persistent journal mode of the DB the stock player opens; needs an on-device
   compatibility check.
-- HTTP connection reuse: each request still spawns `wget`; an in-process HTTP/TLS client is a
-  separate project. Timeouts now bound the worst case.
+- HTTP connection reuse (`18`): accepted, not fixed. See the decision below.
 
+
+## Decision: HTTP connection reuse accepted (`18`)
+
+Measured on the Disc over SSH on 2026-11-28, with three separate `wget` processes against the iTunes
+search endpoint:
+
+```
+0.72 s   first request (DNS + TCP + TLS)
+0.14 s   second request
+0.18 s   third request
+```
+
+Keep-alive would save under 0.1 s per request after the first. `netart_have()` already checks the
+album key before searching and misses are negatively cached, so the 2-4 calls only happen on a true
+uncached album, not per track. The stock rootfs has libcurl 7.68 plus OpenSSL 1.1.1f, but they are
+dynamic glibc builds and cannot be linked into the static musl `mq_ui`.
+
+Decision: keep one `wget` per request, with the new `-t 1` and wall-clock deadlines. Adding
+libcurl + mbedTLS would grow the static binary by roughly 0.5-1 MB and add CA/TLS maintenance for a
+sub-100 ms saving. If this is revisited, the scope is one `http_get()` helper with a shared
+connection cache and cancellation, ported to `netart`, `lyrics`, `weather`, `ota` and `system`.
 
 ## Not verified
 
