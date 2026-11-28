@@ -414,15 +414,90 @@ the same `mq_ui` md5. On the device, the dev `ui/http.c` fetched iTunes and lrcl
 63,760 bytes, and the DB still reported `wal` with `integrity_check=ok`.
 
 `dev` was fast-forwarded into `main` and `main` was pushed on 2026-11-28, so `origin/main` is at
-`26dfba4`. The local `dev` still has 46 unpushed commits on top of `origin/dev`. The dev build is not
-flashed. Device `http_probe` and WAL checks passed; the flashed UI still needs the final on-screen check.
+`26dfba4`. The local `dev` still has 46 unpushed commits on top of `origin/dev`.
+
+## Wi-Fi connect speedup & Mask-ROM flash (2026-11-28, commit `1f68167`)
+
+On-device logs after flashing `26dfba4` showed `wlan0` associating in 1.6 s (`12.11 s` to `13.75 s`),
+while the UI lease state machine added 8–30 s by skipping `LEASE_NONE` in the 100 ms fast-poll,
+force-dropping an already-valid boot lease with `SIGUSR2`, and not waking a sleeping `udhcpc` with
+`SIGUSR1`.
+
+Commit `1f68167` (`main`, `ui/wifi.c`, +11/−7):
+
+- Accepts an already-valid initial boot/restart lease (`epoch == 0 && o->ip == 1 && o->idle`) straight
+  into `LEASE_READY` (network switches with `epoch >= 1` still release and re-acquire).
+- Wakes an idle/sleeping `udhcpc` immediately via `SIGUSR1` on first association with no IP.
+- Includes `LEASE_NONE` in `wifi_supervise()`'s 100 ms poll path (backing off to 4 s when idle) and
+  reduces `conn_poll_cb` from 1000 ms to 250 ms.
+
+Built and flashed over mask-ROM USB (`14:34:17` to `14:54:24` WIB, **20 m 07 s**):
+
+```
+artifact: mq_ui (main 1f68167, standard public variant)
+md5: 9f3bea3320b55e931b6c8f062cdf8959
+size: 5376184
+usbboot exit=0 | bad-blocks=2 [128, 522] | skipped=2 retried=0 worst=0
+result: 0x600DF10C [F001] SUCCESS
+backup g0026: committed
+unsquashfs opt/diskos/mq_ui md5: 9f3bea3320b55e931b6c8f062cdf8959
+manifest: SHA256=d72bd29f5a1162b7fa70c3472f56af5ff7c0a906f5fca16c1cc5706cf9504056 SIZE=5376184 VARIANT=public
+```
+
+## Build 8 release and flash (2026-11-28)
+
+Sixteen commits landed after build 7 (`cf58a93`): the audit sweep (`5b25831`, `a8f96db`, `fc88105`,
+`f162cf5`, `13b551a`), libcurl + mbedTLS (`7ee7567`, `794d382`), WAL (`ea5f9a9`, `26dfba4`), the
+Wi-Fi lease fix (`1f68167`), the Working Mode spinner and USB Audio guard (`249e2c7`), the Miku
+splash and faster boot (`f27fe8d`) and the Terminal header (`15e45ff`). The changelog commit is
+`0a6918f`; `main`, `dev` and tag `v1.2.1-fork.8` all point at it.
+
+Release: <https://github.com/txtsamu/diskos/releases/tag/v1.2.1-fork.8>, marked Latest and not a
+prerelease, assets `mq_ui` and `SHA256SUMS`. The downloaded asset was rehashed to prove the upload:
+
+```
+md5    b3168307daffa95543c02dbb88699f8e
+sha256 a466837acd3aebae3ab38819ded50fb251e8a82dc3c163b60855f4efb566e569
+size   5527756
+src_md5 2ace58fb0ac48f1ee8283c0555917a5a
+```
+
+A clean `make -C ui clean && make -C ui` reproduced the same md5, the host suite reported 49 PASS
+and exit 0, and the 24 compiler warnings are all pre-existing (`apps.c`, `bt.c`, `musicdb.c` and
+others); none come from the new splash, modes, terminal or wifi code.
+
+Flash history, including the dead end:
+
+- 13:46 attempt on the old cable died at 92,274,688/100,663,296 bytes (`usbboot exit=1`, libusb
+  `result=-4`). The Disc reset into mask-ROM, NAND was untouched, and it booted the previous
+  19 November image with `song.db` still `wal`, integrity `ok`.
+- 13:53 attempt on a different cable wrote the full image from the audit build `26dfba4`, 20 m 10 s,
+  `SUCCESS`, bad blocks `[128, 522]` skipped, `retried=0 worst=0`.
+- The user then flashed `1f68167` themselves from 14:34:17 to 14:54:24, which is the build behind
+  the Wi-Fi section above.
+
+This release's image was flashed from 16:55:12 to 17:15:12 (20 m 02 s), same cable as the successful
+13:53 run:
+
+```
+image md5 c9e346d88e649de41047df7f3043773a
+usbboot exit=0 | bad-blocks-found=2 [128, 522] | skipped=2 retried=0 worst=0
+result 0x600DF10C [F001] SUCCESS | flash verified OK
+backup g0027 committed
+```
 
 ## Not verified
 
-No flash, no mask-ROM run, no on-device check of the DST fix, the SD export ordering or the scanner
-on a real 30k-file card. The WAL and HTTP branches are not flashed; the Disc went offline before the
-final `mq_ui` HTTP probe. The cross build and host suites are the only runtime evidence.
-ThreadSanitizer was not available.
+- The build 8 image (`15e45ff`) is flashed and writer-verified but was not booted or checked on the
+  Disc before the release was cut; the device was offline. The running manifest, the
+  `/opt/diskos/mq_ui` hash and the on-screen splash, Terminal header and Working Mode dialogs on
+  this exact image are still pending.
+- The libcurl paths and WAL were exercised on the Disc on earlier builds (a `journal_mode=wal`,
+  `integrity_check=ok` reading), not re-run on the final binary.
+- The DST fix, the SD export ordering and the scanner on a real 30k-file card were not checked on
+  hardware.
+- No full flash image is attached to the release; it must be built from the user's own firmware ZIP.
+- ThreadSanitizer was not available.
 
 ## References
 
