@@ -197,6 +197,54 @@ untouched at `0a6918f`.
 
 Diff: 46 files, +5,308 / -2,758, 19 commits, 7 new host test binaries.
 
+## Follow-up checkpoint `82ffa18`
+
+A later review pass on `dev` found eight regressions from the merge and fixed them in one commit,
+`82ffa18` "Fix regressions from arch/deepen-2026-11-28 and document dev checkpoint rule" (12 files,
++81 / -37). It also added the auto-commit-and-push checkpoint rule to `CLAUDE.md` and
+`agents/AGENTS.md`.
+
+- `ui/command_spawn.c`: `_GNU_SOURCE` guard; a `pass_fd == 3` dup dance through fd 255; the timeout path
+  blocks `SIGALRM` across `command_abort`; `command_run` now fails on `ECHILD` instead of spinning to the
+  timeout; `pipe2(O_CLOEXEC)`; and `child_probe_extra()`, which keeps the pipe open on `EAGAIN` and marks
+  truncation when an extra byte arrives after the buffer filled exactly. The old code closed the pipe on
+  `EAGAIN`, so `printf 'abc'; sleep; printf 'd'` into a 4 byte buffer was reported as an exact fit.
+- `ui/main.c`: `wifisup_env_radio_down` became synchronous (`command_run(argv, 2000)`) so the next
+  supervise tick sees the radio actually down; `wpa_cli` argv[0] fixed; `polls_set_paused(paused, art_held)`
+  keeps the art timer paused while art is held even when the idle path later resumes the other poll timers;
+  the art resume path skips the immediate poll while the screen is off.
+- `ui/coverart.[ch]`: `coverart_take()` takes the current `online_art` setting instead of the value captured
+  when the want was queued.
+- `ui/gesture.c`: `library_letter_tick` is only set for a rim move inside the angular limit.
+- `ui/nowplay.c`: an art apply that happens inside the `view` sink triggers exactly one republish instead of
+  being dropped.
+- `ui/ui.c`: `clear_art_state()` only signals art applied when something was actually cleared, which stops
+  the publish loop, and `ui_art_poll()` reads `online_art` once and passes it to `coverart_take()`.
+- Tests: three new `command_spawn` checks (delayed extra byte, cap 1 with empty output, fd plumbing), the
+  `coverart_take` signature in `coverart_test.c`, and `sync_art_apply_inside_view_does_not_loop` in
+  `nowplay_test.c`.
+
+Re-verified on `dev` at `82ffa18`:
+
+```console
+$ make -C ui/tests check
+TESTS_EXIT=0
+84 PASS/ok/COMPLETE/ALL PASS lines
+0 FAIL
+54 test groups
+
+$ make -C ui clean && make -C ui -j8
+BUILD_EXIT=0 (20:12:14 to 20:12:26)
+23 warnings, 0 errors
+md5    21c3f99ca03d054b72a3a5526555fce7
+sha256 84725ec323a6720decb984bbd8d41c7cbcc6666cea2e09b0ef68cdd37423e747
+size   5528880
+```
+
+The three remaining warnings in touched files (`main.c:137`, `ui.c:102`, `ui.c:1694`) are pre-existing and
+not in the changed hunks. The binary grew 188 bytes from the pre-fix `dev` build. `dev` and `origin/dev`
+are level at `82ffa18`.
+
 ## Gotchas
 
 - A worktree needs `ui/third_party/out` copied in, and the `.a` files must be newer than `build-http.sh` and
