@@ -259,8 +259,10 @@ are level at `82ffa18`.
 
 ## Not verified
 
-- Nothing was flashed. The Disc was offline the whole session (`No route to host`), so the build 8 boot check
-  and every behavior change here are unverified on hardware.
+- The image was flashed later in the session: `82ffa18` was written and verified by the installer (image md5
+  `04d80ed4a854157f81e109f36f40a37b`, UI md5 `21c3f99ca03d054b72a3a5526555fce7`, size 5528880). See
+  [[diskos-flash-dev-82ffa18-2026-11-28]]. The post-boot checks (installed md5, splash, Wi-Fi, gestures) were still
+  pending when this note was updated, so the behavior claims here remain unverified on hardware.
 - The splash-first-frame claim depends on the display controller and panel power-on timing; only a cold boot on
   the Disc can confirm no Home flash and no stutter.
 - Real `udhcpc` signal delivery, `wpa_cli -a` event delivery and the Bluetooth-priority race were not exercised.
